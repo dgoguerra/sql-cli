@@ -1,0 +1,28 @@
+{
+  "name": "@dgoguerra/sql",
+  "version": "1.0.0",
+  "description": "",
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "main": "index.js",
+  "bin": {
+    "sql": "cli.js"
+  },
+  "scripts": {
+    "format": "prettier --write \"**/*.js\"",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "chalk": "^3.0.0",
+    "knex": "^0.20.10",
+    "lodash": "^4.17.15",
+    "mysql2": "^2.1.0",
+    "pretty-bytes": "^5.3.0",
+    "table": "^5.4.6",
+    "yargs": "^15.1.0"
+  },
+  "devDependencies": {
+    "prettier": "^1.19.1"
+  }
+}
