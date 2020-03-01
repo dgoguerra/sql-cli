@@ -15,7 +15,7 @@ class SqlRepl {
     return new Promise(resolve => {
       repl
         .start({
-          prompt: "=> ",
+          prompt: "→ ",
           eval: (...args) => this.evalQuery(...args),
           writer: (...args) => this.formatResult(...args)
         })
