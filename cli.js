@@ -7,6 +7,7 @@ const prettyBytes = require("pretty-bytes");
 const table = require("./src/table");
 const Lib = require("./src/Lib");
 const SqlRepl = require("./src/SqlRepl");
+const { diffColumns } = require("./src/schemaDiff");
 
 class CliApp {
   constructor() {
@@ -26,32 +27,39 @@ class CliApp {
         type: "string"
       })
       .help()
+      .alias("h", "help")
       .version()
       .demandCommand();
 
     cli.command({
       command: "list",
       aliases: ["ls"],
-      desc: "List tables",
+      description: "List tables",
       handler: argv => this.listTables(argv)
     });
 
     cli.command({
       command: "show <table>",
-      desc: "Show table structure",
+      description: "Show table structure",
       handler: argv => this.showTable(argv)
     });
 
     cli.command({
       command: "diff <table1> <table2>",
-      desc: "Diff two tables",
+      description: "Diff two tables",
+      builder: yargs =>
+        yargs.option("quiet", {
+          alias: "q",
+          description: "Quiet output, hiding rows without changes",
+          type: "boolean"
+        }),
       handler: argv => this.diffTables(argv)
     });
 
     cli.command({
       command: "*",
-      alias: ["shell"],
-      desc: "Run REPL shell",
+      aliases: ["shell"],
+      description: "Run REPL shell",
       handler: argv => this.runInteractiveShell(argv)
     });
 
@@ -106,55 +114,33 @@ class CliApp {
       this.error(`Table '${argv.table2}' not found`);
     }
 
-    const schemaBefore = await lib.getSchema(argv.table1);
-    const schemaAfter = await lib.getSchema(argv.table2);
-
-    const colHash = c => `${c.type}:${c.maxLength}:${c.nullable}`;
-    const colDescr = c => {
-      let str = c.type;
-      if (c.maxLength) {
-        str += `(${c.maxLength})`;
-      }
-      if (c.nullable) {
-        str += " nullable";
-      }
-      return str;
-    };
-
-    const columns = Object.keys(schemaBefore).map(key => {
-      const colBefore = schemaBefore[key];
-      const colAfter = schemaAfter[key];
-
-      if (!colAfter) {
-        return {
-          column: key,
-          status: "deleted",
-          changes: chalk.red("deleted")
-        };
-      }
-
-      if (colHash(colBefore) === colHash(colAfter)) {
-        return { column: key, status: "similar" };
-      }
-
-      const before = chalk.red(colDescr(colBefore));
-      const after = chalk.green(colDescr(colAfter));
-      return {
-        column: key,
-        status: "changed",
-        changes: `${before} -> ${after}`
-      };
-    });
-
-    Object.keys(schemaAfter).forEach(key => {
-      if (!schemaBefore[key]) {
-        columns.push({
-          column: key,
-          status: "created",
-          changes: chalk.green("created")
-        });
-      }
-    });
+    const columns = diffColumns(
+      await lib.getSchema(argv.table1),
+      await lib.getSchema(argv.table2)
+    )
+      .map(col => {
+        switch (col.status) {
+          case "deleted":
+            col.column = chalk.red(col.column);
+            col.changes = chalk.red(col.descBefore);
+            break;
+          case "created":
+            col.column = chalk.green(col.column);
+            col.changes = chalk.green(col.descAfter);
+            break;
+          case "changed":
+            col.changes = `${chalk.red(col.descBefore)} -> ${chalk.green(
+              col.descAfter
+            )}`;
+            break;
+          case "similar":
+            col.changes = col.descBefore;
+            break;
+        }
+        return col;
+      })
+      // If running with --quiet, hide rows without changes
+      .filter(col => (argv.quiet ? col.status !== "similar" : true));
 
     console.log(
       table(
