@@ -1,13 +1,12 @@
 #!/usr/bin/env node
 
 const _ = require("lodash");
-const chalk = require("chalk");
 const yargs = require("yargs");
 const prettyBytes = require("pretty-bytes");
 const table = require("./src/table");
 const Lib = require("./src/Lib");
 const SqlRepl = require("./src/SqlRepl");
-const { diffColumns } = require("./src/schemaDiff");
+const { diffColumns, diffSchemas } = require("./src/schemaDiff");
 
 class CliApp {
   constructor() {
@@ -67,7 +66,7 @@ class CliApp {
   }
 
   async listTables(argv) {
-    const lib = this.initLib(argv);
+    const lib = this.initLib(argv.conn, argv);
     const tables = await lib.listTables();
 
     const rows = await Promise.all(
@@ -89,7 +88,7 @@ class CliApp {
   }
 
   async showTable(argv) {
-    const lib = this.initLib(argv);
+    const lib = this.initLib(argv.conn, argv);
 
     const schema = await lib.getSchema(argv.table);
 
@@ -105,81 +104,113 @@ class CliApp {
   }
 
   async diffTables(argv) {
-    const lib = this.initLib(argv);
+    const extractTable = str => {
+      var regex = /:\/\/.+\/.+\/(.+)/g;
+      var arr = regex.exec(str);
+      return arr && arr.length > 1 ? arr[1] : null;
+    };
 
-    if (!(await lib.tableExists(argv.table1))) {
-      this.error(`Table '${argv.table1}' not found`);
+    const parseConn = conn => {
+      if (conn.indexOf("/") === -1) {
+        return [null, conn];
+      }
+      const table = extractTable(conn);
+      if (table) {
+        conn = conn.replace(new RegExp(`\/${table}$`, "g"), "");
+      }
+      return [conn, table];
+    };
+
+    const [conn1, table1] = parseConn(argv.table1);
+    const [conn2, table2] = parseConn(argv.table2);
+
+    const lib1 = this.initLib(conn1 || argv.conn, argv);
+    const lib2 = this.initLib(conn2 || argv.conn, argv);
+
+    // Diffing two tables columns
+    if (table1 && table2) {
+      if (!(await lib1.tableExists(table1))) {
+        this.error(`Table '${argv.table1}' not found in before schema`);
+      }
+      if (!(await lib2.tableExists(table2))) {
+        this.error(`Table '${argv.table2}' not found in after schema`);
+      }
+
+      const { columns, summary } = diffColumns(
+        await lib1.getSchema(argv.table1),
+        await lib2.getSchema(argv.table2)
+      ).filter(col => {
+        // If running with --quiet, hide rows without changes
+        return argv.quiet ? col.status !== "similar" : true;
+      });
+
+      console.log(
+        table(
+          columns.map(col => ({
+            column: col.displayColumn,
+            type: col.displayType
+          })),
+          // Disable default rows formatting, since the fields
+          // already have diff colors applied.
+          { headers: ["column", "type"], format: val => val }
+        )
+      );
+
+      if (summary) {
+        console.log(summary);
+        console.log("");
+      }
     }
-    if (!(await lib.tableExists(argv.table2))) {
-      this.error(`Table '${argv.table2}' not found`);
-    }
 
-    const columns = diffColumns(
-      await lib.getSchema(argv.table1),
-      await lib.getSchema(argv.table2)
-    )
-      .map(col => {
-        switch (col.status) {
-          case "deleted":
-            col.column = chalk.red(col.column);
-            col.changes = chalk.red(col.descBefore);
-            break;
-          case "created":
-            col.column = chalk.green(col.column);
-            col.changes = chalk.green(col.descAfter);
-            break;
-          case "changed":
-            col.changes = `${chalk.red(col.descBefore)} -> ${chalk.green(
-              col.descAfter
-            )}`;
-            break;
-          case "similar":
-            col.changes = col.descBefore;
-            break;
-        }
-        return col;
-      })
-      // If running with --quiet, hide rows without changes
-      .filter(col => (argv.quiet ? col.status !== "similar" : true));
+    // Diffing all tables of two schemas
+    else {
+      const getTablesInfo = async lib => {
+        const tableNames = await lib.listTables();
+        const tablesArr = await Promise.all(
+          tableNames.map(async table => ({
+            table,
+            ...(await lib.getTableInfo(table)),
+            schema: await lib.getSchema(table)
+          }))
+        );
+        return _.keyBy(tablesArr, "table");
+      };
 
-    console.log(
-      table(
-        columns.filter(c => c.changes),
-        {
-          headers: ["column", "changes"],
-          // Disable default rows formatting, since some fields
+      const tables = diffSchemas(
+        await getTablesInfo(lib1),
+        await getTablesInfo(lib2)
+      ).map(table => ({
+        table: table.displayTable,
+        rows: table.displayRows,
+        bytes: table.displayBytes,
+        columns: table.displaySummary
+      }));
+
+      console.log(
+        table(tables, {
+          headers: ["table", "rows", "bytes", "columns"],
+          // Disable default rows formatting, since the fields
           // already have diff colors applied.
           format: val => val
-        }
-      )
-    );
-
-    const facts = _(columns)
-      .countBy("status")
-      .map((num, status) => ({ num, text: `${num}x ${status}` }))
-      .orderBy(c => -c.num)
-      .map("text")
-      .join(", ");
-
-    if (facts) {
-      console.log(facts);
-      console.log("");
+        })
+      );
     }
 
-    await lib.destroy();
+    await lib1.destroy();
+    await lib2.destroy();
   }
 
   async runInteractiveShell(argv) {
-    const lib = this.initLib(argv);
+    const lib = this.initLib(argv.conn, argv);
     await new SqlRepl(lib).run();
     await lib.destroy();
   }
 
-  initLib(argv) {
+  initLib(conn, argv = {}) {
     return new Lib({
       knex: {
         client: argv.client || "mysql2",
-        connection: argv.conn
+        connection: conn
       }
     });
   }
