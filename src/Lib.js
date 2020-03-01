@@ -10,6 +10,10 @@ class Lib {
     }
   }
 
+  async checkConnection() {
+    await this.knex.raw("select 1+1 as result");
+  }
+
   async destroy() {
     if (this.knexIsInternal) {
       await this.knex.destroy();

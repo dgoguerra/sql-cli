@@ -202,6 +202,12 @@ class CliApp {
 
   async runInteractiveShell(argv) {
     const lib = this.initLib(argv.conn, argv);
+
+    // Check db connection before dropping the user to the shell,
+    // to avoid waiting until a query is run to know that the
+    // connection is invalid.
+    await lib.checkConnection();
+
     await new SqlRepl(lib).run();
     await lib.destroy();
   }
