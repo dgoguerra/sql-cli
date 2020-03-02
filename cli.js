@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 const _ = require("lodash");
+const Conf = require("conf");
 const yargs = require("yargs");
 const prettyBytes = require("pretty-bytes");
 const table = require("./src/table");
@@ -10,6 +11,9 @@ const { diffColumns, diffSchemas } = require("./src/schemaDiff");
 
 class CliApp {
   constructor() {
+    this.conf = new Conf({
+      defaults: { aliases: {} }
+    });
     this.cli = this.buildYargs();
     this.argv = this.cli.argv;
   }
@@ -52,10 +56,37 @@ class CliApp {
     });
 
     cli.command({
-      command: "* [conn]",
-      aliases: ["shell"],
+      command: "alias <action>",
+      description: "Manage saved connection aliases",
+      builder: yargs =>
+        yargs
+          .command({
+            command: "list",
+            aliases: ["ls"],
+            description: "List existing aliases",
+            handler: () => this.listAliases()
+          })
+          .command({
+            command: "add <alias> <conn>",
+            description: "Add new alias",
+            handler: argv => this.addAlias(argv)
+          })
+          .command({
+            command: "remove <alias>",
+            aliases: ["rm"],
+            description: "Remove saved alias",
+            handler: argv => this.removeAlias(argv)
+          })
+          .demandCommand()
+    });
+
+    cli.command({
+      command: "shell <conn>",
+      aliases: ["sh"],
       description: "Run REPL shell",
-      handler: argv => this.runInteractiveShell(argv)
+      handler: argv => {
+        this.runInteractiveShell(argv);
+      }
     });
 
     return cli;
@@ -84,9 +115,14 @@ class CliApp {
   }
 
   async showTable(argv) {
-    const lib = this.initLib(argv.conn, argv);
+    const [conn, tableName] = this.parseConn(argv.table);
 
-    const schema = await lib.getSchema(argv.table);
+    if (!tableName) {
+      this.error("No table was specified in the connection");
+    }
+
+    const lib = this.initLib(conn, argv);
+    const schema = await lib.getSchema(tableName);
 
     const formatted = _.map(schema, (val, key) => ({
       column: key,
@@ -100,52 +136,39 @@ class CliApp {
   }
 
   async diffTables(argv) {
-    const extractTable = str => {
-      var regex = /:\/\/.+\/.+\/(.+)/g;
-      var arr = regex.exec(str);
-      return arr && arr.length > 1 ? arr[1] : null;
-    };
+    const [conn1, table1] = this.parseConn(argv.table1);
+    const [conn2, table2] = this.parseConn(argv.table2);
 
-    const parseConn = conn => {
-      if (conn.indexOf("/") === -1) {
-        return [null, conn];
-      }
-      const table = extractTable(conn);
-      if (table) {
-        conn = conn.replace(new RegExp(`\/${table}$`, "g"), "");
-      }
-      return [conn, table];
-    };
-
-    const [conn1, table1] = parseConn(argv.table1);
-    const [conn2, table2] = parseConn(argv.table2);
-
-    const lib1 = this.initLib(conn1 || argv.conn, argv);
-    const lib2 = this.initLib(conn2 || argv.conn, argv);
+    const lib1 = this.initLib(conn1, argv);
+    const lib2 = this.initLib(conn2, argv);
 
     // Diffing two tables columns
     if (table1 && table2) {
       if (!(await lib1.tableExists(table1))) {
-        this.error(`Table '${argv.table1}' not found in before schema`);
+        this.error(`Table '${argv.table1}' not found in 'before' schema`);
       }
       if (!(await lib2.tableExists(table2))) {
-        this.error(`Table '${argv.table2}' not found in after schema`);
+        this.error(`Table '${argv.table2}' not found in 'after' schema`);
       }
 
       const { columns, summary } = diffColumns(
-        await lib1.getSchema(argv.table1),
-        await lib2.getSchema(argv.table2)
-      ).filter(col => {
-        // If running with --quiet, hide rows without changes
-        return argv.quiet ? col.status !== "similar" : true;
-      });
+        await lib1.getSchema(table1),
+        await lib2.getSchema(table2)
+      );
+
+      const formatted = columns
+        .filter(col => {
+          // If running with --quiet, hide rows without changes
+          return argv.quiet ? col.status !== "similar" : true;
+        })
+        .map(col => ({
+          column: col.displayColumn,
+          type: col.displayType
+        }));
 
       console.log(
         table(
-          columns.map(col => ({
-            column: col.displayColumn,
-            type: col.displayType
-          })),
+          formatted,
           // Disable default rows formatting, since the fields
           // already have diff colors applied.
           { headers: ["column", "type"], format: val => val }
@@ -208,13 +231,50 @@ class CliApp {
     await lib.destroy();
   }
 
-  initLib(conn, argv = {}) {
+  async listAliases() {
+    const aliases = this.conf.get("aliases") || {};
+    console.log(
+      table(
+        _.map(aliases, (conn, alias) => ({ alias, conn })),
+        { headers: ["alias", "conn"] }
+      )
+    );
+  }
+
+  async addAlias(argv) {
+    if (this.conf.get(`aliases.${argv.alias}`)) {
+      this.error(`Alias '${argv.alias}' already exists`);
+    }
+    this.conf.set(`aliases.${argv.alias}`, argv.conn);
+  }
+
+  async removeAlias(argv) {
+    if (!this.conf.get(`aliases.${argv.alias}`)) {
+      this.error(`Alias '${argv.alias}' not found`);
+    }
+    this.conf.delete(`aliases.${argv.alias}`);
+  }
+
+  initLib(rawConn, argv = {}) {
+    const [conn] = this.parseConn(rawConn);
     return new Lib({
       knex: {
         client: argv.client || "mysql2",
         connection: conn
       }
     });
+  }
+
+  parseConn(conn) {
+    if (conn.indexOf("://") === -1) {
+      const [alias, ...rest] = conn.split("/");
+      const resolved = this.conf.get(`aliases.${alias}`);
+      conn = [resolved || alias].concat(rest).join("/");
+    }
+
+    const [protocol, rest] = conn.split("://");
+    const [host, database, table] = rest.split("/");
+    return [`${protocol}://${host}/${database}`, table];
   }
 
   error(message) {
