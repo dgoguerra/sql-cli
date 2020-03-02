@@ -21,17 +21,13 @@ class CliApp {
         description: "Knex client adapter",
         type: "string"
       })
-      .option("conn", {
-        description: "Knex connection URI",
-        type: "string"
-      })
       .help()
       .alias("h", "help")
       .version()
       .demandCommand();
 
     cli.command({
-      command: "list",
+      command: "list <conn>",
       aliases: ["ls"],
       description: "List tables",
       handler: argv => this.listTables(argv)
@@ -56,7 +52,7 @@ class CliApp {
     });
 
     cli.command({
-      command: "*",
+      command: "* [conn]",
       aliases: ["shell"],
       description: "Run REPL shell",
       handler: argv => this.runInteractiveShell(argv)
