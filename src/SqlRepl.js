@@ -34,7 +34,7 @@ class SqlRepl {
 
     this.queue = this.queue.then(async () => {
       try {
-        const [rows] = await this.lib.knex.raw(query);
+        const rows = await this.lib.knex.raw(query);
         next(null, rows);
       } catch (err) {
         next(null, err);
@@ -52,10 +52,11 @@ class SqlRepl {
         ? `Error ${err.code}: ${err.sqlMessage}`
         : `Error: ${err.message}`;
     }
-    if (!result.length) {
+    const rows = result.length && result[0].length ? result[0] : result;
+    if (!rows.length) {
       return "(no results)";
     }
-    return table(result, Object.keys(result[0]));
+    return table(rows, Object.keys(rows[0]));
   }
 }
 
