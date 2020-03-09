@@ -3,10 +3,12 @@
 const _ = require("lodash");
 const Conf = require("conf");
 const yargs = require("yargs");
+const parseConn = require("knex/lib/util/parse-connection");
 const prettyBytes = require("pretty-bytes");
 const table = require("./src/table");
 const Lib = require("./src/Lib");
 const SqlRepl = require("./src/SqlRepl");
+const clientAliases = require("./src/clientAliases");
 const { diffColumns, diffSchemas } = require("./src/schemaDiff");
 
 class CliApp {
@@ -96,12 +98,9 @@ class CliApp {
     const lib = this.initLib(argv.conn, argv);
     const tables = await lib.listTables();
 
-    const rows = await Promise.all(
-      tables.map(async table => ({ table, ...(await lib.getTableInfo(table)) }))
-    );
-
-    const formatted = _.sortBy(rows, row => -row.bytes).map(row => {
-      row.bytes = prettyBytes(row.bytes);
+    const formatted = _.sortBy(tables, row => -row.bytes).map(row => {
+      row.rows = row.rows;
+      row.bytes = row.bytes === undefined ? "" : prettyBytes(row.bytes);
       return row;
     });
 
@@ -115,13 +114,13 @@ class CliApp {
   }
 
   async showTable(argv) {
-    const [conn, tableName] = this.parseConn(argv.table);
+    const [conn, tableName] = this.resolveConn(argv.table, argv);
 
     if (!tableName) {
       this.error("No table was specified in the connection");
     }
 
-    const lib = this.initLib(conn, argv);
+    const lib = this.initLib(conn);
     const schema = await lib.getSchema(tableName);
 
     const formatted = _.map(schema, (val, key) => ({
@@ -136,11 +135,11 @@ class CliApp {
   }
 
   async diffTables(argv) {
-    const [conn1, table1] = this.parseConn(argv.table1);
-    const [conn2, table2] = this.parseConn(argv.table2);
+    const [conn1, table1] = this.resolveConn(argv.table1, argv);
+    const [conn2, table2] = this.resolveConn(argv.table2, argv);
 
-    const lib1 = this.initLib(conn1, argv);
-    const lib2 = this.initLib(conn2, argv);
+    const lib1 = this.initLib(conn1);
+    const lib2 = this.initLib(conn2);
 
     // Diffing two tables columns
     if (table1 && table2) {
@@ -184,12 +183,10 @@ class CliApp {
     // Diffing all tables of two schemas
     else {
       const getTablesInfo = async lib => {
-        const tableNames = await lib.listTables();
         const tablesArr = await Promise.all(
-          tableNames.map(async table => ({
-            table,
-            ...(await lib.getTableInfo(table)),
-            schema: await lib.getSchema(table)
+          (await lib.listTables()).map(async row => ({
+            ...row,
+            schema: await lib.getSchema(row.table)
           }))
         );
         return _.keyBy(tablesArr, "table");
@@ -255,26 +252,72 @@ class CliApp {
     this.conf.delete(`aliases.${argv.alias}`);
   }
 
-  initLib(rawConn, argv = {}) {
-    const [conn] = this.parseConn(rawConn);
+  initLib(conn) {
+    if (typeof conn === "string") {
+      const [parsed] = this.resolveConn(conn);
+      conn = parsed;
+    }
     return new Lib({
-      knex: {
-        client: argv.client || "mysql2",
-        connection: conn
-      }
+      knex: conn,
+      proxy: conn.connection.proxy
     });
   }
 
-  parseConn(conn) {
-    if (conn.indexOf("://") === -1) {
-      const [alias, ...rest] = conn.split("/");
-      const resolved = this.conf.get(`aliases.${alias}`);
-      conn = [resolved || alias].concat(rest).join("/");
+  resolveConn(connStr, argv = {}) {
+    let connUri;
+    let tableName;
+
+    const [uri, params] = connStr.split("?");
+    const [protocol, rest] = uri.split("://");
+
+    if (protocol && rest) {
+      const [host, database, table] = rest.split("/");
+      connUri = `${protocol}://${host}/${database}`;
+      tableName = table;
+    } else {
+      const [host, database] = uri.split("/");
+      connUri = this.conf.get(`aliases.${host}`);
+      tableName = database;
     }
 
-    const [protocol, rest] = conn.split("://");
-    const [host, database, table] = rest.split("/");
-    return [`${protocol}://${host}/${database}`, table];
+    if (params) {
+      connUri += connUri.indexOf("?") === -1 ? "?" : "&";
+      connUri += params;
+    }
+
+    let client = argv.client;
+    let { client: proto, connection: conn } = parseConn(connUri);
+
+    // No client set manually, try to infer it from the conn URI's protocol
+    if (!client) {
+      const found = _.findKey(clientAliases, val => val.includes(proto));
+      client = found || proto;
+    }
+
+    if (!client) {
+      throw new Error(`Unknown Knex client, set one manually with --client`);
+    }
+
+    if (client === "bigquery") {
+      client = require("./src/clients/BigQuery");
+      conn.projectId = conn.host;
+    }
+
+    // Add default MySQL settings
+    if (client === "mysql2" && typeof conn === "object") {
+      conn = { charset: "utf8mb4", timezone: "UTC", ...conn };
+    }
+
+    // Add default MSSQL settings
+    if (client === "mssql" && typeof conn === "object") {
+      conn = {
+        options: { enableArithAbort: true },
+        ...conn,
+        port: Number(conn.port)
+      };
+    }
+
+    return [{ client, connection: conn }, tableName];
   }
 
   error(message) {

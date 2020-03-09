@@ -14,6 +14,7 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
+    "@google-cloud/bigquery": "^4.7.0",
     "chalk": "^3.0.0",
     "conf": "^6.2.1",
     "knex": "^0.20.10",
