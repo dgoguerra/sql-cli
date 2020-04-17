@@ -2,9 +2,7 @@ const _ = require("lodash");
 const chalk = require("chalk");
 const { table, getBorderCharacters } = require("table");
 
-const formatCol = str => {
-  return chalk.bold.underline(str);
-};
+const formatCol = str => chalk.underline(str);
 
 const cleanValue = val => {
   if (val === null || val === undefined) {

@@ -136,6 +136,11 @@ const diffSchemas = (tablesBefore, tablesAfter) => {
           table.displayTable = table.table;
           table.displayBytes = valueOrDiff(table.bytesBefore, table.bytesAfter);
           table.displayRows = valueOrDiff(table.rowsBefore, table.rowsAfter);
+          table.status =
+            table.bytesBefore === table.bytesAfter &&
+            table.rowsBefore === table.rowsAfter
+              ? "similar"
+              : "changed";
       }
       return table;
     })

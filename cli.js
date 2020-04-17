@@ -3,12 +3,15 @@
 const _ = require("lodash");
 const Conf = require("conf");
 const yargs = require("yargs");
+const chalk = require("chalk");
 const prettyBytes = require("pretty-bytes");
 const table = require("./src/table");
 const Lib = require("./src/Lib");
 const SqlRepl = require("./src/SqlRepl");
 const { resolveKnexConn } = require("./src/resolveKnexConn");
 const { diffColumns, diffSchemas } = require("./src/schemaDiff");
+const { streamsDiff } = require("./src/streamsDiff");
+const { summarize } = require("./src/summarize");
 
 class CliApp {
   constructor() {
@@ -47,12 +50,6 @@ class CliApp {
     cli.command({
       command: "diff <table1> <table2>",
       description: "Diff two tables",
-      builder: yargs =>
-        yargs.option("quiet", {
-          alias: "q",
-          description: "Quiet output, hiding rows without changes",
-          type: "boolean"
-        }),
       handler: argv => this.diffTables(argv)
     });
 
@@ -97,11 +94,10 @@ class CliApp {
     const lib = this.initLib(argv.conn, argv);
     const tables = await lib.listTables();
 
-    const formatted = _.sortBy(tables, row => -row.bytes).map(row => {
-      row.rows = row.rows;
-      row.bytes = row.bytes === undefined ? "" : prettyBytes(row.bytes);
-      return row;
-    });
+    const formatted = _.sortBy(tables, row => -row.bytes).map(row => ({
+      ...row,
+      bytes: row.bytes ? prettyBytes(row.bytes) : ""
+    }));
 
     console.log(
       table(formatted, {
@@ -154,27 +150,61 @@ class CliApp {
         await lib2.getSchema(table2)
       );
 
-      const formatted = columns
-        .filter(col => {
-          // If running with --quiet, hide rows without changes
-          return argv.quiet ? col.status !== "similar" : true;
-        })
+      const formattedCols = columns
+        .filter(col => col.status !== "similar")
         .map(col => ({
           column: col.displayColumn,
           type: col.displayType
         }));
 
-      console.log(
-        table(
-          formatted,
-          // Disable default rows formatting, since the fields
-          // already have diff colors applied.
-          { headers: ["column", "type"], format: val => val }
-        )
+      console.log(chalk.bold.underline("Diff of tables schema"));
+      console.log("");
+
+      if (formattedCols.length) {
+        console.log(
+          table(
+            formattedCols,
+            // Disable default rows formatting, since the fields
+            // already have diff colors applied.
+            { headers: ["column", "type"], format: val => val }
+          )
+        );
+        console.log(summary);
+        console.log("");
+      } else {
+        console.log(`No schema changes: ${summary}`);
+        console.log("");
+      }
+
+      const streamPreview = (lib, table) =>
+        lib
+          .knex(table)
+          .limit(100)
+          .stream();
+
+      const formattedRows = await streamsDiff(
+        streamPreview(lib1, table1),
+        streamPreview(lib2, table2),
+        { allRows: false, allColumns: false }
       );
 
-      if (summary) {
-        console.log(summary);
+      console.log(
+        chalk.bold.underline("Diff of tables content (first 100 rows)")
+      );
+      console.log("");
+
+      if (formattedRows.length) {
+        console.log(
+          summarize(
+            table(formattedRows, {
+              headers: Object.keys(formattedRows[0]),
+              format: val => val
+            }).split("\n"),
+            { maxLines: 40 }
+          ).join("\n")
+        );
+      } else {
+        console.log("No table content changes");
         console.log("");
       }
     }
@@ -194,21 +224,30 @@ class CliApp {
       const tables = diffSchemas(
         await getTablesInfo(lib1),
         await getTablesInfo(lib2)
-      ).map(table => ({
-        table: table.displayTable,
-        rows: table.displayRows,
-        bytes: table.displayBytes,
-        columns: table.displaySummary
-      }));
-
-      console.log(
-        table(tables, {
-          headers: ["table", "rows", "bytes", "columns"],
-          // Disable default rows formatting, since the fields
-          // already have diff colors applied.
-          format: val => val
-        })
       );
+
+      const formattedTables = tables
+        .filter(col => col.status !== "similar")
+        .map(table => ({
+          table: table.displayTable,
+          rows: table.displayRows,
+          bytes: table.displayBytes,
+          columns: table.displaySummary
+        }));
+
+      if (formattedTables.length) {
+        console.log(
+          table(formattedTables, {
+            headers: ["table", "rows", "bytes", "columns"],
+            // Disable default rows formatting, since the fields
+            // already have diff colors applied.
+            format: val => val
+          })
+        );
+      } else {
+        console.log("No tables changes");
+        console.log("");
+      }
     }
 
     await lib1.destroy();
