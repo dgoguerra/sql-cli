@@ -3,12 +3,11 @@
 const _ = require("lodash");
 const Conf = require("conf");
 const yargs = require("yargs");
-const parseConn = require("knex/lib/util/parse-connection");
 const prettyBytes = require("pretty-bytes");
 const table = require("./src/table");
 const Lib = require("./src/Lib");
 const SqlRepl = require("./src/SqlRepl");
-const clientAliases = require("./src/clientAliases");
+const { resolveKnexConn } = require("./src/resolveKnexConn");
 const { diffColumns, diffSchemas } = require("./src/schemaDiff");
 
 class CliApp {
@@ -264,60 +263,10 @@ class CliApp {
   }
 
   resolveConn(connStr, argv = {}) {
-    let connUri;
-    let tableName;
-
-    const [uri, params] = connStr.split("?");
-    const [protocol, rest] = uri.split("://");
-
-    if (protocol && rest) {
-      const [host, database, table] = rest.split("/");
-      connUri = `${protocol}://${host}/${database}`;
-      tableName = table;
-    } else {
-      const [host, database] = uri.split("/");
-      connUri = this.conf.get(`aliases.${host}`);
-      tableName = database;
-    }
-
-    if (params) {
-      connUri += connUri.indexOf("?") === -1 ? "?" : "&";
-      connUri += params;
-    }
-
-    let client = argv.client;
-    let { client: proto, connection: conn } = parseConn(connUri);
-
-    // No client set manually, try to infer it from the conn URI's protocol
-    if (!client) {
-      const found = _.findKey(clientAliases, val => val.includes(proto));
-      client = found || proto;
-    }
-
-    if (!client) {
-      throw new Error(`Unknown Knex client, set one manually with --client`);
-    }
-
-    if (client === "bigquery") {
-      client = require("./src/clients/BigQuery");
-      conn.projectId = conn.host;
-    }
-
-    // Add default MySQL settings
-    if (client === "mysql2" && typeof conn === "object") {
-      conn = { charset: "utf8mb4", timezone: "UTC", ...conn };
-    }
-
-    // Add default MSSQL settings
-    if (client === "mssql" && typeof conn === "object") {
-      conn = {
-        options: { enableArithAbort: true },
-        ...conn,
-        port: Number(conn.port)
-      };
-    }
-
-    return [{ client, connection: conn }, tableName];
+    return resolveKnexConn(connStr, {
+      client: argv.client,
+      aliases: this.conf.get("aliases")
+    });
   }
 
   error(message) {
