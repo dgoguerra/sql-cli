@@ -1,5 +1,7 @@
 const repl = require("repl");
+const _ = require("lodash");
 const chalk = require("chalk");
+const prettyBytes = require("pretty-bytes");
 const table = require("./table");
 
 class SqlRepl {
@@ -24,6 +26,11 @@ class SqlRepl {
       action: () => this.listSchemaTables(),
     });
 
+    this.server.defineCommand("table", {
+      help: "List available tables",
+      action: (table) => this.listTableColumns(table),
+    });
+
     return new Promise((resolve) => {
       this.server.on("close", () => {
         // Resolve promise when pending queries finish
@@ -33,18 +40,31 @@ class SqlRepl {
   }
 
   async listSchemaTables() {
-    const schema = await this.lib.getDatabaseSchema();
-    const rows = [];
+    const tables = await this.lib.listTables();
+    const rows = _.sortBy(tables, (row) => -row.bytes).map((row) => ({
+      ...row,
+      bytes: row.bytes ? prettyBytes(row.bytes) : "",
+    }));
 
-    Object.keys(schema).forEach((table) => {
-      rows.push({
-        table,
-        rows: schema[table].rows,
-        columns: Object.keys(schema[table].schema).join(","),
-      });
+    console.log(table(rows, { headers: ["table", "rows", "bytes"] }));
+
+    this.server.displayPrompt();
+  }
+
+  async listTableColumns(tableName) {
+    const columns = await this.lib.getTableSchema(tableName);
+    const rows = Object.keys(columns).map((key) => {
+      const column = columns[key];
+      return {
+        column: key,
+        type: column.maxLength
+          ? `${column.type}(${column.maxLength})`
+          : column.type,
+        nullable: column.nullable,
+      };
     });
 
-    console.log(table(rows, { headers: ["table", "rows", "columns"] }));
+    console.log(table(rows));
 
     this.server.displayPrompt();
   }
