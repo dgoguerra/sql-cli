@@ -12,18 +12,40 @@ class SqlRepl {
   }
 
   async run() {
-    return new Promise((resolve) => {
-      repl
-        .start({
-          prompt: "→ ",
-          eval: (...args) => this.evalQuery(...args),
-          writer: (...args) => this.formatResult(...args),
-        })
-        .on("close", () => {
-          // Resolve promise when pending queries finish
-          this.queue = this.queue.then(() => resolve());
-        });
+    this.server = repl.start({
+      prompt: "→ ",
+      eval: (...args) => this.evalQuery(...args),
+      writer: (...args) => this.formatResult(...args),
     });
+
+    this.server.defineCommand("tables", {
+      help: "List available tables",
+      action: () => this.listSchemaTables(),
+    });
+
+    return new Promise((resolve) => {
+      this.server.on("close", () => {
+        // Resolve promise when pending queries finish
+        this.queue = this.queue.then(() => resolve());
+      });
+    });
+  }
+
+  async listSchemaTables() {
+    const schema = await this.lib.getDatabaseSchema();
+    const rows = [];
+
+    Object.keys(schema).forEach((table) => {
+      rows.push({
+        table,
+        rows: schema[table].rows,
+        columns: Object.keys(schema[table].schema).join(","),
+      });
+    });
+
+    console.log(table(rows, { headers: ["table", "rows", "columns"] }));
+
+    this.server.displayPrompt();
   }
 
   async evalQuery(query, context, file, next) {
