@@ -53,6 +53,8 @@ const limitLine = (
   return `${line}${" ".repeat(missingWidth)}${separator}`;
 };
 
+module.exports.limitLine = limitLine;
+
 const summarize = (lines, { maxLines = 20 } = {}) => {
   return linesSummary(lines, { maxLines }).map((line) => limitLine(line));
 };

@@ -1,4 +1,5 @@
 const repl = require("repl");
+const chalk = require("chalk");
 const table = require("./table");
 
 class SqlRepl {
@@ -68,17 +69,25 @@ class SqlRepl {
     if (!result) {
       return;
     }
+
     if (result instanceof Error) {
       const err = result;
       return err.sqlMessage
         ? `Error ${err.code}: ${err.sqlMessage}`
         : `Error: ${err.message}`;
     }
+
     const rows = result.length && result[0].length ? result[0] : result;
     if (!rows.length) {
-      return "(no results)";
+      return chalk.grey("(no results)");
     }
-    return table(rows, Object.keys(rows[0]));
+
+    return (
+      table(rows, {
+        headers: Object.keys(rows[0]),
+        format: (val) => (val === null ? chalk.grey("null") : val),
+      }) + `\n${chalk.grey(`(${rows.length} rows)`)}`
+    );
   }
 }
 
