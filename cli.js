@@ -15,9 +15,7 @@ const { summarize } = require("./src/summarize");
 
 class CliApp {
   constructor() {
-    this.conf = new Conf({
-      defaults: { aliases: {} }
-    });
+    this.conf = new Conf({ defaults: { aliases: {} } });
     this.cli = this.buildYargs();
     this.argv = this.cli.argv;
   }
@@ -99,11 +97,7 @@ class CliApp {
       bytes: row.bytes ? prettyBytes(row.bytes) : ""
     }));
 
-    console.log(
-      table(formatted, {
-        headers: ["table", "rows", "bytes"]
-      })
-    );
+    console.log(table(formatted, { headers: ["table", "rows", "bytes"] }));
 
     await lib.destroy();
   }
@@ -116,13 +110,15 @@ class CliApp {
     }
 
     const lib = this.initLib(conn);
-    const schema = await lib.getSchema(tableName);
 
-    const formatted = _.map(schema, (val, key) => ({
-      column: key,
-      type: val.maxLength ? `${val.type}(${val.maxLength})` : val.type,
-      nullable: val.nullable
-    }));
+    const formatted = _.map(
+      await lib.getTableSchema(tableName),
+      (val, key) => ({
+        column: key,
+        type: val.maxLength ? `${val.type}(${val.maxLength})` : val.type,
+        nullable: val.nullable
+      })
+    );
 
     console.log(table(formatted));
 
@@ -146,8 +142,8 @@ class CliApp {
       }
 
       const { columns, summary } = diffColumns(
-        await lib1.getSchema(table1),
-        await lib2.getSchema(table2)
+        await lib1.getTableSchema(table1),
+        await lib2.getTableSchema(table2)
       );
 
       const formattedCols = columns
@@ -211,19 +207,9 @@ class CliApp {
 
     // Diffing all tables of two schemas
     else {
-      const getTablesInfo = async lib => {
-        const tablesArr = await Promise.all(
-          (await lib.listTables()).map(async row => ({
-            ...row,
-            schema: await lib.getSchema(row.table)
-          }))
-        );
-        return _.keyBy(tablesArr, "table");
-      };
-
       const tables = diffSchemas(
-        await getTablesInfo(lib1),
-        await getTablesInfo(lib2)
+        await lib1.getDatabaseSchema(),
+        await lib2.getDatabaseSchema()
       );
 
       const formattedTables = tables
@@ -234,6 +220,9 @@ class CliApp {
           bytes: table.displayBytes,
           columns: table.displaySummary
         }));
+
+      console.log(chalk.bold.underline("Diff of database schemas:"));
+      console.log("");
 
       if (formattedTables.length) {
         console.log(

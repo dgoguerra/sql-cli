@@ -29,7 +29,16 @@ class Lib {
     return await this.knex.schema.hasTable(tableName);
   }
 
-  async getSchema(tableName) {
+  async getDatabaseSchema() {
+    const tables = {};
+    for (const table of await this.listTables()) {
+      const name = table.table;
+      tables[name] = { ...table, schema: await this.getTableSchema(name) };
+    }
+    return tables;
+  }
+
+  async getTableSchema(tableName) {
     const client = this.knex.client.constructor.name;
     const database = this.knex.client.database();
 
