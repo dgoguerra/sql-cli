@@ -12,12 +12,12 @@ class SqlRepl {
   }
 
   async run() {
-    return new Promise(resolve => {
+    return new Promise((resolve) => {
       repl
         .start({
           prompt: "→ ",
           eval: (...args) => this.evalQuery(...args),
-          writer: (...args) => this.formatResult(...args)
+          writer: (...args) => this.formatResult(...args),
         })
         .on("close", () => {
           // Resolve promise when pending queries finish

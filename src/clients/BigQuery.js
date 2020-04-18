@@ -14,7 +14,7 @@ class Client_BigQuery extends Client {
       BigQuery.date,
       BigQuery.datetime,
       BigQuery.time,
-      BigQuery.timestamp
+      BigQuery.timestamp,
     ];
 
     return new BigQuery(this.connectionSettings);
@@ -34,10 +34,7 @@ class Client_BigQuery extends Client {
 
   // wrap the driver with a connection to keep track of the currently running job on the connection
   acquireRawConnection() {
-    return Promise.resolve({
-      driver: this.driver,
-      job: null
-    });
+    return Promise.resolve({ driver: this.driver, job: null });
   }
 
   // destroy by cancelling running job, if exists
@@ -60,25 +57,23 @@ class Client_BigQuery extends Client {
     const query = { query: obj.sql, params: obj.bindings, ...obj.options };
 
     return new Promise((resolver, rejecter) => {
-      stream.on("error", err => {
+      stream.on("error", (err) => {
         this.cancelQuery(connection);
         rejecter(err);
       });
-      stream.on("end", results => {
+      stream.on("end", (results) => {
         connection.job = null;
         resolver(results);
       });
 
       const streamPages = (job, pageQuery) => {
-        return job.getQueryResults(pageQuery).then(results => {
-          const rows = results[0],
-            nextQuery = results[1];
+        return job.getQueryResults(pageQuery).then((results) => {
+          const rows = results[0];
+          const nextQuery = results[1];
 
-          this.processResponse({
-            response: rows
-          }).forEach(row => {
-            stream.write(row);
-          });
+          this.processResponse({ response: rows }).forEach((row) =>
+            stream.write(row)
+          );
 
           if (nextQuery != null) {
             return streamPages(job, nextQuery);
@@ -89,15 +84,9 @@ class Client_BigQuery extends Client {
       };
 
       this._executeQuery(connection, query)
-        .then(job => {
-          return streamPages(job, initPageQuery);
-        })
-        .catch(err => {
-          stream.emit("error", err);
-        })
-        .then(() => {
-          stream.end();
-        });
+        .then((job) => streamPages(job, initPageQuery))
+        .catch((err) => stream.emit("error", err))
+        .then(() => stream.end());
     });
   }
 
@@ -107,25 +96,17 @@ class Client_BigQuery extends Client {
       obj = { sql: obj };
     }
 
-    const query = {
-      query: obj.sql,
-      params: obj.bindings,
-      ...obj.options
-    };
+    const query = { query: obj.sql, params: obj.bindings, ...obj.options };
 
     return this._executeQuery(connection, query)
-      .then(job => {
-        return job.getQueryResults({
-          autoPaginate: false
-        });
-      })
+      .then((job) => job.getQueryResults({ autoPaginate: false }))
       .then(
-        results => {
+        (results) => {
           connection.job = null;
           obj.response = results[0];
           return obj;
         },
-        err => {
+        (err) => {
           this.cancelQuery(connection);
           throw err;
         }
@@ -139,17 +120,15 @@ class Client_BigQuery extends Client {
     const out = connection.driver
       .createQueryJob({
         ...query,
-        defaultDataset: { datasetId: this.connectionSettings.database }
+        defaultDataset: { datasetId: this.connectionSettings.database },
       })
-      .then(results => {
+      .then((results) => {
         connection.job = results[0];
         debug(`Job ${connection.job.id} started`);
         return connection.job.promise();
       })
-      .then(() => {
-        return connection.job.getMetadata();
-      })
-      .then(metadata => {
+      .then(() => connection.job.getMetadata())
+      .then((metadata) => {
         const errors = metadata[0].status.errors;
         if (errors != null && errors.length > 0) {
           debug(`Job ${connection.job.id} failed with errors`);
@@ -168,8 +147,8 @@ class Client_BigQuery extends Client {
   processResponse(obj, runner) {
     const rows = obj.response;
     if (!this.useBigQueryTypes) {
-      rows.forEach(row => {
-        Object.keys(row).forEach(key => {
+      rows.forEach((row) => {
+        Object.keys(row).forEach((key) => {
           const value = row[key];
           if (value != null && this.bigQueryTypes.includes(value.constructor)) {
             row[key] = value.value;
@@ -199,7 +178,7 @@ Object.assign(Client_BigQuery.prototype, {
   dialect: "bigquery",
   driverName: "@google-cloud/bigquery",
   canCancelQuery: true,
-  _escapeBinding: makeEscape()
+  _escapeBinding: makeEscape(),
 });
 
 module.exports = Client_BigQuery;

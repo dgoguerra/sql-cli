@@ -5,11 +5,11 @@ const { diffColumns, diffSchemas } = require("./schemaDiff");
 // Output of knex.schema.columnInfo() to extract a table's columns
 const KNEX_TABLE_1 = {
   id: { type: "bigint", maxLength: null, nullable: false },
-  name: { type: "varchar", maxLength: 255, nullable: true }
+  name: { type: "varchar", maxLength: 255, nullable: true },
 };
 const KNEX_TABLE_2 = {
   id: { type: "varchar", maxLength: 255, nullable: true },
-  name2: { type: "varchar", maxLength: 255, nullable: true }
+  name2: { type: "varchar", maxLength: 255, nullable: true },
 };
 
 describe("diffColumns()", () => {
@@ -22,7 +22,7 @@ describe("diffColumns()", () => {
           descBefore: "bigint",
           displayColumn: "id",
           displayType: "bigint",
-          status: "similar"
+          status: "similar",
         },
         {
           column: "name",
@@ -30,10 +30,10 @@ describe("diffColumns()", () => {
           descBefore: "varchar(255) nullable",
           displayColumn: "name",
           displayType: "varchar(255) nullable",
-          status: "similar"
-        }
+          status: "similar",
+        },
       ],
-      summary: "2x similar"
+      summary: "2x similar",
     });
   });
 
@@ -48,7 +48,7 @@ describe("diffColumns()", () => {
           displayType: `${chalk.red("bigint")} → ${chalk.green(
             "varchar(255) nullable"
           )}`,
-          status: "changed"
+          status: "changed",
         },
         {
           column: "name",
@@ -56,7 +56,7 @@ describe("diffColumns()", () => {
           descBefore: "varchar(255) nullable",
           displayColumn: chalk.red("name"),
           displayType: chalk.red("varchar(255) nullable"),
-          status: "deleted"
+          status: "deleted",
         },
         {
           column: "name2",
@@ -64,23 +64,23 @@ describe("diffColumns()", () => {
           descBefore: null,
           displayColumn: chalk.green("name2"),
           displayType: chalk.green("varchar(255) nullable"),
-          status: "created"
-        }
+          status: "created",
+        },
       ],
       summary: `1x changed, ${chalk.red("1x deleted")}, ${chalk.green(
         "1x created"
-      )}`
+      )}`,
     });
   });
 });
 
 const SCHEMA_1 = {
   table1: { table: "table1", bytes: 1000, rows: 5, schema: KNEX_TABLE_1 },
-  table2: { table: "table2", bytes: 1000, rows: 5, schema: KNEX_TABLE_2 }
+  table2: { table: "table2", bytes: 1000, rows: 5, schema: KNEX_TABLE_2 },
 };
 const SCHEMA_2 = {
   table1: { table: "table1", bytes: 48000, rows: 100, schema: KNEX_TABLE_2 },
-  table3: { table: "table3", bytes: 1000, rows: 5, schema: KNEX_TABLE_2 }
+  table3: { table: "table3", bytes: 1000, rows: 5, schema: KNEX_TABLE_2 },
 };
 
 describe("diffSchemas()", () => {
@@ -96,7 +96,7 @@ describe("diffSchemas()", () => {
         rowsAfter: 5,
         rowsBefore: 5,
         status: "similar",
-        table: "table1"
+        table: "table1",
       },
       {
         bytesAfter: "1 kB",
@@ -108,8 +108,8 @@ describe("diffSchemas()", () => {
         rowsAfter: 5,
         rowsBefore: 5,
         status: "similar",
-        table: "table2"
-      }
+        table: "table2",
+      },
     ]);
   });
 
@@ -127,7 +127,7 @@ describe("diffSchemas()", () => {
         rowsAfter: 100,
         rowsBefore: 5,
         status: "changed",
-        table: "table1"
+        table: "table1",
       },
       {
         bytesAfter: null,
@@ -139,7 +139,7 @@ describe("diffSchemas()", () => {
         rowsAfter: null,
         rowsBefore: 5,
         status: "deleted",
-        table: "table2"
+        table: "table2",
       },
       {
         bytesAfter: "1 kB",
@@ -151,8 +151,8 @@ describe("diffSchemas()", () => {
         rowsAfter: 5,
         rowsBefore: null,
         status: "created",
-        table: "table3"
-      }
+        table: "table3",
+      },
     ]);
   });
 });

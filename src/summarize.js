@@ -54,7 +54,7 @@ const limitLine = (
 };
 
 const summarize = (lines, { maxLines = 20 } = {}) => {
-  return linesSummary(lines, { maxLines }).map(line => limitLine(line));
+  return linesSummary(lines, { maxLines }).map((line) => limitLine(line));
 };
 
 module.exports.summarize = summarize;

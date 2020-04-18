@@ -12,8 +12,8 @@ describe("resolveKnexConn()", () => {
         password: "secret",
         port: "33060",
         timezone: "+00:00",
-        user: "app"
-      }
+        user: "app",
+      },
     });
   });
 
@@ -27,8 +27,8 @@ describe("resolveKnexConn()", () => {
         port: 1433,
         server: "domain.com",
         user: "app",
-        options: { enableArithAbort: true }
-      }
+        options: { enableArithAbort: true },
+      },
     });
   });
 
@@ -43,14 +43,14 @@ describe("resolveKnexConn()", () => {
         host: "gcp-project",
         keyFilename: "/path/to/service-account.json",
         location: "europe-west2",
-        projectId: "gcp-project"
-      }
+        projectId: "gcp-project",
+      },
     });
   });
 
   it("resolve conn alias", () => {
     const [conn] = resolveKnexConn("mydb", {
-      aliases: { mydb: "mysql://app:secret@127.0.0.1:33060/dbname" }
+      aliases: { mydb: "mysql://app:secret@127.0.0.1:33060/dbname" },
     });
     expect(conn).toEqual({
       client: "mysql2",
@@ -61,8 +61,8 @@ describe("resolveKnexConn()", () => {
         password: "secret",
         port: "33060",
         timezone: "+00:00",
-        user: "app"
-      }
+        user: "app",
+      },
     });
   });
 
@@ -72,18 +72,18 @@ describe("resolveKnexConn()", () => {
     );
     expect(conn).toMatchObject({
       client: "mysql2",
-      connection: { database: "dbname" }
+      connection: { database: "dbname" },
     });
     expect(table).toBe("tablename");
   });
 
   it("resolve conn alias with table", () => {
     const [conn, table] = resolveKnexConn("mydb/tablename", {
-      aliases: { mydb: "mysql://app:secret@127.0.0.1:33060/dbname" }
+      aliases: { mydb: "mysql://app:secret@127.0.0.1:33060/dbname" },
     });
     expect(conn).toMatchObject({
       client: "mysql2",
-      connection: { database: "dbname" }
+      connection: { database: "dbname" },
     });
     expect(table).toBe("tablename");
   });

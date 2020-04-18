@@ -2,9 +2,9 @@ const _ = require("lodash");
 const chalk = require("chalk");
 const prettyBytes = require("pretty-bytes");
 
-const colHash = col => `${col.type}:${col.maxLength}:${col.nullable}`;
+const colHash = (col) => `${col.type}:${col.maxLength}:${col.nullable}`;
 
-const colDesc = col => {
+const colDesc = (col) => {
   let str = col.type;
   if (col.maxLength) {
     str += `(${col.maxLength})`;
@@ -24,14 +24,14 @@ const diffColumns = (tableBefore, tableAfter) => {
     // to show any columns seen in one or both schemas.
     .concat(Object.keys(tableAfter))
     .uniq()
-    .map(key => {
+    .map((key) => {
       const before = tableBefore[key] || null;
       const after = tableAfter[key] || null;
 
       const colInfo = {
         column: key,
         descBefore: (before && colDesc(before)) || null,
-        descAfter: (after && colDesc(after)) || null
+        descAfter: (after && colDesc(after)) || null,
       };
 
       if (!after) {
@@ -44,10 +44,10 @@ const diffColumns = (tableBefore, tableAfter) => {
       const changed = colHash(before) !== colHash(after);
       return {
         ...colInfo,
-        status: changed ? "changed" : "similar"
+        status: changed ? "changed" : "similar",
       };
     })
-    .map(col => {
+    .map((col) => {
       switch (col.status) {
         case "deleted":
           col.displayColumn = chalk.red(col.column);
@@ -75,10 +75,10 @@ const diffColumns = (tableBefore, tableAfter) => {
           ? chalk.green
           : status === "deleted"
           ? chalk.red
-          : val => val;
+          : (val) => val;
       return { num, text: color(`${num}x ${status}`) };
     })
-    .orderBy(c => -c.num)
+    .orderBy((c) => -c.num)
     .map("text")
     .join(", ");
 
@@ -91,7 +91,7 @@ const diffSchemas = (tablesBefore, tablesAfter) => {
   return _(Object.keys(tablesBefore))
     .concat(Object.keys(tablesAfter))
     .uniq()
-    .map(tableKey => {
+    .map((tableKey) => {
       const before = tablesBefore[tableKey] || null;
       const after = tablesAfter[tableKey] || null;
 
@@ -100,7 +100,7 @@ const diffSchemas = (tablesBefore, tablesAfter) => {
         bytesBefore: before && prettyBytes(before.bytes),
         bytesAfter: after && prettyBytes(after.bytes),
         rowsBefore: before && before.rows,
-        rowsAfter: after && after.rows
+        rowsAfter: after && after.rows,
       };
 
       if (!before) {
@@ -111,7 +111,7 @@ const diffSchemas = (tablesBefore, tablesAfter) => {
       }
       return tableInfo;
     })
-    .map(table => {
+    .map((table) => {
       const tableBefore = tablesBefore[table.table];
       const tableAfter = tablesAfter[table.table];
 

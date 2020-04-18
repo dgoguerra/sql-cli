@@ -31,7 +31,7 @@ module.exports.resolveKnexConn = (
 
   // No client set manually, try to infer it from the conn URI's protocol
   if (!client) {
-    const found = _.findKey(clientAliases, val => val.includes(proto));
+    const found = _.findKey(clientAliases, (val) => val.includes(proto));
     client = found || proto;
   }
 
@@ -54,7 +54,7 @@ module.exports.resolveKnexConn = (
     conn = {
       options: { enableArithAbort: true },
       ...conn,
-      port: Number(conn.port)
+      port: Number(conn.port),
     };
   }
 

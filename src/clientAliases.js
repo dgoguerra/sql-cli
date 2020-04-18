@@ -5,5 +5,5 @@ module.exports = {
   pg: ["pgsql", "postgres", "postgresql"],
   sqlite3: ["sq", "file", "sqlite"],
   mssql: ["ms", "sqlserver"],
-  bigquery: ["bq"]
+  bigquery: ["bq"],
 };

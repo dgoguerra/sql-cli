@@ -48,7 +48,7 @@ class Lib {
         .select({
           column: "column_name",
           nullable: "is_nullable",
-          type: "data_type"
+          type: "data_type",
         });
 
       return _.transform(
@@ -56,7 +56,7 @@ class Lib {
         (acc, row) => {
           acc[row.column] = {
             nullable: row.nullable === "YES",
-            type: row.type
+            type: row.type,
           };
         },
         {}
@@ -77,7 +77,7 @@ class Lib {
         .select({
           table: "table_name",
           bytes: this.knex.raw("data_length + index_length"),
-          rows: "table_rows"
+          rows: "table_rows",
         });
     }
 
@@ -85,7 +85,7 @@ class Lib {
       return await this.knex("information_schema.tables")
         .where({
           table_schema: this.knex.raw("current_schema()"),
-          table_catalog: database
+          table_catalog: database,
         })
         .select({ table: "table_name" });
     }
@@ -124,7 +124,7 @@ class Lib {
         .where({
           table_schema: this.knex.raw("schema_name()"),
           table_type: "BASE TABLE",
-          table_catalog: database
+          table_catalog: database,
         })
         .select({ table: "table_name" });
     }

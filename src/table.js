@@ -2,9 +2,9 @@ const _ = require("lodash");
 const chalk = require("chalk");
 const { table, getBorderCharacters } = require("table");
 
-const formatCol = str => chalk.underline(str);
+const formatCol = (str) => chalk.underline(str);
 
-const cleanValue = val => {
+const cleanValue = (val) => {
   if (val === null || val === undefined) {
     return "";
   }
@@ -14,15 +14,15 @@ const cleanValue = val => {
   return val;
 };
 
-const formatEven = str => chalk.gray(str);
-const formatOdd = str => str;
+const formatEven = (str) => chalk.gray(str);
+const formatOdd = (str) => str;
 
 module.exports = (
   rowObjs,
   {
     headers = Object.keys(rowObjs[0]),
     format = (val, { index }) =>
-      (index % 2 ? formatEven : formatOdd)(cleanValue(val))
+      (index % 2 ? formatEven : formatOdd)(cleanValue(val)),
   } = {}
 ) => {
   const rows = rowObjs.map((rowObj, index) => {
@@ -40,8 +40,8 @@ module.exports = (
     border: getBorderCharacters("void"),
     columnDefault: {
       paddingLeft: 0,
-      paddingRight: 1
+      paddingRight: 1,
     },
-    drawHorizontalLine: () => false
+    drawHorizontalLine: () => false,
   });
 };

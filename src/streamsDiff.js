@@ -3,7 +3,7 @@ const chalk = require("chalk");
 const deepEqual = require("deep-equal");
 const tupleStream = require("tuple-stream2");
 
-const formatValue = val => {
+const formatValue = (val) => {
   if (val instanceof Date) {
     return val.toISOString();
   }
@@ -36,7 +36,7 @@ const streamsDiff = (
     return a[idKey] - b[idKey];
   };
 
-  const formatResults = rows => {
+  const formatResults = (rows) => {
     const keysWithChanges = {};
 
     const formatRow = ([a, b]) =>
@@ -49,19 +49,19 @@ const streamsDiff = (
         acc[key] = valueOrDiff(valA, valB);
       });
 
-    const cleanRowKeys = row =>
+    const cleanRowKeys = (row) =>
       _.transform(row, (acc, val, key) => {
         if (allColumns || key === idKey || keysWithChanges[key]) {
           acc[key] = val;
         }
       });
 
-    return rows.map(row => formatRow(row)).map(row => cleanRowKeys(row));
+    return rows.map((row) => formatRow(row)).map((row) => cleanRowKeys(row));
   };
 
-  return new Promise(resolve =>
+  return new Promise((resolve) =>
     tupleStream([streamA, streamB], { comparator })
-      .on("data", row => {
+      .on("data", (row) => {
         if (allRows || !deepEqual(row[0], row[1])) {
           diffRows.push(row);
         }

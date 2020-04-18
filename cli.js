@@ -25,7 +25,7 @@ class CliApp {
       .option("client", {
         alias: "c",
         description: "Knex client adapter",
-        type: "string"
+        type: "string",
       })
       .help()
       .alias("h", "help")
@@ -36,53 +36,51 @@ class CliApp {
       command: "list <conn>",
       aliases: ["ls"],
       description: "List tables",
-      handler: argv => this.listTables(argv)
+      handler: (argv) => this.listTables(argv),
     });
 
     cli.command({
       command: "show <table>",
       description: "Show table structure",
-      handler: argv => this.showTable(argv)
+      handler: (argv) => this.showTable(argv),
     });
 
     cli.command({
       command: "diff <table1> <table2>",
       description: "Diff two tables",
-      handler: argv => this.diffTables(argv)
+      handler: (argv) => this.diffTables(argv),
     });
 
     cli.command({
       command: "alias <action>",
       description: "Manage saved connection aliases",
-      builder: yargs =>
+      builder: (yargs) =>
         yargs
           .command({
             command: "list",
             aliases: ["ls"],
             description: "List existing aliases",
-            handler: () => this.listAliases()
+            handler: () => this.listAliases(),
           })
           .command({
             command: "add <alias> <conn>",
             description: "Add new alias",
-            handler: argv => this.addAlias(argv)
+            handler: (argv) => this.addAlias(argv),
           })
           .command({
             command: "remove <alias>",
             aliases: ["rm"],
             description: "Remove saved alias",
-            handler: argv => this.removeAlias(argv)
+            handler: (argv) => this.removeAlias(argv),
           })
-          .demandCommand()
+          .demandCommand(),
     });
 
     cli.command({
       command: "shell <conn>",
       aliases: ["sh"],
       description: "Run REPL shell",
-      handler: argv => {
-        this.runInteractiveShell(argv);
-      }
+      handler: (argv) => this.runInteractiveShell(argv),
     });
 
     return cli;
@@ -92,9 +90,9 @@ class CliApp {
     const lib = this.initLib(argv.conn, argv);
     const tables = await lib.listTables();
 
-    const formatted = _.sortBy(tables, row => -row.bytes).map(row => ({
+    const formatted = _.sortBy(tables, (row) => -row.bytes).map((row) => ({
       ...row,
-      bytes: row.bytes ? prettyBytes(row.bytes) : ""
+      bytes: row.bytes ? prettyBytes(row.bytes) : "",
     }));
 
     console.log(table(formatted, { headers: ["table", "rows", "bytes"] }));
@@ -116,7 +114,7 @@ class CliApp {
       (val, key) => ({
         column: key,
         type: val.maxLength ? `${val.type}(${val.maxLength})` : val.type,
-        nullable: val.nullable
+        nullable: val.nullable,
       })
     );
 
@@ -147,10 +145,10 @@ class CliApp {
       );
 
       const formattedCols = columns
-        .filter(col => col.status !== "similar")
-        .map(col => ({
+        .filter((col) => col.status !== "similar")
+        .map((col) => ({
           column: col.displayColumn,
-          type: col.displayType
+          type: col.displayType,
         }));
 
       console.log(chalk.bold.underline("Diff of tables schema"));
@@ -162,7 +160,7 @@ class CliApp {
             formattedCols,
             // Disable default rows formatting, since the fields
             // already have diff colors applied.
-            { headers: ["column", "type"], format: val => val }
+            { headers: ["column", "type"], format: (val) => val }
           )
         );
         console.log(summary);
@@ -172,15 +170,9 @@ class CliApp {
         console.log("");
       }
 
-      const streamPreview = (lib, table) =>
-        lib
-          .knex(table)
-          .limit(100)
-          .stream();
-
       const formattedRows = await streamsDiff(
-        streamPreview(lib1, table1),
-        streamPreview(lib2, table2),
+        lib1.knex(table1).limit(100).stream(),
+        lib2.knex(table2).limit(100).stream(),
         { allRows: false, allColumns: false }
       );
 
@@ -194,7 +186,7 @@ class CliApp {
           summarize(
             table(formattedRows, {
               headers: Object.keys(formattedRows[0]),
-              format: val => val
+              format: (val) => val,
             }).split("\n"),
             { maxLines: 40 }
           ).join("\n")
@@ -213,12 +205,12 @@ class CliApp {
       );
 
       const formattedTables = tables
-        .filter(col => col.status !== "similar")
-        .map(table => ({
+        .filter((col) => col.status !== "similar")
+        .map((table) => ({
           table: table.displayTable,
           rows: table.displayRows,
           bytes: table.displayBytes,
-          columns: table.displaySummary
+          columns: table.displaySummary,
         }));
 
       console.log(chalk.bold.underline("Diff of database schemas:"));
@@ -230,7 +222,7 @@ class CliApp {
             headers: ["table", "rows", "bytes", "columns"],
             // Disable default rows formatting, since the fields
             // already have diff colors applied.
-            format: val => val
+            format: (val) => val,
           })
         );
       } else {
@@ -286,14 +278,14 @@ class CliApp {
     }
     return new Lib({
       knex: conn,
-      proxy: conn.connection.proxy
+      proxy: conn.connection.proxy,
     });
   }
 
   resolveConn(connStr, argv = {}) {
     return resolveKnexConn(connStr, {
       client: argv.client,
-      aliases: this.conf.get("aliases")
+      aliases: this.conf.get("aliases"),
     });
   }
 
