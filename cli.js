@@ -241,7 +241,11 @@ class CliApp {
     // Check db connection before dropping the user to the shell,
     // to avoid waiting until a query is run to know that the
     // connection is invalid.
-    await lib.checkConnection();
+    try {
+      await lib.checkConnection();
+    } catch (err) {
+      return this.error(err.message);
+    }
 
     await new SqlRepl(lib).run();
     await lib.destroy();
