@@ -28,6 +28,7 @@
     "string-width": "^4.2.0",
     "table": "^5.4.6",
     "tuple-stream2": "^2.0.0",
+    "xlsx": "^0.16.1",
     "yargs": "^15.1.0"
   },
   "devDependencies": {

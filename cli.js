@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+const path = require("path");
 const _ = require("lodash");
 const Conf = require("conf");
 const yargs = require("yargs");
@@ -8,6 +9,7 @@ const prettyBytes = require("pretty-bytes");
 const table = require("./src/table");
 const Lib = require("./src/Lib");
 const SqlRepl = require("./src/SqlRepl");
+const SchemaExporter = require("./src/SchemaExporter");
 const { resolveKnexConn } = require("./src/resolveKnexConn");
 const { diffColumns, diffSchemas } = require("./src/schemaDiff");
 const { streamsDiff } = require("./src/streamsDiff");
@@ -74,6 +76,12 @@ class CliApp {
             handler: (argv) => this.removeAlias(argv),
           })
           .demandCommand(),
+    });
+
+    cli.command({
+      command: "export <conn>",
+      description: "Export a table's schema or data",
+      handler: (argv) => this.exportTables(argv),
     });
 
     cli.command({
@@ -233,6 +241,17 @@ class CliApp {
 
     await lib1.destroy();
     await lib2.destroy();
+  }
+
+  async exportTables(argv) {
+    const lib = this.initLib(argv.conn, argv);
+
+    const filePath = path.resolve(process.env.PWD, `schema-${argv.conn}.xlsx`);
+    await new SchemaExporter(lib).writeFile(filePath);
+
+    console.log(filePath);
+
+    await lib.destroy();
   }
 
   async runInteractiveShell(argv) {
