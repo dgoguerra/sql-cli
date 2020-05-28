@@ -35,7 +35,7 @@ module.exports = (
     // extract row values with the headers order
     const row = _.at(rowObj, headers);
     return row.map((val, valIndex) => {
-      const cell = format(cleanValue(val), {
+      let cell = format(cleanValue(val), {
         col: headers[valIndex],
         row: rowObj,
         index,
