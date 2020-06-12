@@ -48,7 +48,7 @@ const limitLine = (
   }
 
   // Pad resulting line with spaces, so all lines separators are aligned
-  const missingWidth = lineWidth - maxWidth;
+  const missingWidth = Math.max(0, lineWidth - maxWidth);
 
   return `${line}${" ".repeat(missingWidth)}${separator}`;
 };
