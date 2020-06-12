@@ -27,8 +27,7 @@ module.exports = (
   rowObjs,
   {
     headers = Object.keys(rowObjs[0]),
-    format = (val, { index }) =>
-      (index % 2 ? formatEven : formatOdd)(cleanValue(val)),
+    format = (val, { index }) => (index % 2 ? formatEven : formatOdd)(val),
   } = {}
 ) => {
   const rows = rowObjs.map((rowObj, index) => {
