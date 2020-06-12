@@ -12,7 +12,7 @@ const cleanValue = (val) => {
   if (typeof val === "string") {
     // Clean control characters from string. Avoids table package error:
     // "Table data must not contain control characters".
-    return val.replace(/[\x00-\x1F\x7F-\x9F]/g, "");
+    return val.replace(/[\u0001-\u0006\u0008-\u0009\u000B-\u001A]/g, "");
   }
   if (val instanceof Date) {
     return val.toISOString();
