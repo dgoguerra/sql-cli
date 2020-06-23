@@ -9,7 +9,7 @@ const prettyBytes = require("pretty-bytes");
 const table = require("./src/table");
 const Lib = require("./src/Lib");
 const SqlRepl = require("./src/SqlRepl");
-const SchemaExporter = require("./src/SchemaExporter");
+const ExcelBuilder = require("./src/ExcelBuilder");
 const { resolveKnexConn } = require("./src/resolveKnexConn");
 const { diffColumns, diffSchemas } = require("./src/schemaDiff");
 const { streamsDiff } = require("./src/streamsDiff");
@@ -80,7 +80,21 @@ class CliApp {
 
     cli.command({
       command: "export <conn>",
-      description: "Export a table's schema or data",
+      description: "Export a connection's schema or data",
+      builder: (yargs) =>
+        yargs
+          .option("schema", {
+            description: "Export the connection's schema",
+            type: "boolean",
+          })
+          .option("data", {
+            description: "Export the connection's data",
+            type: "boolean",
+          })
+          .option("query", {
+            description: "Export a custom query",
+            type: "string",
+          }),
       handler: (argv) => this.exportTables(argv),
     });
 
@@ -246,8 +260,39 @@ class CliApp {
   async exportTables(argv) {
     const lib = this.initLib(argv.conn, argv);
 
-    const filePath = path.resolve(process.env.PWD, `schema-${argv.conn}.xlsx`);
-    await new SchemaExporter(lib).writeFile(filePath);
+    if (!argv.schema && !argv.data && !argv.query) {
+      this.error("Provide either --schema, --data or --query=<sql>");
+    }
+
+    const builder = new ExcelBuilder();
+    const filePath = `${process.env.PWD}/export-${argv.conn}.xlsx`;
+
+    if (argv.schema) {
+      for (const table of await lib.listTables()) {
+        const schema = await lib.getTableSchema(table.table);
+        const rows = Object.keys(schema).map((key) => {
+          const { type, maxLength, nullable } = schema[key];
+          return {
+            Column: key,
+            Type: maxLength ? `${type}(${maxLength})` : type,
+            Nullable: nullable,
+          };
+        });
+        builder.addSheet(table.table, rows);
+      }
+    }
+
+    if (argv.data) {
+      for (const table of await lib.listTables()) {
+        builder.addSheet(table.table, await lib.knex(table.table));
+      }
+    }
+
+    if (argv.query) {
+      builder.addSheet("Sheet1", await lib.knex.raw(argv.query));
+    }
+
+    builder.writeFile(filePath);
 
     console.log(filePath);
 
