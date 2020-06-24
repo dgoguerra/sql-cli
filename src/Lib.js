@@ -97,36 +97,36 @@ class Lib {
     }
 
     if (client === "Client_MSSQL") {
-      // TODO no funciona
       /*
-      const rows = await this.knex.raw(`SELECT t.NAME AS table,
-        s.Name AS schema,
-        p.rows,
-        SUM(a.used_pages) * 8 AS usedSpaceKB
-      FROM sys.tables t
-        INNER JOIN sys.indexes i ON t.OBJECT_ID = i.object_id
-        INNER JOIN sys.partitions p ON i.object_id = p.OBJECT_ID AND i.index_id = p.index_id
-        INNER JOIN sys.allocation_units a ON p.partition_id = a.container_id
-        LEFT OUTER JOIN sys.schemas s ON t.schema_id = s.schema_id
-      WHERE
-        t.NAME NOT LIKE 'dt%' AND t.is_ms_shipped = 0 AND i.OBJECT_ID > 255
-      GROUP BY t.Name, s.Name, p.Rows ORDER BY t.Name;
-      `);
-
-      return rows.map(row => ({
-        ...row,
-        rows: Number(row.rows),
-        bytes: Number(row.usedSpaceKB / 1000)
-      }));
-      */
-
       return await this.knex("information_schema.tables")
         .where({
           table_schema: this.knex.raw("schema_name()"),
           table_type: "BASE TABLE",
           table_catalog: database,
         })
-        .select({ table: "table_name" });
+        .select({ table: "table_name", rows: null, bytes: null });
+      */
+
+      const rows = await this.knex.raw(`
+        SELECT t.NAME AS [table],
+          s.Name AS [schema],
+          p.rows,
+          SUM(a.used_pages) * 8 AS [usedSpaceKB]
+        FROM sys.tables [t]
+          INNER JOIN sys.indexes i ON t.OBJECT_ID = i.object_id
+          INNER JOIN sys.partitions p ON i.object_id = p.OBJECT_ID AND i.index_id = p.index_id
+          INNER JOIN sys.allocation_units a ON p.partition_id = a.container_id
+          LEFT OUTER JOIN sys.schemas s ON t.schema_id = s.schema_id
+        WHERE
+          t.NAME NOT LIKE 'dt%' AND t.is_ms_shipped = 0 AND i.OBJECT_ID > 255
+        GROUP BY t.Name, s.Name, p.Rows ORDER BY t.Name;
+      `);
+
+      return rows.map((row) => ({
+        ...row,
+        rows: Number(row.rows),
+        bytes: Number(row.usedSpaceKB * 1000),
+      }));
     }
 
     if (client === "Client_Oracle" || client === "Client_Oracledb") {
