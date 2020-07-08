@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-const path = require("path");
+const cp = require("child_process");
 const _ = require("lodash");
 const Conf = require("conf");
 const yargs = require("yargs");
@@ -10,7 +10,7 @@ const table = require("./src/table");
 const Lib = require("./src/Lib");
 const SqlRepl = require("./src/SqlRepl");
 const ExcelBuilder = require("./src/ExcelBuilder");
-const { resolveKnexConn } = require("./src/resolveKnexConn");
+const { resolveKnexConn, stringifyKnexConn } = require("./src/resolveKnexConn");
 const { diffColumns, diffSchemas } = require("./src/schemaDiff");
 const { streamsDiff } = require("./src/streamsDiff");
 const { summarize } = require("./src/summarize");
@@ -96,6 +96,12 @@ class CliApp {
             type: "string",
           }),
       handler: (argv) => this.exportTables(argv),
+    });
+
+    cli.command({
+      command: "open <conn>",
+      descripcion: "Open in GUI (such as TablePLus)",
+      handler: (argv) => this.openGui(argv),
     });
 
     cli.command({
@@ -299,6 +305,24 @@ class CliApp {
     await lib.destroy();
   }
 
+  async openGui(argv) {
+    let connUri = this.stringifyConn(argv.conn, argv);
+
+    // TablePlus understands "sqlserver" protocol for mssql
+    if (connUri.startsWith("mssql://")) {
+      connUri = connUri.replace("mssql://", "sqlserver://");
+    }
+
+    // Remove password from output
+    console.log(`Opening ${connUri.replace(/:([^\/]+?)@/, "@")} ...`);
+
+    // Open conn uri with default application, should be
+    // TablePlus if installed.
+    await new Promise((resolve, reject) =>
+      cp.exec(`open ${connUri}`, (err) => (err ? reject(err) : resolve()))
+    );
+  }
+
   async runInteractiveShell(argv) {
     const lib = this.initLib(argv.conn, argv);
 
@@ -352,6 +376,13 @@ class CliApp {
 
   resolveConn(connStr, argv = {}) {
     return resolveKnexConn(connStr, {
+      client: argv.client,
+      aliases: this.conf.get("aliases"),
+    });
+  }
+
+  stringifyConn(connStr, argv = {}) {
+    return stringifyKnexConn(connStr, {
       client: argv.client,
       aliases: this.conf.get("aliases"),
     });

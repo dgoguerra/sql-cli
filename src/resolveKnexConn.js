@@ -2,10 +2,7 @@ const _ = require("lodash");
 const parseConn = require("knex/lib/util/parse-connection");
 const clientAliases = require("./clientAliases");
 
-module.exports.resolveKnexConn = (
-  connStr,
-  { client = null, aliases = {} } = {}
-) => {
+function resolveKnexConn(connStr, { client = null, aliases = {} } = {}) {
   let connUri;
   let tableName;
 
@@ -59,4 +56,22 @@ module.exports.resolveKnexConn = (
   }
 
   return [{ client, connection: conn }, tableName];
-};
+}
+
+function stringifyKnexConn(connStr, opts) {
+  const [parsed] = resolveKnexConn(connStr, opts);
+  const { client, connection: conn } = parsed;
+
+  const auth =
+    conn.user && conn.password
+      ? `${encodeURIComponent(conn.user)}:${encodeURIComponent(conn.password)}@`
+      : conn.user
+      ? encodeURIComponent(conn.user)
+      : "";
+
+  const host = (conn.host || conn.server) + (conn.port ? `:${conn.port}` : "");
+
+  return `${client}://${auth}${host}/${conn.database}`;
+}
+
+module.exports = { resolveKnexConn, stringifyKnexConn };
