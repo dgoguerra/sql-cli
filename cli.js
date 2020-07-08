@@ -125,6 +125,11 @@ class CliApp {
 
     console.log(table(formatted, { headers: ["table", "rows", "bytes"] }));
 
+    const totalBytes = tables.reduce((acc, row) => acc + row.bytes, 0);
+    console.log(
+      chalk.grey(`(${prettyBytes(totalBytes)} in ${tables.length} tables)`)
+    );
+
     await lib.destroy();
   }
 
