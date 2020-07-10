@@ -16,7 +16,7 @@ class ExcelBuilder {
     xlsx.utils.book_append_sheet(
       this.book,
       xlsx.utils.aoa_to_sheet(rawRows),
-      name
+      name.substr(0, 31) // sheet names cannot exceed 31 chars
     );
   }
 
