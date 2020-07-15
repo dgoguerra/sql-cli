@@ -108,18 +108,22 @@ class Lib {
       */
 
       const rows = await this.knex.raw(`
-        SELECT t.NAME AS [table],
-          s.Name AS [schema],
-          p.rows,
+        SELECT
+          s.table_name AS [table],
+          p.rows AS [rows],
           SUM(a.used_pages) * 8 AS [usedSpaceKB]
-        FROM sys.tables [t]
-          INNER JOIN sys.indexes i ON t.OBJECT_ID = i.object_id
-          INNER JOIN sys.partitions p ON i.object_id = p.OBJECT_ID AND i.index_id = p.index_id
-          INNER JOIN sys.allocation_units a ON p.partition_id = a.container_id
-          LEFT OUTER JOIN sys.schemas s ON t.schema_id = s.schema_id
+        FROM
+          information_schema.tables [s]
+          LEFT JOIN sys.tables [t] ON s.table_name = t.Name
+            AND TABLE_TYPE = 'BASE TABLE'
+          LEFT JOIN sys.indexes [i] ON t.object_id = i.object_id
+          LEFT JOIN sys.partitions [p] ON i.object_id = p.object_id
+            AND i.index_id = p.index_id
+          LEFT JOIN sys.allocation_units a ON p.partition_id = a.container_id
         WHERE
-          t.NAME NOT LIKE 'dt%' AND t.is_ms_shipped = 0 AND i.OBJECT_ID > 255
-        GROUP BY t.Name, s.Name, p.Rows ORDER BY t.Name;
+          s.table_schema != 'sys' AND (i.object_id is null OR i.object_id > 255)
+        GROUP BY s.table_name, t.Name, p.Rows
+        ORDER BY t.Name;
       `);
 
       return rows.map((row) => ({
