@@ -1,5 +1,7 @@
 const _ = require("lodash");
+const pump = require("pump");
 const chalk = require("chalk");
+const through = require("through2");
 const deepEqual = require("deep-equal");
 const tupleStream = require("tuple-stream2");
 
@@ -70,4 +72,33 @@ const streamsDiff = (
   );
 };
 
-module.exports.streamsDiff = streamsDiff;
+const runPipeline = (...streams) =>
+  new Promise((resolve, reject) =>
+    pump(...streams, (err) => (err ? reject(err) : resolve()))
+  );
+
+const chunk = (size = 500) => {
+  let nextChunk = [];
+  return through.obj(
+    function (row, enc, next) {
+      nextChunk.push(row);
+      if (nextChunk.length >= size) {
+        this.push(nextChunk);
+        nextChunk = [];
+      }
+      next();
+    },
+    function (next) {
+      if (nextChunk.length) {
+        this.push(nextChunk);
+      }
+      next();
+    }
+  );
+};
+
+module.exports = {
+  streamsDiff,
+  runPipeline,
+  chunk,
+};
