@@ -41,18 +41,23 @@ function resolveKnexConn(connStr, { client = null, aliases = {} } = {}) {
     conn.projectId = conn.host;
   }
 
-  // Add default MySQL settings
-  if (client === "mysql2" && typeof conn === "object") {
+  // Custom MySQL settings
+  if (client === "mysql2") {
     conn = { charset: "utf8mb4", timezone: "+00:00", ...conn };
   }
 
-  // Add default MSSQL settings
-  if (client === "mssql" && typeof conn === "object") {
+  // Custom MSSQL settings
+  if (client === "mssql") {
     conn = {
       options: { enableArithAbort: true },
       ...conn,
       port: Number(conn.port),
     };
+  }
+
+  // Custom SQLite settings
+  if (client === "sqlite3") {
+    conn = { filename: rest, useNullAsDefault: true };
   }
 
   return [{ client, connection: conn }, tableName];

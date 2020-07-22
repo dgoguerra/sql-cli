@@ -68,9 +68,8 @@ class Lib {
     return listIndexes(this.knex, table);
   }
 
-  async createDump() {
-    const dumpFile = this.buildConnSlug('dump');
-    const dumpDir = `${process.env.PWD}/${dumpFile}`;
+  async createDump(dumpName = this.buildConnSlug("dump")) {
+    const dumpDir = `${process.env.PWD}/${dumpName}`;
 
     fs.rmdirSync(dumpDir, { recursive: true });
     fs.mkdirSync(`${dumpDir}/data`, { recursive: true });
@@ -192,7 +191,7 @@ class Lib {
     }
 
     const tarballPath = `${dumpDir}.tgz`;
-    await tar.create({ gzip: true, file: tarballPath }, [dumpFile]);
+    await tar.create({ gzip: true, file: tarballPath }, [dumpName]);
     fs.rmdirSync(dumpDir, { recursive: true });
 
     return tarballPath;
@@ -234,7 +233,7 @@ class Lib {
     fs.rmdirSync(extractedPath, { recursive: true });
   }
 
-  buildConnSlug(prefix = '') {
+  buildConnSlug(prefix = "") {
     const { connection: conn } = this.knex.client.config;
     return _.snakeCase(
       `${prefix}-${conn.server || conn.host}-${conn.database}-${stringDate()}`

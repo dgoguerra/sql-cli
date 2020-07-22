@@ -99,7 +99,7 @@ class CliApp {
     });
 
     cli.command({
-      command: "dump <conn>",
+      command: "dump <conn> [name]",
       description: "Dump the connection's schema",
       handler: (argv) => this.dumpSchema(argv),
     });
@@ -137,7 +137,7 @@ class CliApp {
 
     console.log(table(formatted, { headers: ["table", "rows", "bytes"] }));
 
-    const totalBytes = tables.reduce((acc, row) => acc + row.bytes, 0);
+    const totalBytes = tables.reduce((acc, row) => acc + (row.bytes || 0), 0);
     console.log(
       chalk.grey(`(${prettyBytes(totalBytes)} in ${tables.length} tables)`)
     );
@@ -288,7 +288,7 @@ class CliApp {
     }
 
     const builder = new ExcelBuilder();
-    const filePath = `${process.env.PWD}/${lib.buildConnSlug('export')}.xlsx`;
+    const filePath = `${process.env.PWD}/${lib.buildConnSlug("export")}.xlsx`;
 
     if (argv.schema) {
       for (const table of await lib.listTables()) {
@@ -324,7 +324,7 @@ class CliApp {
 
   async dumpSchema(argv) {
     const lib = this.initLib(argv.conn, argv);
-    const dumpFile = await lib.createDump();
+    const dumpFile = await lib.createDump(argv.name || null);
     console.log(dumpFile);
     await lib.destroy();
   }

@@ -56,6 +56,7 @@ const listTables = async (knex) => {
   if (client === "Client_SQLite3") {
     return await knex("sqlite_master")
       .where({ type: "table" })
+      .andWhereRaw("name not like 'sqlite_%'")
       .select({ table: "name" });
   }
 
