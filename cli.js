@@ -12,7 +12,7 @@ const SqlRepl = require("./src/SqlRepl");
 const ExcelBuilder = require("./src/ExcelBuilder");
 const { resolveKnexConn, stringifyKnexConn } = require("./src/resolveKnexConn");
 const { diffColumns, diffSchemas } = require("./src/schemaDiff");
-const { streamsDiff } = require("./src/streamsDiff");
+const { streamsDiff } = require("./src/streamUtils");
 const { summarize } = require("./src/summarize");
 
 class CliApp {
@@ -99,6 +99,18 @@ class CliApp {
     });
 
     cli.command({
+      command: "dump <conn> [name]",
+      description: "Dump the connection's schema",
+      handler: (argv) => this.dumpSchema(argv),
+    });
+
+    cli.command({
+      command: "load <conn> <dump>",
+      description: "Load a dump to the connection's schema",
+      handler: (argv) => this.loadDump(argv),
+    });
+
+    cli.command({
       command: "open <conn>",
       descripcion: "Open in GUI (such as TablePLus)",
       handler: (argv) => this.openGui(argv),
@@ -125,7 +137,7 @@ class CliApp {
 
     console.log(table(formatted, { headers: ["table", "rows", "bytes"] }));
 
-    const totalBytes = tables.reduce((acc, row) => acc + row.bytes, 0);
+    const totalBytes = tables.reduce((acc, row) => acc + (row.bytes || 0), 0);
     console.log(
       chalk.grey(`(${prettyBytes(totalBytes)} in ${tables.length} tables)`)
     );
@@ -276,7 +288,7 @@ class CliApp {
     }
 
     const builder = new ExcelBuilder();
-    const filePath = `${process.env.PWD}/export-${argv.conn}.xlsx`;
+    const filePath = `${process.env.PWD}/${lib.buildConnSlug("export")}.xlsx`;
 
     if (argv.schema) {
       for (const table of await lib.listTables()) {
@@ -307,6 +319,19 @@ class CliApp {
 
     console.log(filePath);
 
+    await lib.destroy();
+  }
+
+  async dumpSchema(argv) {
+    const lib = this.initLib(argv.conn, argv);
+    const dumpFile = await lib.createDump(argv.name || null);
+    console.log(dumpFile);
+    await lib.destroy();
+  }
+
+  async loadDump(argv) {
+    const lib = this.initLib(argv.conn, argv);
+    await lib.loadDump(argv.dump);
     await lib.destroy();
   }
 

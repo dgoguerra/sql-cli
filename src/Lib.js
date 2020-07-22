@@ -1,5 +1,23 @@
+const fs = require("fs");
+const path = require("path");
 const _ = require("lodash");
+const tar = require("tar");
 const Knex = require("knex");
+const split = require("split2");
+const through = require("through2");
+const prettier = require("prettier");
+const { stringDate } = require("./stringDate");
+const { runPipeline } = require("./streamUtils");
+const {
+  columnInfo,
+  listTables,
+  listIndexes,
+  countRows,
+  toKnexType,
+  streamInsert,
+} = require("./knexUtils");
+
+const MIGRATIONS_TABLE = "dump_knex_migrations";
 
 class Lib {
   constructor({ knex }) {
@@ -38,112 +56,188 @@ class Lib {
     return tables;
   }
 
-  async getTableSchema(tableName) {
-    const client = this.knex.client.constructor.name;
-    const database = this.knex.client.database();
-
-    if (client === "Client_BigQuery") {
-      const results = await this.knex("INFORMATION_SCHEMA.COLUMNS")
-        .where({ table_schema: database, table_name: tableName })
-        .select({
-          column: "column_name",
-          nullable: "is_nullable",
-          type: "data_type",
-        });
-
-      return _.transform(
-        results,
-        (acc, row) => {
-          acc[row.column] = {
-            nullable: row.nullable === "YES",
-            type: row.type,
-          };
-        },
-        {}
-      );
-    }
-
-    return await this.knex(tableName).columnInfo();
+  async listTables() {
+    return listTables(this.knex);
   }
 
-  // Snippet taken from: https://github.com/knex/knex/issues/360#issuecomment-406483016
-  async listTables() {
-    const client = this.knex.client.constructor.name;
-    const database = this.knex.client.database();
+  async getTableSchema(table) {
+    return columnInfo(this.knex, table);
+  }
 
-    if (client === "Client_MySQL" || client === "Client_MySQL2") {
-      return await this.knex("information_schema.tables")
-        .where({ table_schema: database })
-        .select({
-          table: "table_name",
-          bytes: this.knex.raw("data_length + index_length"),
-          rows: "table_rows",
-        });
+  async listIndexes(table) {
+    return listIndexes(this.knex, table);
+  }
+
+  async createDump(dumpName = this.buildConnSlug("dump")) {
+    const dumpDir = `${process.env.PWD}/${dumpName}`;
+
+    fs.rmdirSync(dumpDir, { recursive: true });
+    fs.mkdirSync(`${dumpDir}/data`, { recursive: true });
+    fs.mkdirSync(`${dumpDir}/migrations`, { recursive: true });
+
+    const cleanRow = (row) => {
+      Object.keys(row).forEach((key) => {
+        // Remove empty keys
+        if (row[key] === null) {
+          delete row[key];
+        }
+        // Save boolean values as 0 or 1 (avoid MSSQL insert errors)
+        if (row[key] === true) {
+          row[key] = 1;
+        }
+        if (row[key] === false) {
+          row[key] = 0;
+        }
+      });
+      return row;
+    };
+
+    for (const { table } of await this.listTables()) {
+      if (table.startsWith(MIGRATIONS_TABLE)) {
+        continue;
+      }
+
+      const columns = await this.knex(table).columnInfo();
+      const indexes = await this.listIndexes(table);
+
+      const primaryKeyTypes = {
+        integer: "increments",
+        bigInteger: "bigIncrements",
+      };
+
+      let primaryKey = "";
+      const statements = [];
+
+      const isNumeric = (v) =>
+        (typeof v === "number" || typeof v === "string") &&
+        Number.isFinite(Number(v));
+      const wrapValue = (v) =>
+        typeof v === "string" && !isNumeric(v) ? `"${v}"` : v;
+      // TODO in MSSQL, default values are returned as a string wrapped
+      // by quotes and parenthesis. Ex 0 -> "('0')"
+      const cleanDefault = (v) =>
+        (typeof v && v.replace(/\('(.*?)'\)/, "$1")) || v;
+
+      Object.keys(columns).forEach((key) => {
+        const col = columns[key];
+
+        let type = toKnexType(col.type, col.maxLength);
+
+        if (!primaryKey && primaryKeyTypes[type] && !col.nullable) {
+          type = primaryKeyTypes[type];
+          primaryKey = key;
+        }
+
+        const statement = [
+          `t.${type}(${wrapValue(key)})`,
+          type !== "increments" &&
+            type !== "bigIncrements" &&
+            !col.nullable &&
+            "notNullable()",
+          col.defaultValue !== null &&
+            type !== "timestamp" &&
+            `defaultTo(${wrapValue(cleanDefault(col.defaultValue))})`,
+        ];
+        statements.push(statement.filter((str) => str).join("."));
+      });
+
+      indexes.forEach((index) => {
+        // Ignore primary key index, its created while creating the column
+        if (
+          index.unique &&
+          index.columns.length === 1 &&
+          index.columns[0] === primaryKey
+        ) {
+          return;
+        }
+        const statement = `t.${
+          index.unique ? "unique" : "index"
+        }([${index.columns.map((c) => wrapValue(c))}], ${wrapValue(
+          index.index
+        )})`;
+        statements.push(statement);
+      });
+
+      const migration = `
+        module.exports.up = async (knex) => {
+          await knex.schema.createTable("${table}", t => {
+            ${statements.join(";\n")}
+          });
+        };
+        module.exports.down = async (knex) => {
+          await knex.schema.dropTableIfExists("${table}");
+        };
+      `;
+
+      const migrationPath = `migrations/${stringDate()}-${table}.js`;
+      fs.writeFileSync(
+        `${dumpDir}/${migrationPath}`,
+        prettier.format(migration, { parser: "babel" })
+      );
+      console.log(`Created ${migrationPath}`);
+
+      const numRows = await countRows(this.knex, table);
+      if (numRows > 0) {
+        const dataPath = `data/${table}.jsonl`;
+        await runPipeline(
+          this.knex(table).stream(),
+          through.obj((row, enc, next) => {
+            next(null, JSON.stringify(cleanRow(row)) + "\n");
+          }),
+          fs.createWriteStream(`${dumpDir}/${dataPath}`)
+        );
+        console.log(`Created ${dataPath}`);
+      }
     }
 
-    if (client === "Client_PG") {
-      return await this.knex("information_schema.tables")
-        .where({
-          table_schema: this.knex.raw("current_schema()"),
-          table_catalog: database,
-        })
-        .select({ table: "table_name" });
+    const tarballPath = `${dumpDir}.tgz`;
+    await tar.create({ gzip: true, file: tarballPath }, [dumpName]);
+    fs.rmdirSync(dumpDir, { recursive: true });
+
+    return tarballPath;
+  }
+
+  async loadDump(dump) {
+    const dumpPath = path.resolve(dump);
+
+    if (!fs.existsSync(dumpPath)) {
+      throw new Error(`Dump file '${dumpPath}' not found`);
     }
 
-    if (client === "Client_SQLite3") {
-      return await this.knex("sqlite_master")
-        .where({ type: "table" })
-        .select({ table: "name" });
+    await tar.extract({ file: dumpPath });
+
+    const extractedPath = dumpPath.replace(/\.tgz$/, "");
+
+    if (!fs.existsSync(`${extractedPath}/migrations`)) {
+      throw new Error(`Migration files at '${extractedPath}' not found`);
     }
 
-    if (client === "Client_MSSQL") {
-      /*
-      return await this.knex("information_schema.tables")
-        .where({
-          table_schema: this.knex.raw("schema_name()"),
-          table_type: "BASE TABLE",
-          table_catalog: database,
-        })
-        .select({ table: "table_name", rows: null, bytes: null });
-      */
+    await this.knex.migrate.latest({
+      directory: `${extractedPath}/migrations`,
+      tableName: MIGRATIONS_TABLE,
+    });
 
-      const rows = await this.knex.raw(`
-        SELECT
-          s.table_name AS [table],
-          p.rows AS [rows],
-          SUM(a.used_pages) * 8 AS [usedSpaceKB]
-        FROM
-          information_schema.tables [s]
-          LEFT JOIN sys.tables [t] ON s.table_name = t.Name
-            AND TABLE_TYPE = 'BASE TABLE'
-          LEFT JOIN sys.indexes [i] ON t.object_id = i.object_id
-          LEFT JOIN sys.partitions [p] ON i.object_id = p.object_id
-            AND i.index_id = p.index_id
-          LEFT JOIN sys.allocation_units a ON p.partition_id = a.container_id
-        WHERE
-          s.table_schema != 'sys' AND (i.object_id is null OR i.object_id > 255)
-        GROUP BY s.table_name, t.Name, p.Rows
-        ORDER BY t.Name;
-      `);
+    for (const filename of fs.readdirSync(`${extractedPath}/data`)) {
+      const table = filename.replace(".jsonl", "");
+      const stream = fs
+        .createReadStream(`${extractedPath}/data/${filename}`)
+        .pipe(split())
+        .pipe(through.obj((row, enc, next) => next(null, JSON.parse(row))));
 
-      return rows.map((row) => ({
-        ...row,
-        rows: Number(row.rows),
-        bytes: Number(row.usedSpaceKB * 1000),
-      }));
+      console.log(`Loading data to ${table} ...`);
+
+      await this.knex(table).truncate();
+      await streamInsert(this.knex, table, stream);
     }
 
-    if (client === "Client_Oracle" || client === "Client_Oracledb") {
-      return await this.knex("user_tables").select({ table: "table_name" });
-    }
+    fs.rmdirSync(extractedPath, { recursive: true });
+  }
 
-    if (client === "Client_BigQuery") {
-      return await this.knex("__TABLES__")
-        .where({ dataset_id: database, type: 1 })
-        .select({ table: "table_id", bytes: "size_bytes", rows: "row_count" });
-    }
-
-    throw new Error(`Unexpected client '${client}', not implemented`);
+  buildConnSlug(prefix = "") {
+    const { connection: conn } = this.knex.client.config;
+    return _.snakeCase(
+      `${prefix}-${conn.server || conn.host}-${conn.database}-${stringDate()}`
+    ).replace(/_/g, "-");
   }
 }
 

@@ -1,0 +1,35 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`CLI dump and load commands database dump contents are valid 1`] = `
+"module.exports.up = async (knex) => {
+  await knex.schema.createTable(\\"table_1\\", (t) => {
+    t.increments(\\"id\\");
+    t.string(\\"field_1\\");
+    t.integer(\\"field_2\\");
+  });
+};
+module.exports.down = async (knex) => {
+  await knex.schema.dropTableIfExists(\\"table_1\\");
+};
+"
+`;
+
+exports[`CLI dump and load commands database dump contents are valid 2`] = `
+"module.exports.up = async (knex) => {
+  await knex.schema.createTable(\\"table_2\\", (t) => {
+    t.increments(\\"id\\");
+    t.float(\\"field_1\\");
+    t.text(\\"field_2\\");
+  });
+};
+module.exports.down = async (knex) => {
+  await knex.schema.dropTableIfExists(\\"table_2\\");
+};
+"
+`;
+
+exports[`CLI dump and load commands database dump contents are valid 3`] = `
+"{\\"id\\":1,\\"field_1\\":12.3,\\"field_2\\":\\"foo\\"}
+{\\"id\\":2,\\"field_1\\":30.45,\\"field_2\\":\\"bar\\"}
+"
+`;
