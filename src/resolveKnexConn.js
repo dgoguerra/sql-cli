@@ -24,48 +24,53 @@ function resolveKnexConn(connStr, { client = null, aliases = {} } = {}) {
     connUri += params;
   }
 
-  let { client: proto, connection: conn } = parseConn(connUri);
+  const conf = parseConn(connUri);
 
-  // No client set manually, try to infer it from the conn URI's protocol
-  if (!client) {
-    const found = _.findKey(clientAliases, (val) => val.includes(proto));
-    client = found || proto;
+  if (client) {
+    conf.client = client;
+  } else {
+    // No client set manually, try to infer it from the conn URI's protocol
+    const found = _.findKey(clientAliases, (val) => val.includes(conf.client));
+    if (found) {
+      conf.client = found;
+    }
   }
 
-  if (!client) {
+  if (!conf.client) {
     throw new Error(`Unknown Knex client, set one manually with --client`);
   }
 
-  if (client === "bigquery") {
-    client = require("./clients/BigQuery");
-    conn.projectId = conn.host;
+  if (conf.client === "bigquery") {
+    conf.client = require("./clients/BigQuery");
+    conf.connection.projectId = conf.connection.host;
   }
 
   // Custom MySQL settings
-  if (client === "mysql2") {
-    conn = { charset: "utf8mb4", timezone: "+00:00", ...conn };
+  if (conf.client === "mysql2") {
+    conf.connection = { charset: "utf8mb4", timezone: "+00:00", ...conf.connection };
   }
 
   // Custom MSSQL settings
-  if (client === "mssql") {
-    conn = {
+  if (conf.client === "mssql") {
+    conf.connection = {
       options: { enableArithAbort: true },
-      ...conn,
-      port: Number(conn.port),
+      ...conf.connection,
+      port: Number(conf.connection.port),
     };
   }
 
   // Custom SQLite settings
-  if (client === "sqlite3") {
-    conn = { filename: rest, useNullAsDefault: true };
+  if (conf.client === "sqlite3") {
+    conf.connection = { filename: rest };
+    conf.useNullAsDefault = true;
   }
 
-  return [{ client, connection: conn }, tableName];
+  return [conf, tableName];
 }
 
 function stringifyKnexConn(connStr, opts) {
-  const [parsed] = resolveKnexConn(connStr, opts);
-  const { client, connection: conn } = parsed;
+  const [conf] = resolveKnexConn(connStr, opts);
+  const { client, connection: conn } = conf;
 
   const auth =
     conn.user && conn.password

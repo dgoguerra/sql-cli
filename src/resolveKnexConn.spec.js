@@ -32,6 +32,17 @@ describe("resolveKnexConn()", () => {
     });
   });
 
+  it("sqlite conn", () => {
+    const [conn] = resolveKnexConn("sqlite:///path/to/file/mydb.db");
+    expect(conn).toEqual({
+      client: "sqlite3",
+      connection: {
+        filename: "/path/to/file/mydb.db",
+      },
+      useNullAsDefault: true,
+    });
+  });
+
   it("bigquery conn with extra params", () => {
     const [conn] = resolveKnexConn(
       "bq://gcp-project/dataset-name?location=europe-west2&keyFilename=/path/to/service-account.json"
