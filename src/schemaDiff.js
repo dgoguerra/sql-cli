@@ -97,8 +97,8 @@ const diffSchemas = (tablesBefore, tablesAfter) => {
 
       const tableInfo = {
         table: tableKey,
-        bytesBefore: before && prettyBytes(before.bytes),
-        bytesAfter: after && prettyBytes(after.bytes),
+        bytesBefore: before && prettyBytes(before.bytes || 0),
+        bytesAfter: after && prettyBytes(after.bytes || 0),
         rowsBefore: before && before.rows,
         rowsAfter: after && after.rows,
       };
