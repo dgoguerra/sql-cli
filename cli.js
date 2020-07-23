@@ -5,6 +5,7 @@ const _ = require("lodash");
 const Conf = require("conf");
 const yargs = require("yargs");
 const chalk = require("chalk");
+const pkg = require("./package.json");
 const prettyBytes = require("pretty-bytes");
 const table = require("./src/table");
 const Lib = require("./src/Lib");
@@ -17,7 +18,10 @@ const { summarize } = require("./src/summarize");
 
 class CliApp {
   constructor() {
-    this.conf = new Conf({ defaults: { aliases: {} } });
+    this.conf = new Conf({
+      projectName: pkg.name,
+      defaults: { aliases: {} },
+    });
     this.cli = this.buildYargs();
     this.argv = this.cli.argv;
   }
