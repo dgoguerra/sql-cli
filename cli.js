@@ -20,6 +20,8 @@ class CliApp {
   constructor() {
     this.conf = new Conf({
       projectName: pkg.name,
+      // Allow setting a custom config directory, for testing
+      cwd: process.env.SQL_CONF_DIR || null,
       defaults: { aliases: {} },
     });
     this.cli = this.buildYargs();

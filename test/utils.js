@@ -1,19 +1,27 @@
-const { spawn } = require("child_process");
+const os = require("os");
 const fs = require("fs");
+const { spawn } = require("child_process");
 const Knex = require("knex");
 
 const TEST_DB_DIR = `${process.env.PWD}/.tmp`;
 const TEST_DB_FILE = `${TEST_DB_DIR}/test-${process.env.JEST_WORKER_ID}.db`;
+const TEST_CONF_DIR = os.tmpdir();
 
 const runCli = (cmd, args = []) =>
   new Promise((resolve, reject) => {
     let stdout = "";
     let stderr = "";
     let all = "";
-    // Add SQL_DUMP_DATE env var to force the default date used
-    // by stringDate() to generate filenames of knex migrations.
     const proc = spawn(`${process.env.PWD}/cli.js`, [cmd, ...args], {
-      env: { ...process.env, SQL_DUMP_DATE: "2020-07-22T18:22:50.732Z" },
+      env: {
+        ...process.env,
+        // Setting a custom config directory
+        SQL_CONF_DIR: TEST_CONF_DIR,
+        // Force default date of stringDate() to generate migrations filenames
+        SQL_DUMP_DATE: "2020-07-22T18:22:50.732Z",
+        // Disable chalk's coloring of outputs
+        FORCE_COLOR: 0,
+      },
     });
     proc.stdout.on("data", (data) => {
       all += data;

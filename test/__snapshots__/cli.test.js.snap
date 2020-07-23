@@ -1,0 +1,70 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`CLI basic commands can create conn aliases 1`] = `
+"alias  conn                                     
+alias1 mysql://app:secret@127.0.0.1:1234/dbname 
+alias2 sqlite3:///path/to/file.db               
+
+"
+`;
+
+exports[`CLI basic commands can delete conn aliases 1`] = `
+"alias  conn                       
+alias2 sqlite3:///path/to/file.db 
+
+"
+`;
+
+exports[`CLI basic commands can diff schemas 1`] = `
+"Diff of database schemas:
+
+No tables changes
+
+"
+`;
+
+exports[`CLI basic commands can diff tables 1`] = `
+"Diff of tables schema
+
+column  type                              
+field_1 integer nullable → float nullable 
+
+2x similar, 1x changed
+
+Diff of tables content (first 100 rows)
+
+id field_1    
+1  12 → 12.3  
+2  30 → 30.45 
+
+"
+`;
+
+exports[`CLI basic commands can list tables 1`] = `
+"table   rows bytes 
+table_1            
+table_2 null       
+table_3            
+
+(0 B in 3 tables)
+"
+`;
+
+exports[`CLI basic commands can show table 1`] = `
+"column  type    nullable 
+id      integer false    
+field_1 float   true     
+field_2 text    true     
+
+"
+`;
+
+exports[`CLI basic commands can use a created alias 1`] = `
+"table   rows bytes 
+table_1            
+table_2 null       
+table_3            
+
+(0 B in 3 tables)
+"
+`;
