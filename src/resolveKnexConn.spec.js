@@ -17,6 +17,17 @@ describe("resolveKnexConn()", () => {
     });
   });
 
+  it("mysql conn with table", () => {
+    const [conn, table] = resolveKnexConn(
+      "mysql://app:secret@127.0.0.1:33060/dbname/tablename"
+    );
+    expect(conn).toMatchObject({
+      client: "mysql2",
+      connection: { database: "dbname" },
+    });
+    expect(table).toBe("tablename");
+  });
+
   it("mssql conn", () => {
     const [conn] = resolveKnexConn("mssql://app:secret@domain.com:1433/dbname");
     expect(conn).toEqual({
@@ -32,6 +43,17 @@ describe("resolveKnexConn()", () => {
     });
   });
 
+  it("mssql conn with table", () => {
+    const [conn, table] = resolveKnexConn(
+      "mssql://app:secret@domain.com:1433/dbname/tablename"
+    );
+    expect(conn).toMatchObject({
+      client: "mssql",
+      connection: { database: "dbname" },
+    });
+    expect(table).toBe("tablename");
+  });
+
   it("sqlite conn", () => {
     const [conn] = resolveKnexConn("sqlite:///path/to/file/mydb.db");
     expect(conn).toEqual({
@@ -41,6 +63,17 @@ describe("resolveKnexConn()", () => {
       },
       useNullAsDefault: true,
     });
+  });
+
+  it("sqlite conn with table", () => {
+    const [conn, table] = resolveKnexConn(
+      "sqlite:///path/to/file/mydb.db/tablename"
+    );
+    expect(conn).toMatchObject({
+      client: "sqlite3",
+      connection: { filename: "/path/to/file/mydb.db" },
+    });
+    expect(table).toBe("tablename");
   });
 
   it("bigquery conn with extra params", () => {

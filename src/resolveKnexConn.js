@@ -1,22 +1,54 @@
-const _ = require("lodash");
 const parseConn = require("knex/lib/util/parse-connection");
-const clientAliases = require("./clientAliases");
+const { getClient } = require("./clientAliases");
 
-function resolveKnexConn(connStr, { client = null, aliases = {} } = {}) {
-  let connUri;
+function resolveConnAlias(connAlias, { aliases = {} } = {}) {
+  const [uri, params] = connAlias.split("?");
+  const [alias, table] = uri.split("/");
+  let connUri = aliases && aliases[alias];
+  if (table) {
+    connUri += `/${table}`;
+  }
+  if (params) {
+    connUri += connUri.indexOf("?") === -1 ? "?" : "&";
+    connUri += params;
+  }
+  return connUri;
+}
+
+function resolveKnexConn(connUri, { client = null, aliases = {} } = {}) {
   let tableName;
 
-  const [uri, params] = connStr.split("?");
-  const [protocol, rest] = uri.split("://");
+  if (!connUri.includes("://")) {
+    connUri = resolveConnAlias(connUri, { aliases });
+  }
 
-  if (protocol && rest) {
-    const [host, database, table] = rest.split("/");
+  if (!connUri.includes("://")) {
+    throw new Error(
+      `Unknown connection URI, cannot parse or resolve it to an alias`
+    );
+  }
+
+  const [uri, params] = connUri.split("?");
+  let [protocol, uriPath] = uri.split("://");
+
+  // SQLite case, the whole uriPath is a filename
+  if (uriPath.startsWith("/")) {
+    const parts = uriPath.split("/");
+    const table = parts.pop();
+    const database = parts.pop();
+
+    // Detect optional table name in the uri
+    if (table && database && !table.includes(".") && database.includes(".")) {
+      uriPath = `${parts.join("/")}/${database}`;
+      connUri = `${protocol}://${uriPath}`;
+      tableName = table;
+    } else {
+      connUri = `${protocol}://${uriPath}`;
+    }
+  } else {
+    const [host, database, table = undefined] = uriPath.split("/");
     connUri = `${protocol}://${host}/${database}`;
     tableName = table;
-  } else {
-    const [host, database] = uri.split("/");
-    connUri = aliases && aliases[host];
-    tableName = database;
   }
 
   if (params) {
@@ -26,15 +58,9 @@ function resolveKnexConn(connStr, { client = null, aliases = {} } = {}) {
 
   const conf = parseConn(connUri);
 
-  if (client) {
-    conf.client = client;
-  } else {
-    // No client set manually, try to infer it from the conn URI's protocol
-    const found = _.findKey(clientAliases, (val) => val.includes(conf.client));
-    if (found) {
-      conf.client = found;
-    }
-  }
+  // The uri protocol is the client, or an alias of the client.
+  // This may be overriden through the option --client.
+  conf.client = client || getClient(conf.client) || conf.client;
 
   if (!conf.client) {
     throw new Error(`Unknown Knex client, set one manually with --client`);
@@ -47,7 +73,11 @@ function resolveKnexConn(connStr, { client = null, aliases = {} } = {}) {
 
   // Custom MySQL settings
   if (conf.client === "mysql2") {
-    conf.connection = { charset: "utf8mb4", timezone: "+00:00", ...conf.connection };
+    conf.connection = {
+      charset: "utf8mb4",
+      timezone: "+00:00",
+      ...conf.connection,
+    };
   }
 
   // Custom MSSQL settings
@@ -61,15 +91,15 @@ function resolveKnexConn(connStr, { client = null, aliases = {} } = {}) {
 
   // Custom SQLite settings
   if (conf.client === "sqlite3") {
-    conf.connection = { filename: rest };
+    conf.connection = { filename: uriPath };
     conf.useNullAsDefault = true;
   }
 
   return [conf, tableName];
 }
 
-function stringifyKnexConn(connStr, opts) {
-  const [conf] = resolveKnexConn(connStr, opts);
+function stringifyKnexConn(connUri, opts) {
+  const [conf] = resolveKnexConn(connUri, opts);
   const { client, connection: conn } = conf;
 
   const auth =
