@@ -1,6 +1,6 @@
 {
   "name": "@dgoguerra/sql",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Universal command-line interface for SQL databases",
   "keywords": [],
   "author": "",
