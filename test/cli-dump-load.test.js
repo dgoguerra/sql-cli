@@ -6,6 +6,8 @@ const Lib = require("../src/Lib");
 const TEST_DUMP_NAME = ".tmp/dump-test";
 const TEST_DUMP_PATH = `${process.env.PWD}/${TEST_DUMP_NAME}.tgz`;
 const TEST_EXTRACTED_PATH = `${process.env.PWD}/${TEST_DUMP_NAME}`;
+const TEST_DATETIME_1 = "2020-07-24 18:34:00";
+const TEST_DATETIME_2 = "2020-07-24 19:25:00";
 
 describe("CLI dump and load commands", () => {
   let knex;
@@ -17,15 +19,27 @@ describe("CLI dump and load commands", () => {
       t.increments("id");
       t.string("field_1");
       t.integer("field_2");
+      t.timestamps();
     });
     await knex.schema.createTable("table_2", (t) => {
       t.increments("id");
-      t.decimal("field_1");
-      t.text("field_2");
+      t.decimal("field_1").notNullable().defaultTo(23.56);
+      t.text("field_2").defaultTo("default text");
+      t.timestamps();
     });
     await knex("table_2").insert([
-      { field_1: 12.3, field_2: "foo" },
-      { field_1: 30.45, field_2: "bar" },
+      {
+        field_1: 12.3,
+        field_2: "foo",
+        created_at: TEST_DATETIME_1,
+        updated_at: TEST_DATETIME_1,
+      },
+      {
+        field_1: 30.45,
+        field_2: "bar",
+        created_at: TEST_DATETIME_2,
+        updated_at: TEST_DATETIME_2,
+      },
     ]);
 
     if (fs.existsSync(TEST_DUMP_PATH)) {
@@ -87,8 +101,20 @@ describe("CLI dump and load commands", () => {
     ]);
     expect(await knex("table_1")).toMatchObject([]);
     expect(await knex("table_2")).toMatchObject([
-      { id: 1, field_1: 12.3, field_2: "foo" },
-      { id: 2, field_1: 30.45, field_2: "bar" },
+      {
+        id: 1,
+        field_1: 12.3,
+        field_2: "foo",
+        created_at: TEST_DATETIME_1,
+        updated_at: TEST_DATETIME_1,
+      },
+      {
+        id: 2,
+        field_1: 30.45,
+        field_2: "bar",
+        created_at: TEST_DATETIME_2,
+        updated_at: TEST_DATETIME_2,
+      },
     ]);
 
     await lib.destroy();

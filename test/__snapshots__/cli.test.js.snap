@@ -26,16 +26,16 @@ No tables changes
 exports[`CLI basic commands can diff tables 1`] = `
 "Diff of tables schema
 
-column  type                              
-field_1 integer nullable → float nullable 
+column  type                     
+field_1 integer nullable → float 
 
-2x similar, 1x changed
+4x similar, 1x changed
 
 Diff of tables content (first 100 rows)
 
-id field_1    
-1  12 → 12.3  
-2  30 → 30.45 
+id field_1    updated_at                                
+1  12 → 12.3  [null] → 2020-07-24 18:34:00              
+2  30 → 30.45 2020-07-24 18:34:00 → 2020-07-24 19:25:00 
 
 "
 `;
@@ -51,10 +51,12 @@ table_3
 `;
 
 exports[`CLI basic commands can show table 1`] = `
-"column  type    nullable 
-id      integer false    
-field_1 float   true     
-field_2 text    true     
+"column     type     nullable 
+id         integer  false    
+field_1    float    false    
+field_2    text     true     
+created_at datetime true     
+updated_at datetime true     
 
 "
 `;

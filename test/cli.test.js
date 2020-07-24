@@ -1,5 +1,8 @@
 const { runCli, getTestKnex, getKnexUri } = require("./utils");
 
+const TEST_DATETIME_1 = "2020-07-24 18:34:00";
+const TEST_DATETIME_2 = "2020-07-24 19:25:00";
+
 describe("CLI basic commands", () => {
   let knex;
   let connUri;
@@ -12,23 +15,45 @@ describe("CLI basic commands", () => {
       t.increments("id");
       t.integer("field_1");
       t.text("field_2");
+      t.timestamps();
     });
     await knex.schema.createTable("table_2", (t) => {
       t.increments("id");
-      t.decimal("field_1");
-      t.text("field_2");
+      t.decimal("field_1").notNullable();
+      t.text("field_2").defaultTo("default text");
+      t.timestamps();
     });
     await knex.schema.createTable("table_3", (t) => {
       t.bigIncrements("idField");
       t.bigInteger("field_1");
+      t.timestamps();
     });
     await knex("table_1").insert([
-      { field_1: 12, field_2: "foo" },
-      { field_1: 30, field_2: "bar" },
+      {
+        field_1: 12,
+        field_2: "foo",
+        created_at: TEST_DATETIME_1,
+      },
+      {
+        field_1: 30,
+        field_2: "bar",
+        created_at: TEST_DATETIME_1,
+        updated_at: TEST_DATETIME_1,
+      },
     ]);
     await knex("table_2").insert([
-      { field_1: 12.3, field_2: "foo" },
-      { field_1: 30.45, field_2: "bar" },
+      {
+        field_1: 12.3,
+        field_2: "foo",
+        created_at: TEST_DATETIME_1,
+        updated_at: TEST_DATETIME_1,
+      },
+      {
+        field_1: 30.45,
+        field_2: "bar",
+        created_at: TEST_DATETIME_1,
+        updated_at: TEST_DATETIME_2,
+      },
     ]);
   });
 
