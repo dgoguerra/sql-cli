@@ -6,6 +6,7 @@ const Conf = require("conf");
 const yargs = require("yargs");
 const chalk = require("chalk");
 const pkg = require("./package.json");
+const debug = require("debug")("sql-cli");
 const prettyBytes = require("pretty-bytes");
 const table = require("./src/table");
 const Lib = require("./src/Lib");
@@ -24,6 +25,7 @@ class CliApp {
       cwd: process.env.SQL_CONF_DIR || null,
       defaults: { aliases: {} },
     });
+    debug(`loading config from ${this.conf.path}`);
     this.cli = this.buildYargs();
     this.argv = this.cli.argv;
   }
@@ -38,6 +40,7 @@ class CliApp {
       .help()
       .alias("h", "help")
       .version()
+      .strict()
       .demandCommand();
 
     cli.command({
