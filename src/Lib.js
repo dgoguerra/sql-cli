@@ -113,10 +113,19 @@ class Lib {
         Number.isFinite(Number(v));
       const wrapValue = (v) =>
         typeof v === "string" && !isNumeric(v) ? `"${v}"` : v;
-      // TODO in MSSQL, default values are returned as a string wrapped
-      // by quotes and parenthesis. Ex 0 -> "('0')"
-      const cleanDefault = (v) =>
-        (typeof v && v.replace(/\('(.*?)'\)/, "$1")) || v;
+      // Depending on the client, default values may be returned as a string
+      // wrapped by quotes and/or parenthesis. Ex:
+      // default integer 0 -> returned as "('0')"
+      // default string "str" -> returned as "'str'"
+      const cleanDefault = (v) => {
+        if (typeof v !== 'string' || isNumeric(v)) {
+          return v;
+        }
+        v = v.replace(/\((.*?)\)/, "$1"); // remove parenthesis
+        v = v.replace(/'(.*?)'/, "$1"); // remove ''
+        v = v.replace(/"(.*?)"/, "$1"); // remove ""
+        return v;
+      };
 
       Object.keys(columns).forEach((key) => {
         const col = columns[key];
