@@ -20,12 +20,12 @@ sql <command>
 Commands:
   sql list <conn>             List tables                          [aliases: ls]
   sql show <table>            Show table structure
-  sql diff <table1> <table2>  Diff two tables
-  sql alias <action>          Manage saved connection aliases
-  sql export <conn>           Export a connection's schema or data
-  sql dump <conn> [name]      Dump the connection's schema
-  sql load <conn> <dump>      Load a dump to the connection's schema
+  sql diff <table1> <table2>  Diff two schemas or tables
+  sql export <conn>           Export the connection's schema or data in XLSX
+  sql open <conn>             Open in configured GUI (such as TablePlus)
   sql shell <conn>            Run REPL shell                       [aliases: sh]
+  sql alias <action>          Manage saved connection aliases
+  sql dump <action>           Manage connection dumps
 
 Options:
   --client, -c  Knex client adapter                                     [string]

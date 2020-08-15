@@ -58,8 +58,41 @@ class CliApp {
 
     cli.command({
       command: "diff <table1> <table2>",
-      description: "Diff two tables",
+      description: "Diff two schemas or tables",
       handler: (argv) => this.diffTables(argv),
+    });
+
+    cli.command({
+      command: "export <conn>",
+      description: "Export the connection's schema or data in XLSX",
+      builder: (yargs) =>
+        yargs
+          .option("schema", {
+            description: "Export the connection's schema",
+            type: "boolean",
+          })
+          .option("data", {
+            description: "Export the connection's data",
+            type: "boolean",
+          })
+          .option("query", {
+            description: "Export a custom query",
+            type: "string",
+          }),
+      handler: (argv) => this.createXlsxExport(argv),
+    });
+
+    cli.command({
+      command: "open <conn>",
+      description: "Open in configured GUI (such as TablePlus)",
+      handler: (argv) => this.openGui(argv),
+    });
+
+    cli.command({
+      command: "shell <conn>",
+      aliases: ["sh"],
+      description: "Run REPL shell",
+      handler: (argv) => this.runInteractiveShell(argv),
     });
 
     cli.command({
@@ -88,48 +121,21 @@ class CliApp {
     });
 
     cli.command({
-      command: "export <conn>",
-      description: "Export a connection's schema or data",
+      command: "dump <action>",
+      description: "Manage connection dumps",
       builder: (yargs) =>
         yargs
-          .option("schema", {
-            description: "Export the connection's schema",
-            type: "boolean",
+          .command({
+            command: "create <conn> [name]",
+            description: "Create a dump of the connection",
+            handler: (argv) => this.createDump(argv),
           })
-          .option("data", {
-            description: "Export the connection's data",
-            type: "boolean",
+          .command({
+            command: "load <conn> <dump>",
+            description: "Load a dump to the connection",
+            handler: (argv) => this.loadDump(argv),
           })
-          .option("query", {
-            description: "Export a custom query",
-            type: "string",
-          }),
-      handler: (argv) => this.exportTables(argv),
-    });
-
-    cli.command({
-      command: "dump <conn> [name]",
-      description: "Dump the connection's schema",
-      handler: (argv) => this.dumpSchema(argv),
-    });
-
-    cli.command({
-      command: "load <conn> <dump>",
-      description: "Load a dump to the connection's schema",
-      handler: (argv) => this.loadDump(argv),
-    });
-
-    cli.command({
-      command: "open <conn>",
-      descripcion: "Open in GUI (such as TablePLus)",
-      handler: (argv) => this.openGui(argv),
-    });
-
-    cli.command({
-      command: "shell <conn>",
-      aliases: ["sh"],
-      description: "Run REPL shell",
-      handler: (argv) => this.runInteractiveShell(argv),
+          .demandCommand(),
     });
 
     return cli;
@@ -289,7 +295,7 @@ class CliApp {
     await lib2.destroy();
   }
 
-  async exportTables(argv) {
+  async createXlsxExport(argv) {
     const lib = this.initLib(argv.conn, argv);
 
     if (!argv.schema && !argv.data && !argv.query) {
@@ -331,7 +337,7 @@ class CliApp {
     await lib.destroy();
   }
 
-  async dumpSchema(argv) {
+  async createDump(argv) {
     const lib = this.initLib(argv.conn, argv);
     const dumpFile = await lib.createDump(argv.name || null);
     console.log(dumpFile);

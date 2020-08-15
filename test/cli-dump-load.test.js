@@ -52,7 +52,7 @@ describe("CLI dump and load commands", () => {
 
   it("can create database dump", async () => {
     expect(fs.existsSync(TEST_DUMP_PATH)).toBeFalsy();
-    await runCli(`dump ${getKnexUri(knex)} ${TEST_DUMP_NAME}`);
+    await runCli(`dump create ${getKnexUri(knex)} ${TEST_DUMP_NAME}`);
     expect(fs.existsSync(TEST_DUMP_PATH)).toBeTruthy();
   });
 
@@ -83,7 +83,7 @@ describe("CLI dump and load commands", () => {
 
     expect(await lib.listTables()).toMatchObject([]);
 
-    await runCli(`load ${getKnexUri(knex)} ${TEST_DUMP_PATH}`);
+    await runCli(`dump load ${getKnexUri(knex)} ${TEST_DUMP_PATH}`);
 
     expect(await lib.listTables()).toMatchObject([
       { table: "dump_knex_migrations" },
