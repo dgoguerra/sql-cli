@@ -4,10 +4,10 @@ Universal command-line interface for SQL databases.
 
 ### Installation
 
-While this is a private repo, install it with:
+Install with:
 
 ```
-npm install -g git+ssh://git@github.com/dgoguerra/sql-cli.git
+npm install -g @dgoguerra/sql-cli
 ```
 
 ### Usage

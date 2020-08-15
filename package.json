@@ -1,9 +1,9 @@
 {
-  "name": "@dgoguerra/sql",
+  "name": "@dgoguerra/sql-cli",
   "version": "1.0.2",
   "description": "Universal command-line interface for SQL databases",
   "keywords": [],
-  "author": "",
+  "author": "Diego Guerra <dgoguerra.or@gmail.com>",
   "license": "ISC",
   "main": "index.js",
   "bin": {
@@ -39,5 +39,13 @@
   },
   "devDependencies": {
     "jest": "^25.3.0"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dgoguerra/sql-cli.git"
+  },
+  "bugs": {
+    "url": "https://github.com/dgoguerra/sql-cli/issues"
+  },
+  "homepage": "https://github.com/dgoguerra/sql-cli#readme"
 }
