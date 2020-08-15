@@ -1,6 +1,6 @@
 {
   "name": "@dgoguerra/sql-cli",
-  "version": "1.0.2",
+  "version": "1.1.0",
   "description": "Universal command-line interface for SQL databases",
   "keywords": [],
   "author": "Diego Guerra <dgoguerra.or@gmail.com>",
