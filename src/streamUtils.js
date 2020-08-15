@@ -61,15 +61,19 @@ const streamsDiff = (
     return rows.map((row) => formatRow(row)).map((row) => cleanRowKeys(row));
   };
 
-  return new Promise((resolve) =>
+  return new Promise((resolve, reject) => {
+    streamA.on("error", (err) => reject(err));
+    streamB.on("error", (err) => reject(err));
+
     tupleStream([streamA, streamB], { comparator })
       .on("data", (row) => {
         if (allRows || !deepEqual(row[0], row[1])) {
           diffRows.push(row);
         }
       })
-      .on("finish", () => resolve(formatResults(diffRows)))
-  );
+      .on("error", (err) => reject(err))
+      .on("finish", () => resolve(formatResults(diffRows)));
+  });
 };
 
 const runPipeline = (...streams) =>
