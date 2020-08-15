@@ -11,7 +11,7 @@
   },
   "scripts": {
     "format": "prettier --write \"**/*.js\"",
-    "test": "jest"
+    "test": "bin/run-test"
   },
   "dependencies": {
     "@google-cloud/bigquery": "^4.7.0",
