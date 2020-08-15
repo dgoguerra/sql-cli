@@ -118,7 +118,7 @@ class Lib {
       // default integer 0 -> returned as "('0')"
       // default string "str" -> returned as "'str'"
       const cleanDefault = (v) => {
-        if (typeof v !== 'string' || isNumeric(v)) {
+        if (typeof v !== "string" || isNumeric(v)) {
           return v;
         }
         v = v.replace(/\((.*?)\)/, "$1"); // remove parenthesis

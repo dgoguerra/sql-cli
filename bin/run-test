@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+
+# Setup testing databases
+docker-compose up --build --detach
+
+# Wait for all databases to be available.
+# Use grep to reduce dockerize's loggging.
+docker-compose run wait-all | grep -v "Problem with dial"
+
+# Run tests
+jest $@
+
+# Cleanup containers
+docker-compose down

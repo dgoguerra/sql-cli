@@ -1,18 +1,18 @@
 const os = require("os");
 const fs = require("fs");
-const { spawn } = require("child_process");
+const { exec } = require("child_process");
 const Knex = require("knex");
 
 const TEST_DB_DIR = `${process.env.PWD}/.tmp`;
 const TEST_DB_FILE = `${TEST_DB_DIR}/test-${process.env.JEST_WORKER_ID}.db`;
 const TEST_CONF_DIR = os.tmpdir();
 
-const runCli = (cmd, args = []) =>
+const runCli = (args) =>
   new Promise((resolve, reject) => {
     let stdout = "";
     let stderr = "";
     let all = "";
-    const proc = spawn(`${process.env.PWD}/cli.js`, [cmd, ...args], {
+    const proc = exec(`${process.env.PWD}/cli.js ${args}`, {
       env: {
         ...process.env,
         // Setting a custom config directory
@@ -49,11 +49,12 @@ const getTestKnex = () => {
 };
 
 const getKnexUri = (knex) => {
-  const { client, connection } = knex.client.config;
+  const { client, connection: conn } = knex.client.config;
   if (client === "sqlite3") {
-    return `${client}://${connection.filename}`;
+    return `${client}://${conn.filename}`;
   }
-  throw new Error(`getKnexUri() not configured for client '${client}'`);
+  const host = conn.server || conn.host;
+  return `${client}://${conn.user}:${conn.password}@${host}:${conn.port}/${conn.database}`;
 };
 
 module.exports = { runCli, getTestKnex, getKnexUri };
