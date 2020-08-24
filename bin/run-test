@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+set -ex
 
 # Setup testing databases
 docker-compose up --build --detach
