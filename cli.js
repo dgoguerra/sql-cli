@@ -161,16 +161,16 @@ class CliApp {
   }
 
   async showTable(argv) {
-    const [conn, tableName] = this.resolveConn(argv.table, argv);
+    const conn = this.resolveConn(argv.table, argv);
 
-    if (!tableName) {
+    if (!conn.table) {
       this.error("No table was specified in the connection");
     }
 
     const lib = this.initLib(conn);
 
     const formatted = _.map(
-      await lib.getTableSchema(tableName),
+      await lib.getTableSchema(conn.table),
       (val, key) => ({
         column: key,
         type: val.maxLength ? `${val.type}(${val.maxLength})` : val.type,
@@ -184,24 +184,24 @@ class CliApp {
   }
 
   async diffTables(argv) {
-    const [conn1, table1] = this.resolveConn(argv.table1, argv);
-    const [conn2, table2] = this.resolveConn(argv.table2, argv);
+    const conn1 = this.resolveConn(argv.table1, argv);
+    const conn2 = this.resolveConn(argv.table2, argv);
 
     const lib1 = this.initLib(conn1);
     const lib2 = this.initLib(conn2);
 
     // Diffing two tables columns
-    if (table1 && table2) {
-      if (!(await lib1.tableExists(table1))) {
-        this.error(`Table '${argv.table1}' not found in 'before' schema`);
+    if (conn1.table && conn2.table) {
+      if (!(await lib1.tableExists(conn1.table))) {
+        this.error(`Table '${conn1.table}' not found in 'before' schema`);
       }
-      if (!(await lib2.tableExists(table2))) {
-        this.error(`Table '${argv.table2}' not found in 'after' schema`);
+      if (!(await lib2.tableExists(conn2.table))) {
+        this.error(`Table '${conn2.table}' not found in 'after' schema`);
       }
 
       const { columns, summary } = diffColumns(
-        await lib1.getTableSchema(table1),
-        await lib2.getTableSchema(table2)
+        await lib1.getTableSchema(conn1.table),
+        await lib2.getTableSchema(conn2.table)
       );
 
       const formattedCols = columns
@@ -231,8 +231,8 @@ class CliApp {
       }
 
       const formattedRows = await streamsDiff(
-        lib1.knex(table1).limit(100).stream(),
-        lib2.knex(table2).limit(100).stream(),
+        lib1.knex(conn1.table).limit(100).stream(),
+        lib2.knex(conn2.table).limit(100).stream(),
         { allRows: false, allColumns: false }
       );
 
@@ -409,14 +409,9 @@ class CliApp {
   }
 
   initLib(conn) {
-    if (typeof conn === "string") {
-      const [parsed] = this.resolveConn(conn);
-      conn = parsed;
-    }
-    return new Lib({
-      knex: conn,
-      proxy: conn.connection.proxy,
-    });
+    const { conf, sshConf } =
+      typeof conn === "string" ? this.resolveConn(conn) : conn;
+    return new Lib({ knex: conf, sshConf });
   }
 
   resolveConn(connStr, argv = {}) {

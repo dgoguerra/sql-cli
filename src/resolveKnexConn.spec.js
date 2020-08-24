@@ -2,8 +2,10 @@ const { resolveKnexConn } = require("./resolveKnexConn");
 
 describe("resolveKnexConn()", () => {
   it("mysql conn", () => {
-    const [conn] = resolveKnexConn("mysql://app:secret@127.0.0.1:33060/dbname");
-    expect(conn).toEqual({
+    const { conf } = resolveKnexConn(
+      "mysql://app:secret@127.0.0.1:33060/dbname"
+    );
+    expect(conf).toEqual({
       client: "mysql2",
       connection: {
         charset: "utf8mb4",
@@ -18,10 +20,10 @@ describe("resolveKnexConn()", () => {
   });
 
   it("mysql conn with table", () => {
-    const [conn, table] = resolveKnexConn(
+    const { conf, table } = resolveKnexConn(
       "mysql://app:secret@127.0.0.1:33060/dbname/tablename"
     );
-    expect(conn).toMatchObject({
+    expect(conf).toMatchObject({
       client: "mysql2",
       connection: { database: "dbname" },
     });
@@ -29,8 +31,10 @@ describe("resolveKnexConn()", () => {
   });
 
   it("mssql conn", () => {
-    const [conn] = resolveKnexConn("mssql://app:secret@domain.com:1433/dbname");
-    expect(conn).toEqual({
+    const { conf } = resolveKnexConn(
+      "mssql://app:secret@domain.com:1433/dbname"
+    );
+    expect(conf).toEqual({
       client: "mssql",
       connection: {
         database: "dbname",
@@ -44,10 +48,10 @@ describe("resolveKnexConn()", () => {
   });
 
   it("mssql conn with table", () => {
-    const [conn, table] = resolveKnexConn(
+    const { conf, table } = resolveKnexConn(
       "mssql://app:secret@domain.com:1433/dbname/tablename"
     );
-    expect(conn).toMatchObject({
+    expect(conf).toMatchObject({
       client: "mssql",
       connection: { database: "dbname" },
     });
@@ -55,8 +59,8 @@ describe("resolveKnexConn()", () => {
   });
 
   it("sqlite conn", () => {
-    const [conn] = resolveKnexConn("sqlite:///path/to/file/mydb.db");
-    expect(conn).toEqual({
+    const { conf } = resolveKnexConn("sqlite:///path/to/file/mydb.db");
+    expect(conf).toEqual({
       client: "sqlite3",
       connection: {
         filename: "/path/to/file/mydb.db",
@@ -66,10 +70,10 @@ describe("resolveKnexConn()", () => {
   });
 
   it("sqlite conn with table", () => {
-    const [conn, table] = resolveKnexConn(
+    const { conf, table } = resolveKnexConn(
       "sqlite:///path/to/file/mydb.db/tablename"
     );
-    expect(conn).toMatchObject({
+    expect(conf).toMatchObject({
       client: "sqlite3",
       connection: { filename: "/path/to/file/mydb.db" },
     });
@@ -77,10 +81,10 @@ describe("resolveKnexConn()", () => {
   });
 
   it("bigquery conn with extra params", () => {
-    const [conn] = resolveKnexConn(
+    const { conf } = resolveKnexConn(
       "bq://gcp-project/dataset-name?location=europe-west2&keyFilename=/path/to/service-account.json"
     );
-    expect(conn).toEqual({
+    expect(conf).toEqual({
       client: require("./clients/BigQuery"),
       connection: {
         database: "dataset-name",
@@ -93,10 +97,10 @@ describe("resolveKnexConn()", () => {
   });
 
   it("resolve conn alias", () => {
-    const [conn] = resolveKnexConn("mydb", {
+    const { conf } = resolveKnexConn("mydb", {
       aliases: { mydb: "mysql://app:secret@127.0.0.1:33060/dbname" },
     });
-    expect(conn).toEqual({
+    expect(conf).toEqual({
       client: "mysql2",
       connection: {
         charset: "utf8mb4",
@@ -111,10 +115,10 @@ describe("resolveKnexConn()", () => {
   });
 
   it("conn specifying table", () => {
-    const [conn, table] = resolveKnexConn(
+    const { conf, table } = resolveKnexConn(
       "mysql://app:secret@127.0.0.1:33060/dbname/tablename"
     );
-    expect(conn).toMatchObject({
+    expect(conf).toMatchObject({
       client: "mysql2",
       connection: { database: "dbname" },
     });
@@ -122,13 +126,36 @@ describe("resolveKnexConn()", () => {
   });
 
   it("resolve conn alias with table", () => {
-    const [conn, table] = resolveKnexConn("mydb/tablename", {
+    const { conf, table } = resolveKnexConn("mydb/tablename", {
       aliases: { mydb: "mysql://app:secret@127.0.0.1:33060/dbname" },
     });
-    expect(conn).toMatchObject({
+    expect(conf).toMatchObject({
       client: "mysql2",
       connection: { database: "dbname" },
     });
     expect(table).toBe("tablename");
+  });
+
+  it("mysql conn through ssh", () => {
+    const { sshConf, conf } = resolveKnexConn(
+      "mysql+ssh://sshuser@sshserver.com:22/app:secret@dbserver.com:33060/dbname"
+    );
+    expect(sshConf).toEqual({
+      host: "sshserver.com",
+      port: "22",
+      user: "sshuser",
+    });
+    expect(conf).toEqual({
+      client: "mysql2",
+      connection: {
+        charset: "utf8mb4",
+        database: "dbname",
+        host: "dbserver.com",
+        password: "secret",
+        port: "33060",
+        timezone: "+00:00",
+        user: "app",
+      },
+    });
   });
 });
