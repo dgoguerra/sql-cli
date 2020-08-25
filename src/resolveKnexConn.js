@@ -107,19 +107,24 @@ function resolveKnexConn(connUri, { client = null, aliases = {} } = {}) {
 }
 
 function stringifyKnexConn(connUri, opts) {
-  const { conf } = resolveKnexConn(connUri, opts);
+  const { sshConf, conf } = resolveKnexConn(connUri, opts);
   const { client, connection: conn } = conf;
 
-  const auth =
-    conn.user && conn.password
-      ? `${encodeURIComponent(conn.user)}:${encodeURIComponent(conn.password)}@`
-      : conn.user
-      ? encodeURIComponent(conn.user)
+  const encodeAuth = ({ user, password }) =>
+    user && password
+      ? `${encodeURIComponent(user)}:${encodeURIComponent(password)}@`
+      : user
+      ? `${encodeURIComponent(user)}@`
       : "";
 
   const host = (conn.host || conn.server) + (conn.port ? `:${conn.port}` : "");
+  const uriPath = `${encodeAuth(conn)}${host}/${conn.database}`;
 
-  return `${client}://${auth}${host}/${conn.database}`;
+  if (sshConf) {
+    return `${client}+ssh://${encodeAuth(sshConf)}${sshConf.host}/${uriPath}`;
+  } else {
+    return `${client}://${uriPath}`;
+  }
 }
 
 module.exports = { resolveKnexConn, stringifyKnexConn };

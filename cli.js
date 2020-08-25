@@ -142,7 +142,7 @@ class CliApp {
   }
 
   async listTables(argv) {
-    const lib = this.initLib(argv.conn, argv);
+    const lib = await this.initLib(argv.conn, argv);
     const tables = await lib.listTables();
 
     const formatted = _.sortBy(tables, (row) => -row.bytes).map((row) => ({
@@ -167,7 +167,7 @@ class CliApp {
       this.error("No table was specified in the connection");
     }
 
-    const lib = this.initLib(conn);
+    const lib = await this.initLib(conn);
 
     const formatted = _.map(
       await lib.getTableSchema(conn.table),
@@ -187,8 +187,8 @@ class CliApp {
     const conn1 = this.resolveConn(argv.table1, argv);
     const conn2 = this.resolveConn(argv.table2, argv);
 
-    const lib1 = this.initLib(conn1);
-    const lib2 = this.initLib(conn2);
+    const lib1 = await this.initLib(conn1);
+    const lib2 = await this.initLib(conn2);
 
     // Diffing two tables columns
     if (conn1.table && conn2.table) {
@@ -296,7 +296,7 @@ class CliApp {
   }
 
   async createXlsxExport(argv) {
-    const lib = this.initLib(argv.conn, argv);
+    const lib = await this.initLib(argv.conn, argv);
 
     if (!argv.schema && !argv.data && !argv.query) {
       this.error("Provide either --schema, --data or --query=<sql>");
@@ -338,14 +338,14 @@ class CliApp {
   }
 
   async createDump(argv) {
-    const lib = this.initLib(argv.conn, argv);
+    const lib = await this.initLib(argv.conn, argv);
     const dumpFile = await lib.createDump(argv.name || null);
     console.log(dumpFile);
     await lib.destroy();
   }
 
   async loadDump(argv) {
-    const lib = this.initLib(argv.conn, argv);
+    const lib = await this.initLib(argv.conn, argv);
     await lib.loadDump(argv.dump);
     await lib.destroy();
   }
@@ -369,7 +369,7 @@ class CliApp {
   }
 
   async runInteractiveShell(argv) {
-    const lib = this.initLib(argv.conn, argv);
+    const lib = await this.initLib(argv.conn, argv);
 
     // Check db connection before dropping the user to the shell,
     // to avoid waiting until a query is run to know that the
@@ -408,10 +408,10 @@ class CliApp {
     this.conf.delete(`aliases.${argv.alias}`);
   }
 
-  initLib(conn) {
+  async initLib(conn) {
     const { conf, sshConf } =
       typeof conn === "string" ? this.resolveConn(conn) : conn;
-    return new Lib({ knex: conf, sshConf });
+    return await new Lib({ conf, sshConf }).connect();
   }
 
   resolveConn(connStr, argv = {}) {

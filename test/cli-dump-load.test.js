@@ -1,7 +1,7 @@
 const fs = require("fs");
 const tar = require("tar");
 const { runCli, getTestKnex, getKnexUri } = require("./utils");
-const Lib = require("../src/Lib");
+const { listTables } = require("../src/knexUtils");
 
 const TEST_DUMP_NAME = ".tmp/dump-test";
 const TEST_DUMP_PATH = `${process.env.PWD}/${TEST_DUMP_NAME}.tgz`;
@@ -79,13 +79,11 @@ describe("CLI dump and load commands", () => {
     await knex.schema.dropTable("table_1");
     await knex.schema.dropTable("table_2");
 
-    const lib = new Lib({ knex });
-
-    expect(await lib.listTables()).toMatchObject([]);
+    expect(await listTables(knex)).toMatchObject([]);
 
     await runCli(`dump load ${getKnexUri(knex)} ${TEST_DUMP_PATH}`);
 
-    expect(await lib.listTables()).toMatchObject([
+    expect(await listTables(knex)).toMatchObject([
       { table: "dump_knex_migrations" },
       { table: "dump_knex_migrations_lock" },
       { table: "table_1" },
@@ -116,7 +114,5 @@ describe("CLI dump and load commands", () => {
         updated_at: TEST_DATETIME_2,
       },
     ]);
-
-    await lib.destroy();
   });
 });

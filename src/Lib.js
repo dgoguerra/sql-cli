@@ -4,10 +4,12 @@ const _ = require("lodash");
 const tar = require("tar");
 const Knex = require("knex");
 const split = require("split2");
+const getPort = require("get-port");
 const through = require("through2");
 const prettier = require("prettier");
 const { stringDate } = require("./stringDate");
 const { runPipeline } = require("./streamUtils");
+const { sshClient, forwardPort } = require("./sshUtils");
 const {
   columnInfo,
   listTables,
@@ -20,14 +22,35 @@ const {
 const MIGRATIONS_TABLE = "dump_knex_migrations";
 
 class Lib {
-  constructor({ knex }) {
-    if (knex.name === "knex") {
-      this.knexIsInternal = false;
-      this.knex = knex;
-    } else {
-      this.knexIsInternal = true;
-      this.knex = Knex(knex);
+  constructor({ conf, sshConf = null }) {
+    this.conf = conf;
+    this.sshConf = sshConf;
+  }
+
+  async connect() {
+    const { connection: conn, ...rest } = this.conf;
+
+    if (this.sshConf) {
+      this.sshClient = await sshClient(this.sshConf);
+
+      const freePort = await getPort();
+      await forwardPort(this.sshClient, {
+        srcHost: "127.0.0.1",
+        srcPort: freePort,
+        dstHost: conn.host || conn.server,
+        dstPort: conn.port,
+      });
+
+      // Host may be set in a 'server' property, for example in MSSQL
+      conn[conn.host ? "host" : "server"] = "127.0.0.1";
+      conn.port = freePort;
     }
+
+    this.knex = Knex({ connection: conn, ...rest });
+
+    await this.checkConnection();
+
+    return this;
   }
 
   async checkConnection() {
@@ -35,8 +58,10 @@ class Lib {
   }
 
   async destroy() {
-    if (this.knexIsInternal) {
-      await this.knex.destroy();
+    await this.knex.destroy();
+
+    if (this.sshClient) {
+      this.sshClient.destroy();
     }
   }
 
