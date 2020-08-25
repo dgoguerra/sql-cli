@@ -41,11 +41,6 @@ const basicTestSuite = (name, knexFactory) => {
     beforeAll(async () => {
       knex = await knexFactory();
       connUri = getKnexUri(knex);
-    });
-
-    beforeAll(async () => {
-      knex = await knexFactory();
-      connUri = getKnexUri(knex);
 
       await knex.schema.createTable("table_1", (t) => {
         t.increments("id");
