@@ -2,13 +2,10 @@ const _ = require("lodash");
 const chalk = require("chalk");
 const prettyBytes = require("pretty-bytes");
 
-const colHash = (col) => `${col.type}:${col.maxLength}:${col.nullable}`;
+const colHash = (col) => `${col.fullType}:${col.nullable}`;
 
 const colDesc = (col) => {
-  let str = col.type;
-  if (col.maxLength) {
-    str += `(${col.maxLength})`;
-  }
+  let str = col.fullType;
   if (col.nullable) {
     str += " nullable";
   }

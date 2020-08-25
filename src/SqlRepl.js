@@ -57,9 +57,7 @@ class SqlRepl {
       const column = columns[key];
       return {
         column: key,
-        type: column.maxLength
-          ? `${column.type}(${column.maxLength})`
-          : column.type,
+        type: column.fullType,
         nullable: column.nullable,
       };
     });
@@ -97,7 +95,12 @@ class SqlRepl {
         : `Error: ${err.message}`;
     }
 
-    const rows = result.length && result[0].length ? result[0] : result;
+    const rows = result.length
+      ? result[0].length
+        ? result[0]
+        : result
+      : result.rows;
+
     if (!rows.length) {
       return chalk.grey("(no results)");
     }

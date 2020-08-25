@@ -173,7 +173,7 @@ class CliApp {
       await lib.getTableSchema(conn.table),
       (val, key) => ({
         column: key,
-        type: val.maxLength ? `${val.type}(${val.maxLength})` : val.type,
+        type: val.fullType,
         nullable: val.nullable,
       })
     );
@@ -309,10 +309,10 @@ class CliApp {
       for (const table of await lib.listTables()) {
         const schema = await lib.getTableSchema(table.table);
         const rows = Object.keys(schema).map((key) => {
-          const { type, maxLength, nullable } = schema[key];
+          const { fullType, nullable } = schema[key];
           return {
             Column: key,
-            Type: maxLength ? `${type}(${maxLength})` : type,
+            Type: fullType,
             Nullable: nullable,
           };
         });

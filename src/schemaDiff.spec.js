@@ -5,12 +5,12 @@ const { diffColumns, diffSchemas } = require("./schemaDiff");
 
 // Output of knex.schema.columnInfo() to extract a table's columns
 const KNEX_TABLE_1 = {
-  id: { type: "bigint", maxLength: null, nullable: false },
-  name: { type: "varchar", maxLength: 255, nullable: true },
+  id: { fullType: "bigint", nullable: false },
+  name: { fullType: "varchar(255)", nullable: true },
 };
 const KNEX_TABLE_2 = {
-  id: { type: "varchar", maxLength: 255, nullable: true },
-  name2: { type: "varchar", maxLength: 255, nullable: true },
+  id: { fullType: "varchar(255)", nullable: true },
+  name2: { fullType: "varchar(255)", nullable: true },
 };
 
 describe("diffColumns()", () => {

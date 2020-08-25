@@ -5,28 +5,66 @@ const columnInfo = async (knex, table) => {
   const client = knex.client.constructor.name;
   const database = knex.client.database();
 
-  if (client === "Client_BigQuery") {
-    const results = await knex("INFORMATION_SCHEMA.COLUMNS")
-      .where({ table_schema: database, table_name: table })
-      .select({
-        column: "column_name",
-        nullable: "is_nullable",
-        type: "data_type",
-      });
+  let results = {};
 
-    return _.transform(
-      results,
-      (acc, row) => {
-        acc[row.column] = {
-          nullable: row.nullable === "YES",
-          type: row.type,
-        };
-      },
-      {}
-    );
+  // If possible, query manually instead of using knex(table).columnInfo().
+  // The reason for this is to ensure ordering of the resulting columns
+  // (the keys creation order should be kept in the returned object).
+  // This expected ordering will facilitate testing.
+  if (
+    client === "Client_MySQL" ||
+    client === "Client_MySQL2" ||
+    client === "Client_BigQuery"
+  ) {
+    results = await _columnsInfo(knex, {
+      table_schema: database,
+      table_name: table,
+    });
+  } else if (client === "Client_PG") {
+    results = await _columnsInfo(knex, {
+      table_schema: knex.raw("current_schema()"),
+      table_catalog: database,
+      table_name: table,
+    });
+  } else if (client === "Client_MSSQL") {
+    results = await _columnsInfo(knex, {
+      table_schema: knex.raw("schema_name()"),
+      table_catalog: database,
+      table_name: table,
+    });
+  } else {
+    // Fallback to knex's columnInfo()
+    results = await knex(table).columnInfo();
   }
 
-  return await knex(table).columnInfo();
+  // Calculate extra fullType property of each column as helper
+  for (const key in results) {
+    const { type, maxLength } = results[key];
+    results[key].fullType = maxLength ? `${type}(${maxLength})` : type;
+  }
+
+  return results;
+};
+
+const _columnsInfo = async (knex, where = {}) => {
+  const columns = {};
+  const rows = await knex("information_schema.columns")
+    .where(where)
+    .orderBy("ordinal_position")
+    .select({
+      column: "column_name",
+      nullable: "is_nullable",
+      type: "data_type",
+      maxLength: "character_maximum_length",
+    });
+  rows.forEach((row) => {
+    columns[row.column] = {
+      nullable: row.nullable === "YES",
+      type: row.type,
+      maxLength: row.maxLength,
+    };
+  });
+  return columns;
 };
 
 // Snippet based on: https://github.com/knex/knex/issues/360#issuecomment-406483016

@@ -122,7 +122,7 @@ class Lib {
         continue;
       }
 
-      const columns = await this.knex(table).columnInfo();
+      const columns = await this.getTableSchema(table);
       const indexes = await this.listIndexes(table);
 
       const primaryKeyTypes = {
