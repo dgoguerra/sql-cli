@@ -4,9 +4,8 @@ set -ex
 # Setup testing databases
 docker-compose up --build --detach
 
-# Wait for all databases to be available.
-# Use grep to reduce dockerize's loggging.
-docker-compose run wait-all | grep -v "Problem with dial"
+# Wait for all databases to be available
+docker-compose run wait-all
 
 # Run tests
 jest $@
