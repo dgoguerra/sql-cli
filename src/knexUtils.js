@@ -75,6 +75,7 @@ const listTables = async (knex) => {
   if (client === "Client_MySQL" || client === "Client_MySQL2") {
     return await knex("information_schema.tables")
       .where({ table_schema: database })
+      .orderBy("table_name")
       .select({
         table: "table_name",
         bytes: knex.raw("data_length + index_length"),
@@ -88,6 +89,7 @@ const listTables = async (knex) => {
         table_schema: knex.raw("current_schema()"),
         table_catalog: database,
       })
+      .orderBy("table_name")
       .select({ table: "table_name" });
   }
 
@@ -95,6 +97,7 @@ const listTables = async (knex) => {
     return await knex("sqlite_master")
       .where({ type: "table" })
       .andWhereRaw("name not like 'sqlite_%'")
+      .orderBy("name")
       .select({ table: "name" });
   }
 
