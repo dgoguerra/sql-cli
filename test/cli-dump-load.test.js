@@ -63,8 +63,8 @@ describe("CLI dump and load commands", () => {
     expect(fs.existsSync(TEST_EXTRACTED_PATH)).toBeTruthy();
 
     const files = [
-      "migrations/20200722202250-table_1.js",
-      "migrations/20200722202250-table_2.js",
+      "migrations/20200722182250-table_1.js",
+      "migrations/20200722182250-table_2.js",
       "data/table_2.jsonl",
     ];
 
@@ -91,8 +91,8 @@ describe("CLI dump and load commands", () => {
     ]);
 
     expect(await knex("dump_knex_migrations")).toMatchObject([
-      { id: 1, batch: 1, name: "20200722202250-table_1.js" },
-      { id: 2, batch: 1, name: "20200722202250-table_2.js" },
+      { id: 1, batch: 1, name: "20200722182250-table_1.js" },
+      { id: 2, batch: 1, name: "20200722182250-table_2.js" },
     ]);
     expect(await knex("dump_knex_migrations_lock")).toMatchObject([
       { index: 1, is_locked: 0 },

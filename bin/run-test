@@ -1,11 +1,14 @@
 #!/usr/bin/env bash
-set -ex
+set -exo pipefail
 
 # Setup testing databases
 docker-compose up --build --detach
 
 # Wait for all databases to be available
 docker-compose run wait-all
+
+# Force GMT +00:00 timezone for the NodeJS process
+export TZ=UTC
 
 # Run tests
 jest $@
