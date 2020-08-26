@@ -5,12 +5,12 @@ const { diffColumns, diffSchemas } = require("./schemaDiff");
 
 // Output of knex.schema.columnInfo() to extract a table's columns
 const KNEX_TABLE_1 = {
-  id: { type: "bigint", maxLength: null, nullable: false },
-  name: { type: "varchar", maxLength: 255, nullable: true },
+  id: { fullType: "bigint", nullable: false },
+  name: { fullType: "varchar(255)", nullable: true },
 };
 const KNEX_TABLE_2 = {
-  id: { type: "varchar", maxLength: 255, nullable: true },
-  name2: { type: "varchar", maxLength: 255, nullable: true },
+  id: { fullType: "varchar(255)", nullable: true },
+  name2: { fullType: "varchar(255)", nullable: true },
 };
 
 describe("diffColumns()", () => {
@@ -72,12 +72,32 @@ describe("diffColumns()", () => {
 });
 
 const SCHEMA_1 = {
-  table1: { table: "table1", bytes: 1000, rows: 5, schema: KNEX_TABLE_1 },
-  table2: { table: "table2", bytes: 1000, rows: 5, schema: KNEX_TABLE_2 },
+  table1: {
+    table: "table1",
+    prettyBytes: "1 kB",
+    rows: 5,
+    schema: KNEX_TABLE_1,
+  },
+  table2: {
+    table: "table2",
+    prettyBytes: "1 kB",
+    rows: 5,
+    schema: KNEX_TABLE_2,
+  },
 };
 const SCHEMA_2 = {
-  table1: { table: "table1", bytes: 48000, rows: 100, schema: KNEX_TABLE_2 },
-  table3: { table: "table3", bytes: 1000, rows: 5, schema: KNEX_TABLE_2 },
+  table1: {
+    table: "table1",
+    prettyBytes: "48 kB",
+    rows: 100,
+    schema: KNEX_TABLE_2,
+  },
+  table3: {
+    table: "table3",
+    prettyBytes: "1 kB",
+    rows: 5,
+    schema: KNEX_TABLE_2,
+  },
 };
 
 describe("diffSchemas()", () => {

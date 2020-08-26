@@ -16,8 +16,6 @@ function resolveConnAlias(connAlias, { aliases = {} } = {}) {
 }
 
 function resolveKnexConn(connUri, { client = null, aliases = {} } = {}) {
-  let tableName;
-
   if (!connUri.includes("://")) {
     connUri = resolveConnAlias(connUri, { aliases });
   }
@@ -31,29 +29,39 @@ function resolveKnexConn(connUri, { client = null, aliases = {} } = {}) {
   const [uri, params] = connUri.split("?");
   let [protocol, uriPath] = uri.split("://");
 
+  let sshConf = null;
+  const protocols = protocol.split("+");
+  if (protocols.includes("ssh")) {
+    protocol = protocols.filter((p) => p !== "ssh").join("+");
+    const { database, ...sshParams } = parseConn(`ssh://${uriPath}`).connection;
+    uriPath = database;
+    sshConf = sshParams;
+  }
+
+  let table;
+
   // SQLite case, the whole uriPath is a filename
   if (uriPath.startsWith("/")) {
     const parts = uriPath.split("/");
-    const table = parts.pop();
-    const database = parts.pop();
+    const dbTable = parts.pop();
+    const dbName = parts.pop();
 
     // Detect optional table name in the uri
-    if (table && database && !table.includes(".") && database.includes(".")) {
-      uriPath = `${parts.join("/")}/${database}`;
+    if (dbTable && dbName && !dbTable.includes(".") && dbName.includes(".")) {
+      uriPath = `${parts.join("/")}/${dbName}`;
       connUri = `${protocol}://${uriPath}`;
-      tableName = table;
+      table = dbTable;
     } else {
       connUri = `${protocol}://${uriPath}`;
     }
   } else {
-    const [host, database, table = undefined] = uriPath.split("/");
-    connUri = `${protocol}://${host}/${database}`;
-    tableName = table;
+    const [host, dbName, dbTable] = uriPath.split("/");
+    connUri = `${protocol}://${host}/${dbName}`;
+    table = dbTable;
   }
 
   if (params) {
-    connUri += connUri.indexOf("?") === -1 ? "?" : "&";
-    connUri += params;
+    connUri += (connUri.indexOf("?") === -1 ? "?" : "&") + params;
   }
 
   const conf = parseConn(connUri);
@@ -95,23 +103,28 @@ function resolveKnexConn(connUri, { client = null, aliases = {} } = {}) {
     conf.useNullAsDefault = true;
   }
 
-  return [conf, tableName];
+  return { sshConf, conf, table };
 }
 
 function stringifyKnexConn(connUri, opts) {
-  const [conf] = resolveKnexConn(connUri, opts);
+  const { sshConf, conf } = resolveKnexConn(connUri, opts);
   const { client, connection: conn } = conf;
 
-  const auth =
-    conn.user && conn.password
-      ? `${encodeURIComponent(conn.user)}:${encodeURIComponent(conn.password)}@`
-      : conn.user
-      ? encodeURIComponent(conn.user)
+  const encodeAuth = ({ user, password }) =>
+    user && password
+      ? `${encodeURIComponent(user)}:${encodeURIComponent(password)}@`
+      : user
+      ? `${encodeURIComponent(user)}@`
       : "";
 
   const host = (conn.host || conn.server) + (conn.port ? `:${conn.port}` : "");
+  const uriPath = `${encodeAuth(conn)}${host}/${conn.database}`;
 
-  return `${client}://${auth}${host}/${conn.database}`;
+  if (sshConf) {
+    return `${client}+ssh://${encodeAuth(sshConf)}${sshConf.host}/${uriPath}`;
+  } else {
+    return `${client}://${uriPath}`;
+  }
 }
 
 module.exports = { resolveKnexConn, stringifyKnexConn };

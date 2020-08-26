@@ -1,7 +1,6 @@
 const repl = require("repl");
 const _ = require("lodash");
 const chalk = require("chalk");
-const prettyBytes = require("pretty-bytes");
 const table = require("./table");
 
 class SqlRepl {
@@ -43,7 +42,7 @@ class SqlRepl {
     const tables = await this.lib.listTables();
     const rows = _.sortBy(tables, (row) => -row.bytes).map((row) => ({
       ...row,
-      bytes: row.bytes ? prettyBytes(row.bytes) : "",
+      bytes: row.prettyBytes,
     }));
 
     console.log(table(rows, { headers: ["table", "rows", "bytes"] }));
@@ -57,9 +56,7 @@ class SqlRepl {
       const column = columns[key];
       return {
         column: key,
-        type: column.maxLength
-          ? `${column.type}(${column.maxLength})`
-          : column.type,
+        type: column.fullType,
         nullable: column.nullable,
       };
     });

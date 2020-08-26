@@ -44,7 +44,7 @@ exports[`CLI basic tests mssql can list tables 1`] = `
 "table   rows bytes 
 table_1 2    16 kB 
 table_2 2    16 kB 
-table_3 0          
+table_3 0    0 B   
 
 (32 kB in 3 tables)
 "
@@ -65,7 +65,7 @@ exports[`CLI basic tests mssql can use a created alias 1`] = `
 "table   rows bytes 
 table_1 2    16 kB 
 table_2 2    16 kB 
-table_3 0          
+table_3 0    0 B   
 
 (32 kB in 3 tables)
 "
@@ -184,9 +184,9 @@ id field_1    updated_at
 
 exports[`CLI basic tests pg can list tables 1`] = `
 "table   rows bytes 
-table_1            
-table_2 null       
-table_3            
+table_1 0          
+table_2 0          
+table_3 0          
 
 (0 B in 3 tables)
 "
@@ -205,9 +205,9 @@ updated_at timestamp with time zone true
 
 exports[`CLI basic tests pg can use a created alias 1`] = `
 "table   rows bytes 
-table_1            
-table_2 null       
-table_3            
+table_1 0          
+table_2 0          
+table_3 0          
 
 (0 B in 3 tables)
 "
@@ -256,7 +256,7 @@ id field_1    updated_at
 exports[`CLI basic tests sqlite3 can list tables 1`] = `
 "table   rows bytes 
 table_1            
-table_2 null       
+table_2            
 table_3            
 
 (0 B in 3 tables)
@@ -277,7 +277,7 @@ updated_at datetime true
 exports[`CLI basic tests sqlite3 can use a created alias 1`] = `
 "table   rows bytes 
 table_1            
-table_2 null       
+table_2            
 table_3            
 
 (0 B in 3 tables)

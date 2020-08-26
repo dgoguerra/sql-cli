@@ -142,13 +142,13 @@ class CliApp {
   }
 
   async listTables(argv) {
-    const lib = this.initLib(argv.conn, argv);
+    const lib = await this.initLib(argv.conn, argv);
     const tables = await lib.listTables();
 
-    const formatted = _.sortBy(tables, (row) => -row.bytes).map((row) => ({
-      ...row,
-      bytes: row.bytes ? prettyBytes(row.bytes) : "",
-    }));
+    const formatted = _.sortBy(tables, [
+      (row) => -row.bytes,
+      (row) => row.table,
+    ]).map((row) => ({ ...row, bytes: row.prettyBytes }));
 
     console.log(table(formatted, { headers: ["table", "rows", "bytes"] }));
 
@@ -161,19 +161,19 @@ class CliApp {
   }
 
   async showTable(argv) {
-    const [conn, tableName] = this.resolveConn(argv.table, argv);
+    const conn = this.resolveConn(argv.table, argv);
 
-    if (!tableName) {
+    if (!conn.table) {
       this.error("No table was specified in the connection");
     }
 
-    const lib = this.initLib(conn);
+    const lib = await this.initLib(conn);
 
     const formatted = _.map(
-      await lib.getTableSchema(tableName),
+      await lib.getTableSchema(conn.table),
       (val, key) => ({
         column: key,
-        type: val.maxLength ? `${val.type}(${val.maxLength})` : val.type,
+        type: val.fullType,
         nullable: val.nullable,
       })
     );
@@ -184,24 +184,24 @@ class CliApp {
   }
 
   async diffTables(argv) {
-    const [conn1, table1] = this.resolveConn(argv.table1, argv);
-    const [conn2, table2] = this.resolveConn(argv.table2, argv);
+    const conn1 = this.resolveConn(argv.table1, argv);
+    const conn2 = this.resolveConn(argv.table2, argv);
 
-    const lib1 = this.initLib(conn1);
-    const lib2 = this.initLib(conn2);
+    const lib1 = await this.initLib(conn1);
+    const lib2 = await this.initLib(conn2);
 
     // Diffing two tables columns
-    if (table1 && table2) {
-      if (!(await lib1.tableExists(table1))) {
-        this.error(`Table '${argv.table1}' not found in 'before' schema`);
+    if (conn1.table && conn2.table) {
+      if (!(await lib1.tableExists(conn1.table))) {
+        this.error(`Table '${conn1.table}' not found in 'before' schema`);
       }
-      if (!(await lib2.tableExists(table2))) {
-        this.error(`Table '${argv.table2}' not found in 'after' schema`);
+      if (!(await lib2.tableExists(conn2.table))) {
+        this.error(`Table '${conn2.table}' not found in 'after' schema`);
       }
 
       const { columns, summary } = diffColumns(
-        await lib1.getTableSchema(table1),
-        await lib2.getTableSchema(table2)
+        await lib1.getTableSchema(conn1.table),
+        await lib2.getTableSchema(conn2.table)
       );
 
       const formattedCols = columns
@@ -231,8 +231,8 @@ class CliApp {
       }
 
       const formattedRows = await streamsDiff(
-        lib1.knex(table1).limit(100).stream(),
-        lib2.knex(table2).limit(100).stream(),
+        lib1.knex(conn1.table).limit(100).stream(),
+        lib2.knex(conn2.table).limit(100).stream(),
         { allRows: false, allColumns: false }
       );
 
@@ -296,7 +296,7 @@ class CliApp {
   }
 
   async createXlsxExport(argv) {
-    const lib = this.initLib(argv.conn, argv);
+    const lib = await this.initLib(argv.conn, argv);
 
     if (!argv.schema && !argv.data && !argv.query) {
       this.error("Provide either --schema, --data or --query=<sql>");
@@ -309,10 +309,10 @@ class CliApp {
       for (const table of await lib.listTables()) {
         const schema = await lib.getTableSchema(table.table);
         const rows = Object.keys(schema).map((key) => {
-          const { type, maxLength, nullable } = schema[key];
+          const { fullType, nullable } = schema[key];
           return {
             Column: key,
-            Type: maxLength ? `${type}(${maxLength})` : type,
+            Type: fullType,
             Nullable: nullable,
           };
         });
@@ -338,14 +338,14 @@ class CliApp {
   }
 
   async createDump(argv) {
-    const lib = this.initLib(argv.conn, argv);
+    const lib = await this.initLib(argv.conn, argv);
     const dumpFile = await lib.createDump(argv.name || null);
     console.log(dumpFile);
     await lib.destroy();
   }
 
   async loadDump(argv) {
-    const lib = this.initLib(argv.conn, argv);
+    const lib = await this.initLib(argv.conn, argv);
     await lib.loadDump(argv.dump);
     await lib.destroy();
   }
@@ -375,7 +375,7 @@ class CliApp {
   }
 
   async runInteractiveShell(argv) {
-    const lib = this.initLib(argv.conn, argv);
+    const lib = await this.initLib(argv.conn, argv);
 
     // Check db connection before dropping the user to the shell,
     // to avoid waiting until a query is run to know that the
@@ -414,15 +414,10 @@ class CliApp {
     this.conf.delete(`aliases.${argv.alias}`);
   }
 
-  initLib(conn) {
-    if (typeof conn === "string") {
-      const [parsed] = this.resolveConn(conn);
-      conn = parsed;
-    }
-    return new Lib({
-      knex: conn,
-      proxy: conn.connection.proxy,
-    });
+  async initLib(conn) {
+    const { conf, sshConf } =
+      typeof conn === "string" ? this.resolveConn(conn) : conn;
+    return await new Lib({ conf, sshConf }).connect();
   }
 
   resolveConn(connStr, argv = {}) {

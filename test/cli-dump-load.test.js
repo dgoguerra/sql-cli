@@ -1,7 +1,8 @@
 const fs = require("fs");
 const tar = require("tar");
+const rimraf = require("rimraf");
 const { runCli, getTestKnex, getKnexUri } = require("./utils");
-const Lib = require("../src/Lib");
+const { listTables } = require("../src/knexUtils");
 
 const TEST_DUMP_NAME = ".tmp/dump-test";
 const TEST_DUMP_PATH = `${process.env.PWD}/${TEST_DUMP_NAME}.tgz`;
@@ -42,12 +43,8 @@ describe("CLI dump and load commands", () => {
       },
     ]);
 
-    if (fs.existsSync(TEST_DUMP_PATH)) {
-      fs.unlinkSync(TEST_DUMP_PATH);
-    }
-    if (fs.existsSync(TEST_EXTRACTED_PATH)) {
-      fs.rmdirSync(TEST_EXTRACTED_PATH, { recursive: true });
-    }
+    rimraf.sync(TEST_DUMP_PATH);
+    rimraf.sync(TEST_EXTRACTED_PATH);
   });
 
   it("can create database dump", async () => {
@@ -63,8 +60,8 @@ describe("CLI dump and load commands", () => {
     expect(fs.existsSync(TEST_EXTRACTED_PATH)).toBeTruthy();
 
     const files = [
-      "migrations/20200722202250-table_1.js",
-      "migrations/20200722202250-table_2.js",
+      "migrations/20200722182250-table_1.js",
+      "migrations/20200722182250-table_2.js",
       "data/table_2.jsonl",
     ];
 
@@ -79,13 +76,11 @@ describe("CLI dump and load commands", () => {
     await knex.schema.dropTable("table_1");
     await knex.schema.dropTable("table_2");
 
-    const lib = new Lib({ knex });
-
-    expect(await lib.listTables()).toMatchObject([]);
+    expect(await listTables(knex)).toMatchObject([]);
 
     await runCli(`dump load ${getKnexUri(knex)} ${TEST_DUMP_PATH}`);
 
-    expect(await lib.listTables()).toMatchObject([
+    expect(await listTables(knex)).toMatchObject([
       { table: "dump_knex_migrations" },
       { table: "dump_knex_migrations_lock" },
       { table: "table_1" },
@@ -93,8 +88,8 @@ describe("CLI dump and load commands", () => {
     ]);
 
     expect(await knex("dump_knex_migrations")).toMatchObject([
-      { id: 1, batch: 1, name: "20200722202250-table_1.js" },
-      { id: 2, batch: 1, name: "20200722202250-table_2.js" },
+      { id: 1, batch: 1, name: "20200722182250-table_1.js" },
+      { id: 2, batch: 1, name: "20200722182250-table_2.js" },
     ]);
     expect(await knex("dump_knex_migrations_lock")).toMatchObject([
       { index: 1, is_locked: 0 },
@@ -116,7 +111,5 @@ describe("CLI dump and load commands", () => {
         updated_at: TEST_DATETIME_2,
       },
     ]);
-
-    await lib.destroy();
   });
 });

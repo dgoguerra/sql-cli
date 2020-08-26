@@ -7,7 +7,7 @@ const formatCol = (str) => chalk.underline(str);
 
 const cleanValue = (val) => {
   if (val === null || val === undefined) {
-    return null;
+    return "";
   }
   if (typeof val === "string") {
     // Clean control characters from string. Avoids table package error:
@@ -27,23 +27,15 @@ module.exports = (
   rowObjs,
   {
     headers = Object.keys(rowObjs[0]),
-    format = (val, { index }) => (index % 2 ? formatEven : formatOdd)(val),
+    format = (val, ctx) => (ctx.index % 2 ? formatEven : formatOdd)(val),
   } = {}
 ) => {
   const rows = rowObjs.map((rowObj, index) => {
     // extract row values with the headers order
     const row = _.at(rowObj, headers);
-    return row.map((val, valIndex) => {
-      let cell = format(cleanValue(val), {
-        col: headers[valIndex],
-        row: rowObj,
-        index,
-      });
-      if (cell === null) {
-        cell = "";
-      }
-      return cell;
-    });
+    return row.map((val, valIndex) =>
+      format(cleanValue(val), { col: headers[valIndex], row: rowObj, index })
+    );
   });
 
   // Add the headers names to the start of the array
