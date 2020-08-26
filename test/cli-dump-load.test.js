@@ -1,5 +1,6 @@
 const fs = require("fs");
 const tar = require("tar");
+const rimraf = require("rimraf");
 const { runCli, getTestKnex, getKnexUri } = require("./utils");
 const { listTables } = require("../src/knexUtils");
 
@@ -42,12 +43,8 @@ describe("CLI dump and load commands", () => {
       },
     ]);
 
-    if (fs.existsSync(TEST_DUMP_PATH)) {
-      fs.unlinkSync(TEST_DUMP_PATH);
-    }
-    if (fs.existsSync(TEST_EXTRACTED_PATH)) {
-      fs.rmdirSync(TEST_EXTRACTED_PATH, { recursive: true });
-    }
+    rimraf.sync(TEST_DUMP_PATH);
+    rimraf.sync(TEST_EXTRACTED_PATH);
   });
 
   it("can create database dump", async () => {

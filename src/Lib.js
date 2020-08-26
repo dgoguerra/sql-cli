@@ -4,6 +4,7 @@ const _ = require("lodash");
 const tar = require("tar");
 const Knex = require("knex");
 const split = require("split2");
+const rimraf = require("rimraf");
 const getPort = require("get-port");
 const through = require("through2");
 const prettier = require("prettier");
@@ -97,7 +98,7 @@ class Lib {
     const dumpName = name || this.buildConnSlug("dump");
     const dumpDir = `${process.env.PWD}/${dumpName}`;
 
-    fs.rmdirSync(dumpDir, { recursive: true });
+    rimraf.sync(dumpDir);
     fs.mkdirSync(`${dumpDir}/data`, { recursive: true });
     fs.mkdirSync(`${dumpDir}/migrations`, { recursive: true });
 
@@ -227,7 +228,8 @@ class Lib {
 
     const tarballPath = `${dumpDir}.tgz`;
     await tar.create({ gzip: true, file: tarballPath }, [dumpName]);
-    fs.rmdirSync(dumpDir, { recursive: true });
+
+    rimraf.sync(dumpDir);
 
     return tarballPath;
   }
@@ -265,7 +267,7 @@ class Lib {
       await streamInsert(this.knex, table, stream);
     }
 
-    fs.rmdirSync(extractedPath, { recursive: true });
+    rimraf.sync(extractedPath);
   }
 
   buildConnSlug(prefix = "") {
