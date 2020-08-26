@@ -1,17 +1,16 @@
 #!/usr/bin/env bash
-set -exo pipefail
+set -x
 
-# Setup testing databases
+# Setup testing databases, wait for them to be available
 docker-compose up --build --detach
+docker-compose run wait-all | grep -v "connection refused"
 
-# Wait for all databases to be available
-docker-compose run wait-all
-
-# Force GMT +00:00 timezone for the NodeJS process
+# Run tests, forcing timezone to GMT +00:00
 export TZ=UTC
-
-# Run tests
 jest $@
+jestExitCode="$?"
 
 # Cleanup containers
 docker-compose down
+
+exit "$jestExitCode"
