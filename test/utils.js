@@ -5,7 +5,7 @@ const Knex = require("knex");
 
 const TEST_DB_DIR = `${process.env.PWD}/.tmp`;
 const TEST_DB_FILE = `${TEST_DB_DIR}/test-${process.env.JEST_WORKER_ID}.db`;
-const TEST_CONF_DIR = os.tmpdir();
+const TEST_CONF_DIR = `${os.tmpdir()}/test-${process.env.JEST_WORKER_ID}`;
 
 const runCli = (args) =>
   new Promise((resolve, reject) => {

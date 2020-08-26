@@ -1,0 +1,72 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`CLI test: mysql2 can create conn aliases 1`] = `
+"alias  conn                                     
+alias1 mysql://app:secret@127.0.0.1:1234/dbname 
+alias2 sqlite3:///path/to/file.db               
+
+"
+`;
+
+exports[`CLI test: mysql2 can delete conn aliases 1`] = `
+"alias  conn                       
+alias2 sqlite3:///path/to/file.db 
+
+"
+`;
+
+exports[`CLI test: mysql2 can diff schemas 1`] = `
+"Diff of database schemas:
+
+No tables changes
+
+"
+`;
+
+exports[`CLI test: mysql2 can diff tables 1`] = `
+"Diff of tables schema
+
+column  type                   
+field_1 int nullable → decimal 
+
+4x similar, 1x changed
+
+Diff of tables content (first 100 rows)
+
+id field_1    updated_at                                          
+1  12 → 12.30 [null] → 2020-07-24T18:34:00.000Z                   
+2  30 → 30.45 2020-07-24T18:34:00.000Z → 2020-07-24T19:25:00.000Z 
+
+"
+`;
+
+exports[`CLI test: mysql2 can list tables 1`] = `
+"table   rows bytes   
+table_1 2    16.4 kB 
+table_2 2    16.4 kB 
+table_3 0    16.4 kB 
+
+(49.2 kB in 3 tables)
+"
+`;
+
+exports[`CLI test: mysql2 can show table 1`] = `
+"column     type        nullable 
+id         int         false    
+field_1    decimal     false    
+field_2    text(65535) true     
+created_at datetime    true     
+updated_at datetime    true     
+
+"
+`;
+
+exports[`CLI test: mysql2 can use a created alias 1`] = `
+"table   rows bytes   
+table_1 2    16.4 kB 
+table_2 2    16.4 kB 
+table_3 0    16.4 kB 
+
+(49.2 kB in 3 tables)
+"
+`;

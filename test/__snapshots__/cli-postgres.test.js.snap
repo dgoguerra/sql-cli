@@ -1,0 +1,72 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`CLI test: pg can create conn aliases 1`] = `
+"alias  conn                                     
+alias1 mysql://app:secret@127.0.0.1:1234/dbname 
+alias2 sqlite3:///path/to/file.db               
+
+"
+`;
+
+exports[`CLI test: pg can delete conn aliases 1`] = `
+"alias  conn                       
+alias2 sqlite3:///path/to/file.db 
+
+"
+`;
+
+exports[`CLI test: pg can diff schemas 1`] = `
+"Diff of database schemas:
+
+No tables changes
+
+"
+`;
+
+exports[`CLI test: pg can diff tables 1`] = `
+"Diff of tables schema
+
+column  type                       
+field_1 integer nullable → numeric 
+
+4x similar, 1x changed
+
+Diff of tables content (first 100 rows)
+
+id field_1    updated_at                                          
+1  12 → 12.30 [null] → 2020-07-24T18:34:00.000Z                   
+2  30 → 30.45 2020-07-24T18:34:00.000Z → 2020-07-24T19:25:00.000Z 
+
+"
+`;
+
+exports[`CLI test: pg can list tables 1`] = `
+"table   rows bytes 
+table_1 0          
+table_2 0          
+table_3 0          
+
+(0 B in 3 tables)
+"
+`;
+
+exports[`CLI test: pg can show table 1`] = `
+"column     type                     nullable 
+id         integer                  false    
+field_1    numeric                  false    
+field_2    text                     true     
+created_at timestamp with time zone true     
+updated_at timestamp with time zone true     
+
+"
+`;
+
+exports[`CLI test: pg can use a created alias 1`] = `
+"table   rows bytes 
+table_1 0          
+table_2 0          
+table_3 0          
+
+(0 B in 3 tables)
+"
+`;
