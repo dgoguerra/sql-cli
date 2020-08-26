@@ -1,6 +1,5 @@
 const _ = require("lodash");
 const chalk = require("chalk");
-const prettyBytes = require("pretty-bytes");
 
 const colHash = (col) => `${col.fullType}:${col.nullable}`;
 
@@ -94,8 +93,8 @@ const diffSchemas = (tablesBefore, tablesAfter) => {
 
       const tableInfo = {
         table: tableKey,
-        bytesBefore: before && prettyBytes(before.bytes || 0),
-        bytesAfter: after && prettyBytes(after.bytes || 0),
+        bytesBefore: before && before.prettyBytes,
+        bytesAfter: after && after.prettyBytes,
         rowsBefore: before && before.rows,
         rowsAfter: after && after.rows,
       };

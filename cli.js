@@ -145,10 +145,10 @@ class CliApp {
     const lib = await this.initLib(argv.conn, argv);
     const tables = await lib.listTables();
 
-    const formatted = _.sortBy(tables, (row) => -row.bytes).map((row) => ({
-      ...row,
-      bytes: row.bytes ? prettyBytes(row.bytes) : "",
-    }));
+    const formatted = _.sortBy(tables, [
+      (row) => -row.bytes,
+      (row) => row.table,
+    ]).map((row) => ({ ...row, bytes: row.prettyBytes }));
 
     console.log(table(formatted, { headers: ["table", "rows", "bytes"] }));
 
