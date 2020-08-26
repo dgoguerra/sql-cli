@@ -93,7 +93,8 @@ class Lib {
     return listIndexes(this.knex, table);
   }
 
-  async createDump(dumpName = this.buildConnSlug("dump")) {
+  async createDump(name) {
+    const dumpName = name || this.buildConnSlug("dump");
     const dumpDir = `${process.env.PWD}/${dumpName}`;
 
     fs.rmdirSync(dumpDir, { recursive: true });

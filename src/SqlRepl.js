@@ -94,13 +94,14 @@ class SqlRepl {
         : `Error: ${err.message}`;
     }
 
-    const rows = result.length
-      ? result[0].length
+    // Knex clients return different formats as result of knex.raw(query)
+    const rows = Array.isArray(result)
+      ? Array.isArray(result[0])
         ? result[0]
         : result
       : result.rows;
 
-    if (!rows.length) {
+    if (!rows || !rows.length) {
       return chalk.grey("(no results)");
     }
 
