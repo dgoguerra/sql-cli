@@ -351,12 +351,18 @@ class CliApp {
   }
 
   async openGui(argv) {
-    let connUri = this.stringifyConn(argv.conn, argv);
+    const toTablePlusConnUri = (connUri) => {
+      // Convert the conn uri protocol to one understood by TablePlus
+      const tablePlusProtos = {
+        mssql: "sqlserver",
+        pg: "postgres",
+        mysql2: "mysql",
+      };
+      const [protocol, ...rest] = connUri.split("://");
+      return [tablePlusProtos[protocol] || protocol, ...rest].join("://");
+    };
 
-    // TablePlus understands "sqlserver" protocol for mssql
-    if (connUri.startsWith("mssql://")) {
-      connUri = connUri.replace("mssql://", "sqlserver://");
-    }
+    const connUri = toTablePlusConnUri(this.stringifyConn(argv.conn, argv));
 
     // Remove password from output
     console.log(`Opening ${connUri.replace(/:([^\/]+?)@/, "@")} ...`);
