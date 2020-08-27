@@ -50,6 +50,38 @@ table_3 0    0 B
 "
 `;
 
+exports[`CLI test: mssql can load database dump 1`] = `
+"column     type         nullable 
+id         int          false    
+field_1    int          true     
+field_2    nvarchar(-1) true     
+created_at datetime2    true     
+updated_at datetime2    true     
+
+"
+`;
+
+exports[`CLI test: mssql can load database dump 2`] = `
+"column     type         nullable 
+id         int          false    
+field_1    decimal      false    
+field_2    nvarchar(-1) true     
+created_at datetime2    true     
+updated_at datetime2    true     
+
+"
+`;
+
+exports[`CLI test: mssql can load database dump 3`] = `
+"column     type      nullable 
+idField    bigint    false    
+field_1    bigint    true     
+created_at datetime2 true     
+updated_at datetime2 true     
+
+"
+`;
+
 exports[`CLI test: mssql can show table 1`] = `
 "column     type         nullable 
 id         int          false    

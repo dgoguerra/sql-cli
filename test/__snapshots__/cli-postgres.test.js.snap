@@ -50,6 +50,38 @@ table_3 0
 "
 `;
 
+exports[`CLI test: pg can load database dump 1`] = `
+"column     type                     nullable 
+id         integer                  false    
+field_1    integer                  true     
+field_2    text                     true     
+created_at timestamp with time zone true     
+updated_at timestamp with time zone true     
+
+"
+`;
+
+exports[`CLI test: pg can load database dump 2`] = `
+"column     type                     nullable 
+id         integer                  false    
+field_1    numeric                  false    
+field_2    text                     true     
+created_at timestamp with time zone true     
+updated_at timestamp with time zone true     
+
+"
+`;
+
+exports[`CLI test: pg can load database dump 3`] = `
+"column     type                     nullable 
+idField    bigint                   false    
+field_1    bigint                   true     
+created_at timestamp with time zone true     
+updated_at timestamp with time zone true     
+
+"
+`;
+
 exports[`CLI test: pg can show table 1`] = `
 "column     type                     nullable 
 id         integer                  false    

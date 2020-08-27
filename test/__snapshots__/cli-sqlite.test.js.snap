@@ -50,6 +50,38 @@ table_3
 "
 `;
 
+exports[`CLI test: sqlite3 can load database dump 1`] = `
+"column     type     nullable 
+id         integer  false    
+field_1    integer  true     
+field_2    text     true     
+created_at datetime true     
+updated_at datetime true     
+
+"
+`;
+
+exports[`CLI test: sqlite3 can load database dump 2`] = `
+"column     type     nullable 
+id         integer  false    
+field_1    float    false    
+field_2    text     true     
+created_at datetime true     
+updated_at datetime true     
+
+"
+`;
+
+exports[`CLI test: sqlite3 can load database dump 3`] = `
+"column     type     nullable 
+idField    integer  false    
+field_1    bigint   true     
+created_at datetime true     
+updated_at datetime true     
+
+"
+`;
+
 exports[`CLI test: sqlite3 can show table 1`] = `
 "column     type     nullable 
 id         integer  false    

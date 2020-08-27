@@ -151,6 +151,16 @@ const cliTestSuite = (name, knexFactory) => {
         { index: 1, is_locked: 0 },
       ]);
 
+      expect(
+        await runCli(`show ${getKnexUri(knex)}/table_1`)
+      ).toMatchSnapshot();
+      expect(
+        await runCli(`show ${getKnexUri(knex)}/table_2`)
+      ).toMatchSnapshot();
+      expect(
+        await runCli(`show ${getKnexUri(knex)}/table_3`)
+      ).toMatchSnapshot();
+
       expect(await getTable(knex, "table_1")).toMatchObject(
         TEST_TABLE1_CONTENT
       );
