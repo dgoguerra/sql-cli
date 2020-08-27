@@ -1,11 +1,45 @@
+const fs = require("fs");
+const tar = require("tar");
+const rimraf = require("rimraf");
 const { runCli, getKnexUri } = require("./utils");
+const { listTables } = require("../src/knexUtils");
 
 const TEST_DATETIME_1 = "2020-07-24 18:34:00";
 const TEST_DATETIME_2 = "2020-07-24 19:25:00";
+const TEST_DUMP_NAME = `.tmp/dump-test-${process.env.JEST_WORKER_ID}`;
+const TEST_DUMP_PATH = `${process.env.PWD}/${TEST_DUMP_NAME}.tgz`;
+const TEST_EXTRACTED_PATH = `${process.env.PWD}/${TEST_DUMP_NAME}`;
+
+const TEST_TABLE1_CONTENT = [
+  {
+    field_1: 12,
+    field_2: "foo",
+    created_at: TEST_DATETIME_1,
+  },
+  {
+    field_1: 30,
+    field_2: "bar",
+    created_at: TEST_DATETIME_1,
+    updated_at: TEST_DATETIME_1,
+  },
+];
+
+const TEST_TABLE2_CONTENT = [
+  {
+    field_1: 12.3,
+    field_2: "foo",
+    created_at: TEST_DATETIME_1,
+    updated_at: TEST_DATETIME_1,
+  },
+  {
+    field_1: 30.45,
+    field_2: "bar",
+    created_at: TEST_DATETIME_1,
+    updated_at: TEST_DATETIME_2,
+  },
+];
 
 const cliTestSuite = (name, knexFactory) => {
-  jest.setTimeout(15 * 1000);
-
   describe(`CLI test: ${name}`, () => {
     let knex;
     let connUri;
@@ -13,7 +47,11 @@ const cliTestSuite = (name, knexFactory) => {
     beforeAll(async () => {
       knex = await knexFactory();
       connUri = getKnexUri(knex);
+
       await migrateTestTables(knex);
+
+      rimraf.sync(TEST_DUMP_PATH);
+      rimraf.sync(TEST_EXTRACTED_PATH);
     });
 
     afterAll(async () => {
@@ -60,7 +98,101 @@ const cliTestSuite = (name, knexFactory) => {
 
       await runCli("alias rm alias2");
     });
+
+    it("can create database dump", async () => {
+      expect(fs.existsSync(TEST_DUMP_PATH)).toBeFalsy();
+      await runCli(`dump create ${getKnexUri(knex)} ${TEST_DUMP_NAME}`);
+      expect(fs.existsSync(TEST_DUMP_PATH)).toBeTruthy();
+    });
+
+    it("database dump contents are valid", async () => {
+      expect(fs.existsSync(TEST_EXTRACTED_PATH)).toBeFalsy();
+
+      await tar.extract({ file: TEST_DUMP_PATH });
+      expect(fs.existsSync(TEST_EXTRACTED_PATH)).toBeTruthy();
+
+      const files = [
+        "migrations/20200722182250-table_1.js",
+        "migrations/20200722182250-table_2.js",
+        "migrations/20200722182250-table_3.js",
+        "data/table_1.jsonl",
+        "data/table_2.jsonl",
+      ];
+      files.forEach((file) => {
+        const filePath = `${TEST_EXTRACTED_PATH}/${file}`;
+        expect(fs.existsSync(filePath)).toBeTruthy();
+        expect(fs.readFileSync(filePath).toString()).toMatchSnapshot();
+      });
+    });
+
+    it("can load database dump", async () => {
+      await knex.schema.dropTable("table_1");
+      await knex.schema.dropTable("table_2");
+      await knex.schema.dropTable("table_3");
+
+      expect(await listTables(knex)).toMatchObject([]);
+
+      await runCli(`dump load ${getKnexUri(knex)} ${TEST_DUMP_PATH}`);
+
+      expect(await listTables(knex)).toMatchObject([
+        { table: "dump_knex_migrations" },
+        { table: "dump_knex_migrations_lock" },
+        { table: "table_1" },
+        { table: "table_2" },
+        { table: "table_3" },
+      ]);
+
+      expect(await knex("dump_knex_migrations")).toMatchObject([
+        { id: 1, batch: 1, name: "20200722182250-table_1.js" },
+        { id: 2, batch: 1, name: "20200722182250-table_2.js" },
+        { id: 3, batch: 1, name: "20200722182250-table_3.js" },
+      ]);
+      expect(await knex("dump_knex_migrations_lock")).toMatchObject([
+        { index: 1, is_locked: 0 },
+      ]);
+
+      expect(await getTable(knex, "table_1")).toMatchObject(
+        TEST_TABLE1_CONTENT
+      );
+      expect(await getTable(knex, "table_2")).toMatchObject(
+        TEST_TABLE2_CONTENT
+      );
+      expect(await getTable(knex, "table_3")).toMatchObject([]);
+    });
   });
+};
+
+const getTable = (knex, table) => {
+  // Convert a date to format YYYY-MM-DD HH:mm:ss
+  const toDateString = (str) => {
+    if (!str) {
+      return str;
+    }
+    return new Date(str)
+      .toISOString()
+      .replace("T", " ")
+      .replace(/\.\d+Z$/, "");
+  };
+
+  const isNumeric = (num) => {
+    if (typeof num === "string") {
+      num = Number(num);
+    }
+    return typeof num === "number" && Number.isFinite(num);
+  };
+
+  return knex(table).then((rows) =>
+    rows.map((row) => {
+      for (const key in row) {
+        if (isNumeric(row[key])) {
+          row[key] = Number(row[key]);
+        }
+      }
+      row.created_at = toDateString(row.created_at);
+      row.updated_at = toDateString(row.updated_at);
+      return row;
+    })
+  );
 };
 
 const migrateTestTables = async (knex) => {
@@ -81,33 +213,8 @@ const migrateTestTables = async (knex) => {
     t.bigInteger("field_1");
     t.timestamps();
   });
-  await knex("table_1").insert([
-    {
-      field_1: 12,
-      field_2: "foo",
-      created_at: TEST_DATETIME_1,
-    },
-    {
-      field_1: 30,
-      field_2: "bar",
-      created_at: TEST_DATETIME_1,
-      updated_at: TEST_DATETIME_1,
-    },
-  ]);
-  await knex("table_2").insert([
-    {
-      field_1: 12.3,
-      field_2: "foo",
-      created_at: TEST_DATETIME_1,
-      updated_at: TEST_DATETIME_1,
-    },
-    {
-      field_1: 30.45,
-      field_2: "bar",
-      created_at: TEST_DATETIME_1,
-      updated_at: TEST_DATETIME_2,
-    },
-  ]);
+  await knex("table_1").insert(TEST_TABLE1_CONTENT);
+  await knex("table_2").insert(TEST_TABLE2_CONTENT);
 };
 
 module.exports = { cliTestSuite, migrateTestTables };

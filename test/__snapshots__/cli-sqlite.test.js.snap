@@ -70,3 +70,62 @@ table_3
 (0 B in 3 tables)
 "
 `;
+
+exports[`CLI test: sqlite3 database dump contents are valid 1`] = `
+"module.exports.up = async (knex) => {
+  await knex.schema.createTable(\\"table_1\\", (t) => {
+    t.increments(\\"id\\");
+    t.integer(\\"field_1\\");
+    t.text(\\"field_2\\");
+    t.dateTime(\\"created_at\\");
+    t.dateTime(\\"updated_at\\");
+  });
+};
+module.exports.down = async (knex) => {
+  await knex.schema.dropTableIfExists(\\"table_1\\");
+};
+"
+`;
+
+exports[`CLI test: sqlite3 database dump contents are valid 2`] = `
+"module.exports.up = async (knex) => {
+  await knex.schema.createTable(\\"table_2\\", (t) => {
+    t.increments(\\"id\\");
+    t.float(\\"field_1\\").notNullable();
+    t.text(\\"field_2\\").defaultTo(\\"default text\\");
+    t.dateTime(\\"created_at\\");
+    t.dateTime(\\"updated_at\\");
+  });
+};
+module.exports.down = async (knex) => {
+  await knex.schema.dropTableIfExists(\\"table_2\\");
+};
+"
+`;
+
+exports[`CLI test: sqlite3 database dump contents are valid 3`] = `
+"module.exports.up = async (knex) => {
+  await knex.schema.createTable(\\"table_3\\", (t) => {
+    t.increments(\\"idField\\");
+    t.bigInteger(\\"field_1\\");
+    t.dateTime(\\"created_at\\");
+    t.dateTime(\\"updated_at\\");
+  });
+};
+module.exports.down = async (knex) => {
+  await knex.schema.dropTableIfExists(\\"table_3\\");
+};
+"
+`;
+
+exports[`CLI test: sqlite3 database dump contents are valid 4`] = `
+"{\\"id\\":1,\\"field_1\\":12,\\"field_2\\":\\"foo\\",\\"created_at\\":\\"2020-07-24 18:34:00\\"}
+{\\"id\\":2,\\"field_1\\":30,\\"field_2\\":\\"bar\\",\\"created_at\\":\\"2020-07-24 18:34:00\\",\\"updated_at\\":\\"2020-07-24 18:34:00\\"}
+"
+`;
+
+exports[`CLI test: sqlite3 database dump contents are valid 5`] = `
+"{\\"id\\":1,\\"field_1\\":12.3,\\"field_2\\":\\"foo\\",\\"created_at\\":\\"2020-07-24 18:34:00\\",\\"updated_at\\":\\"2020-07-24 18:34:00\\"}
+{\\"id\\":2,\\"field_1\\":30.45,\\"field_2\\":\\"bar\\",\\"created_at\\":\\"2020-07-24 18:34:00\\",\\"updated_at\\":\\"2020-07-24 19:25:00\\"}
+"
+`;
