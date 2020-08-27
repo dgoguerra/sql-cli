@@ -1,0 +1,165 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`CLI test: pg can create conn aliases 1`] = `
+"alias  conn                                     
+alias1 mysql://app:secret@127.0.0.1:1234/dbname 
+alias2 sqlite3:///path/to/file.db               
+
+"
+`;
+
+exports[`CLI test: pg can delete conn aliases 1`] = `
+"alias  conn                       
+alias2 sqlite3:///path/to/file.db 
+
+"
+`;
+
+exports[`CLI test: pg can diff schemas 1`] = `
+"Diff of database schemas:
+
+No tables changes
+
+"
+`;
+
+exports[`CLI test: pg can diff tables 1`] = `
+"Diff of tables schema
+
+column  type                       
+field_1 integer nullable → numeric 
+
+4x similar, 1x changed
+
+Diff of tables content (first 100 rows)
+
+id field_1    updated_at                                          
+1  12 → 12.30 [null] → 2020-07-24T18:34:00.000Z                   
+2  30 → 30.45 2020-07-24T18:34:00.000Z → 2020-07-24T19:25:00.000Z 
+
+"
+`;
+
+exports[`CLI test: pg can list tables 1`] = `
+"table   rows bytes 
+table_1 0          
+table_2 0          
+table_3 0          
+
+(0 B in 3 tables)
+"
+`;
+
+exports[`CLI test: pg can load database dump 1`] = `
+"column     type                     nullable 
+id         integer                  false    
+field_1    integer                  true     
+field_2    text                     true     
+created_at timestamp with time zone true     
+updated_at timestamp with time zone true     
+
+"
+`;
+
+exports[`CLI test: pg can load database dump 2`] = `
+"column     type                     nullable 
+id         integer                  false    
+field_1    numeric                  false    
+field_2    text                     true     
+created_at timestamp with time zone true     
+updated_at timestamp with time zone true     
+
+"
+`;
+
+exports[`CLI test: pg can load database dump 3`] = `
+"column     type                     nullable 
+idField    bigint                   false    
+field_1    bigint                   true     
+created_at timestamp with time zone true     
+updated_at timestamp with time zone true     
+
+"
+`;
+
+exports[`CLI test: pg can show table 1`] = `
+"column     type                     nullable 
+id         integer                  false    
+field_1    numeric                  false    
+field_2    text                     true     
+created_at timestamp with time zone true     
+updated_at timestamp with time zone true     
+
+"
+`;
+
+exports[`CLI test: pg can use a created alias 1`] = `
+"table   rows bytes 
+table_1 0          
+table_2 0          
+table_3 0          
+
+(0 B in 3 tables)
+"
+`;
+
+exports[`CLI test: pg database dump contents are valid 1`] = `
+"module.exports.up = async (knex) => {
+  await knex.schema.createTable(\\"table_1\\", (t) => {
+    t.increments(\\"id\\").defaultTo(\\"nextvaltable_1_id_seq::regclass\\");
+    t.integer(\\"field_1\\");
+    t.text(\\"field_2\\");
+    t.timestamp(\\"created_at\\");
+    t.timestamp(\\"updated_at\\");
+  });
+};
+module.exports.down = async (knex) => {
+  await knex.schema.dropTableIfExists(\\"table_1\\");
+};
+"
+`;
+
+exports[`CLI test: pg database dump contents are valid 2`] = `
+"module.exports.up = async (knex) => {
+  await knex.schema.createTable(\\"table_2\\", (t) => {
+    t.increments(\\"id\\").defaultTo(\\"nextvaltable_2_id_seq::regclass\\");
+    t.decimal(\\"field_1\\").notNullable();
+    t.text(\\"field_2\\").defaultTo(\\"default text::text\\");
+    t.timestamp(\\"created_at\\");
+    t.timestamp(\\"updated_at\\");
+  });
+};
+module.exports.down = async (knex) => {
+  await knex.schema.dropTableIfExists(\\"table_2\\");
+};
+"
+`;
+
+exports[`CLI test: pg database dump contents are valid 3`] = `
+"module.exports.up = async (knex) => {
+  await knex.schema.createTable(\\"table_3\\", (t) => {
+    t.bigIncrements(\\"idField\\").defaultTo(
+      \\"nextvaltable_3_idField_seq::regclass\\"
+    );
+    t.bigInteger(\\"field_1\\");
+    t.timestamp(\\"created_at\\");
+    t.timestamp(\\"updated_at\\");
+  });
+};
+module.exports.down = async (knex) => {
+  await knex.schema.dropTableIfExists(\\"table_3\\");
+};
+"
+`;
+
+exports[`CLI test: pg database dump contents are valid 4`] = `
+"{\\"id\\":1,\\"field_1\\":12,\\"field_2\\":\\"foo\\",\\"created_at\\":\\"2020-07-24T18:34:00.000Z\\"}
+{\\"id\\":2,\\"field_1\\":30,\\"field_2\\":\\"bar\\",\\"created_at\\":\\"2020-07-24T18:34:00.000Z\\",\\"updated_at\\":\\"2020-07-24T18:34:00.000Z\\"}
+"
+`;
+
+exports[`CLI test: pg database dump contents are valid 5`] = `
+"{\\"id\\":1,\\"field_1\\":\\"12.30\\",\\"field_2\\":\\"foo\\",\\"created_at\\":\\"2020-07-24T18:34:00.000Z\\",\\"updated_at\\":\\"2020-07-24T18:34:00.000Z\\"}
+{\\"id\\":2,\\"field_1\\":\\"30.45\\",\\"field_2\\":\\"bar\\",\\"created_at\\":\\"2020-07-24T18:34:00.000Z\\",\\"updated_at\\":\\"2020-07-24T19:25:00.000Z\\"}
+"
+`;

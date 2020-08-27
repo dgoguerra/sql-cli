@@ -5,9 +5,9 @@ const Knex = require("knex");
 
 const TEST_DB_DIR = `${process.env.PWD}/.tmp`;
 const TEST_DB_FILE = `${TEST_DB_DIR}/test-${process.env.JEST_WORKER_ID}.db`;
-const TEST_CONF_DIR = os.tmpdir();
+const TEST_CONF_DIR = `${os.tmpdir()}/test-${process.env.JEST_WORKER_ID}`;
 
-const runCli = (args) =>
+const runCli = (args, { debug = false } = {}) =>
   new Promise((resolve, reject) => {
     let stdout = "";
     let stderr = "";
@@ -23,11 +23,16 @@ const runCli = (args) =>
         FORCE_COLOR: 0,
       },
     });
+    if (debug) {
+      console.log(`Running: ${process.env.PWD}/cli.js ${args}`);
+    }
     proc.stdout.on("data", (data) => {
+      debug && console.log(`stdout: ${data}`);
       all += data;
       stdout += data;
     });
     proc.stderr.on("data", (data) => {
+      debug && console.log(`stderr: ${data}`);
       all += data;
       stderr += data;
     });

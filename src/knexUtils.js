@@ -55,6 +55,7 @@ const _columnsInfo = (knex, where = {}) => {
       column: "column_name",
       nullable: "is_nullable",
       type: "data_type",
+      defaultValue: "column_default",
       maxLength: "character_maximum_length",
     })
     .then((rows) => {
@@ -63,6 +64,7 @@ const _columnsInfo = (knex, where = {}) => {
         columns[row.column] = {
           nullable: row.nullable === "YES",
           type: row.type,
+          defaultValue: row.defaultValue,
           maxLength: row.maxLength,
         };
       });
@@ -225,9 +227,11 @@ const toKnexType = (type, maxLength = null) => {
     tinyint: "boolean",
     int: "integer",
     bigint: "bigInteger",
-    datetime: "dateTime",
-    datetime2: "dateTime", // mssql
+    datetime: "timestamp",
+    datetime2: "timestamp", // mssql
     money: "decimal", // mssql
+    "timestamp with time zone": "timestamp", // postgres
+    numeric: "decimal", // postgres
   };
   return TYPES_MAP[fullType] || TYPES_MAP[type] || type;
 };
@@ -258,10 +262,12 @@ const streamInsertGeneric = async (knex, table, stream) => {
   await runPipeline(
     stream,
     chunk(),
-    writer.obj(async (rows, enc, next) => {
-      await knex(table).insert(rows);
-      next();
-    })
+    writer.obj((rows, enc, next) =>
+      knex(table)
+        .insert(rows)
+        .then(() => next())
+        .catch((err) => next(err))
+    )
   );
 };
 
@@ -272,10 +278,11 @@ const streamInsertMssql = async (knex, table, stream) => {
   await runPipeline(
     stream,
     chunk(),
-    writer.obj(async (rows, enc, next) => {
-      await bulkMssqlInsert(knex, table, rows, { columns, primaryKey });
-      next();
-    })
+    writer.obj((rows, enc, next) =>
+      bulkMssqlInsert(knex, table, rows, { columns, primaryKey })
+        .then(() => next())
+        .catch((err) => next(err))
+    )
   );
 };
 
