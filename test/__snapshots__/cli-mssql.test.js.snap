@@ -77,8 +77,8 @@ exports[`CLI test: mssql database dump contents are valid 1`] = `
     t.increments(\\"id\\");
     t.integer(\\"field_1\\");
     t.text(\\"field_2\\");
-    t.dateTime(\\"created_at\\");
-    t.dateTime(\\"updated_at\\");
+    t.timestamp(\\"created_at\\");
+    t.timestamp(\\"updated_at\\");
   });
 };
 module.exports.down = async (knex) => {
@@ -93,8 +93,8 @@ exports[`CLI test: mssql database dump contents are valid 2`] = `
     t.increments(\\"id\\");
     t.decimal(\\"field_1\\").notNullable();
     t.text(\\"field_2\\").defaultTo(\\"default text\\");
-    t.dateTime(\\"created_at\\");
-    t.dateTime(\\"updated_at\\");
+    t.timestamp(\\"created_at\\");
+    t.timestamp(\\"updated_at\\");
   });
 };
 module.exports.down = async (knex) => {
@@ -108,8 +108,8 @@ exports[`CLI test: mssql database dump contents are valid 3`] = `
   await knex.schema.createTable(\\"table_3\\", (t) => {
     t.bigIncrements(\\"idField\\");
     t.bigInteger(\\"field_1\\");
-    t.dateTime(\\"created_at\\");
-    t.dateTime(\\"updated_at\\");
+    t.timestamp(\\"created_at\\");
+    t.timestamp(\\"updated_at\\");
   });
 };
 module.exports.down = async (knex) => {

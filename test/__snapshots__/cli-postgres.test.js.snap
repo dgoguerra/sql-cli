@@ -77,8 +77,8 @@ exports[`CLI test: pg database dump contents are valid 1`] = `
     t.increments(\\"id\\").defaultTo(\\"nextvaltable_1_id_seq::regclass\\");
     t.integer(\\"field_1\\");
     t.text(\\"field_2\\");
-    t.dateTime(\\"created_at\\");
-    t.dateTime(\\"updated_at\\");
+    t.timestamp(\\"created_at\\");
+    t.timestamp(\\"updated_at\\");
   });
 };
 module.exports.down = async (knex) => {
@@ -93,8 +93,8 @@ exports[`CLI test: pg database dump contents are valid 2`] = `
     t.increments(\\"id\\").defaultTo(\\"nextvaltable_2_id_seq::regclass\\");
     t.decimal(\\"field_1\\").notNullable();
     t.text(\\"field_2\\").defaultTo(\\"default text::text\\");
-    t.dateTime(\\"created_at\\");
-    t.dateTime(\\"updated_at\\");
+    t.timestamp(\\"created_at\\");
+    t.timestamp(\\"updated_at\\");
   });
 };
 module.exports.down = async (knex) => {
@@ -110,8 +110,8 @@ exports[`CLI test: pg database dump contents are valid 3`] = `
       \\"nextvaltable_3_idField_seq::regclass\\"
     );
     t.bigInteger(\\"field_1\\");
-    t.dateTime(\\"created_at\\");
-    t.dateTime(\\"updated_at\\");
+    t.timestamp(\\"created_at\\");
+    t.timestamp(\\"updated_at\\");
   });
 };
 module.exports.down = async (knex) => {

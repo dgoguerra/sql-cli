@@ -227,10 +227,10 @@ const toKnexType = (type, maxLength = null) => {
     tinyint: "boolean",
     int: "integer",
     bigint: "bigInteger",
-    datetime: "dateTime",
-    datetime2: "dateTime", // mssql
+    datetime: "timestamp",
+    datetime2: "timestamp", // mssql
     money: "decimal", // mssql
-    "timestamp with time zone": "dateTime", // postgres
+    "timestamp with time zone": "timestamp", // postgres
     numeric: "decimal", // postgres
   };
   return TYPES_MAP[fullType] || TYPES_MAP[type] || type;
