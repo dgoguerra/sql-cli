@@ -230,6 +230,8 @@ const toKnexType = (type, maxLength = null) => {
     datetime: "dateTime",
     datetime2: "dateTime", // mssql
     money: "decimal", // mssql
+    "timestamp with time zone": "dateTime", // postgres
+    numeric: "decimal", // postgres
   };
   return TYPES_MAP[fullType] || TYPES_MAP[type] || type;
 };
