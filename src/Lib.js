@@ -254,12 +254,31 @@ class Lib {
       tableName: MIGRATIONS_TABLE,
     });
 
+    // Match datetime strings with the formats used by
+    // different database drivers:
+    // - 2012-01-01 00:00:00
+    // - 2012-01-01T00:00:00.000Z (ISO)
+    const regexDate = /^\d{4}-\d\d-\d\d( |T)\d\d:\d\d:\d\d/;
+
+    const formatRow = (row) => {
+      for (const key in row) {
+        if (typeof row[key] === "string" && regexDate.test(row[key])) {
+          row[key] = new Date(row[key]);
+        }
+      }
+      return row;
+    };
+
     for (const filename of fs.readdirSync(`${extractedPath}/data`)) {
       const table = filename.replace(".jsonl", "");
       const stream = fs
         .createReadStream(`${extractedPath}/data/${filename}`)
         .pipe(split())
-        .pipe(through.obj((row, enc, next) => next(null, JSON.parse(row))));
+        .pipe(
+          through.obj((row, enc, next) =>
+            next(null, formatRow(JSON.parse(row)))
+          )
+        );
 
       console.log(`Loading data to ${table} ...`);
 
