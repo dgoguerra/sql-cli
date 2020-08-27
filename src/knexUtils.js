@@ -55,6 +55,7 @@ const _columnsInfo = (knex, where = {}) => {
       column: "column_name",
       nullable: "is_nullable",
       type: "data_type",
+      defaultValue: "column_default",
       maxLength: "character_maximum_length",
     })
     .then((rows) => {
@@ -63,6 +64,7 @@ const _columnsInfo = (knex, where = {}) => {
         columns[row.column] = {
           nullable: row.nullable === "YES",
           type: row.type,
+          defaultValue: row.defaultValue,
           maxLength: row.maxLength,
         };
       });
