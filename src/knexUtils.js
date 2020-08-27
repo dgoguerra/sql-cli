@@ -260,10 +260,12 @@ const streamInsertGeneric = async (knex, table, stream) => {
   await runPipeline(
     stream,
     chunk(),
-    writer.obj(async (rows, enc, next) => {
-      await knex(table).insert(rows);
-      next();
-    })
+    writer.obj((rows, enc, next) =>
+      knex(table)
+        .insert(rows)
+        .then(() => next())
+        .catch((err) => next(err))
+    )
   );
 };
 
@@ -274,10 +276,11 @@ const streamInsertMssql = async (knex, table, stream) => {
   await runPipeline(
     stream,
     chunk(),
-    writer.obj(async (rows, enc, next) => {
-      await bulkMssqlInsert(knex, table, rows, { columns, primaryKey });
-      next();
-    })
+    writer.obj((rows, enc, next) =>
+      bulkMssqlInsert(knex, table, rows, { columns, primaryKey })
+        .then(() => next())
+        .catch((err) => next(err))
+    )
   );
 };
 
