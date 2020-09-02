@@ -119,11 +119,19 @@ const listTables = async (knex) => {
   }
 
   if (client === "Client_SQLite3") {
-    return knex("sqlite_master")
-      .where({ type: "table" })
-      .andWhereRaw("name not like 'sqlite_%'")
+    // Using dbstat virtual table. Requires sqlite3 to be compiled
+    // with SQLITE_ENABLE_DBSTAT_VTAB=1, which is already available
+    // in the precompiled binaries since v4.3 of sqlite3. See:
+    // https://github.com/mapbox/node-sqlite3/issues/1279
+    return knex("dbstat")
+      .whereRaw("name not like 'sqlite_%'")
       .orderBy("name")
-      .select({ table: "name" })
+      .select({
+        table: "name",
+        rows: knex.raw("SUM(ncell)"),
+        bytes: knex.raw("SUM(pgsize)"),
+      })
+      .groupBy("name")
       .then((rows) => formatRows(rows));
   }
 

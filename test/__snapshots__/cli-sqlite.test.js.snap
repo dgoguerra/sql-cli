@@ -41,12 +41,12 @@ id field_1    updated_at
 `;
 
 exports[`CLI test: sqlite3 can list tables 1`] = `
-"table   rows bytes 
-table_1            
-table_2            
-table_3            
+"table   rows bytes  
+table_1 2    4.1 kB 
+table_2 2    4.1 kB 
+table_3 0    4.1 kB 
 
-(0 B in 3 tables)
+(12.3 kB in 3 tables)
 "
 `;
 
@@ -94,12 +94,12 @@ updated_at datetime true
 `;
 
 exports[`CLI test: sqlite3 can use a created alias 1`] = `
-"table   rows bytes 
-table_1            
-table_2            
-table_3            
+"table   rows bytes  
+table_1 2    4.1 kB 
+table_2 2    4.1 kB 
+table_3 0    4.1 kB 
 
-(0 B in 3 tables)
+(12.3 kB in 3 tables)
 "
 `;
 
