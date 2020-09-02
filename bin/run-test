@@ -3,7 +3,7 @@ set -x
 
 # Setup testing databases, wait for them to be available
 docker-compose up --build --detach
-docker-compose run wait-all | grep -v "connection refused"
+docker-compose up wait-all | grep -v "connection refused"
 
 # Run tests, forcing timezone to GMT +00:00
 export TZ=UTC
