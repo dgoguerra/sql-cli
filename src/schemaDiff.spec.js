@@ -1,6 +1,7 @@
 // Disable chalk's coloring of outputs
 process.env.FORCE_COLOR = 0;
 
+const _ = require("lodash");
 const { diffColumns, diffSchemas } = require("./schemaDiff");
 
 // Output of knex.schema.columnInfo() to extract a table's columns
@@ -15,20 +16,14 @@ const KNEX_TABLE_2 = {
 
 describe("diffColumns()", () => {
   it("similar tables", () => {
-    expect(diffColumns(KNEX_TABLE_1, KNEX_TABLE_1)).toEqual({
+    expect(diffColumns(KNEX_TABLE_1, KNEX_TABLE_1)).toMatchObject({
       columns: [
         {
-          column: "id",
-          descAfter: "bigint",
-          descBefore: "bigint",
           displayColumn: "id",
           displayType: "bigint",
           status: "similar",
         },
         {
-          column: "name",
-          descAfter: "varchar(255) nullable",
-          descBefore: "varchar(255) nullable",
           displayColumn: "name",
           displayType: "varchar(255) nullable",
           status: "similar",
@@ -39,28 +34,19 @@ describe("diffColumns()", () => {
   });
 
   it("different tables", () => {
-    expect(diffColumns(KNEX_TABLE_1, KNEX_TABLE_2)).toEqual({
+    expect(diffColumns(KNEX_TABLE_1, KNEX_TABLE_2)).toMatchObject({
       columns: [
         {
-          column: "id",
-          descAfter: "varchar(255) nullable",
-          descBefore: "bigint",
           displayColumn: "id",
           displayType: "bigint → varchar(255) nullable",
           status: "changed",
         },
         {
-          column: "name",
-          descAfter: null,
-          descBefore: "varchar(255) nullable",
           displayColumn: "name",
           displayType: "varchar(255) nullable",
           status: "deleted",
         },
         {
-          column: "name2",
-          descAfter: "varchar(255) nullable",
-          descBefore: null,
           displayColumn: "name2",
           displayType: "varchar(255) nullable",
           status: "created",
@@ -102,71 +88,68 @@ const SCHEMA_2 = {
 
 describe("diffSchemas()", () => {
   it("similar schemas", () => {
-    expect(diffSchemas(SCHEMA_1, SCHEMA_1)).toEqual([
+    expect(diffSchemas(SCHEMA_1, SCHEMA_1)).toMatchObject([
       {
-        bytesAfter: "1 kB",
-        bytesBefore: "1 kB",
         displayBytes: "1 kB",
         displayRows: 5,
         displaySummary: "2x similar",
         displayTable: "table1",
-        rowsAfter: 5,
-        rowsBefore: 5,
         status: "similar",
-        table: "table1",
       },
       {
-        bytesAfter: "1 kB",
-        bytesBefore: "1 kB",
         displayBytes: "1 kB",
         displayRows: 5,
         displaySummary: "2x similar",
         displayTable: "table2",
-        rowsAfter: 5,
-        rowsBefore: 5,
         status: "similar",
-        table: "table2",
       },
     ]);
   });
 
-  it("different schemas", () => {
-    expect(diffSchemas(SCHEMA_1, SCHEMA_2)).toEqual([
+  it("different schemas (different table schema)", () => {
+    const changedSchema = _.cloneDeep(SCHEMA_1);
+    changedSchema.table1.schema.name.fullType = "text";
+
+    expect(diffSchemas(SCHEMA_1, changedSchema)).toMatchObject([
       {
-        bytesAfter: "48 kB",
-        bytesBefore: "1 kB",
+        displaySummary: "1x similar, 1x changed",
+        displayTable: "table1",
+        displayBytes: "1 kB",
+        displayRows: 5,
+        status: "changed",
+      },
+      {
+        displaySummary: "2x similar",
+        displayTable: "table2",
+        displayBytes: "1 kB",
+        displayRows: 5,
+        status: "similar",
+      },
+    ]);
+  });
+
+  it("different schemas (different size and tables)", () => {
+    expect(diffSchemas(SCHEMA_1, SCHEMA_2)).toMatchObject([
+      {
         displayBytes: "1 kB → 48 kB",
         displayRows: "5 → 100",
         displaySummary: "1x changed, 1x deleted, 1x created",
         displayTable: "table1",
-        rowsAfter: 100,
-        rowsBefore: 5,
         status: "changed",
-        table: "table1",
       },
       {
-        bytesAfter: null,
-        bytesBefore: "1 kB",
         displayBytes: "1 kB",
         displayRows: "5",
         displaySummary: "2x deleted",
         displayTable: "table2",
-        rowsAfter: null,
-        rowsBefore: 5,
         status: "deleted",
-        table: "table2",
       },
       {
-        bytesAfter: "1 kB",
-        bytesBefore: null,
         displayBytes: "1 kB",
         displayRows: "5",
         displaySummary: "2x created",
         displayTable: "table3",
-        rowsAfter: 5,
-        rowsBefore: null,
         status: "created",
-        table: "table3",
       },
     ]);
   });

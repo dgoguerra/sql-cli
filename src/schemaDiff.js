@@ -111,7 +111,7 @@ const diffSchemas = (tablesBefore, tablesAfter) => {
       const tableBefore = tablesBefore[table.table];
       const tableAfter = tablesAfter[table.table];
 
-      const { summary } = diffColumns(
+      const { summary, columns } = diffColumns(
         (tableBefore && tableBefore.schema) || {},
         (tableAfter && tableAfter.schema) || {}
       );
@@ -129,14 +129,17 @@ const diffSchemas = (tablesBefore, tablesAfter) => {
           table.displayRows = chalk.red(table.rowsBefore);
           break;
         default:
+          const columnsChanged = columns.filter((c) => c.status !== "similar");
           table.displayTable = table.table;
           table.displayBytes = valueOrDiff(table.bytesBefore, table.bytesAfter);
           table.displayRows = valueOrDiff(table.rowsBefore, table.rowsAfter);
           table.status =
+            !columnsChanged.length &&
             table.bytesBefore === table.bytesAfter &&
             table.rowsBefore === table.rowsAfter
               ? "similar"
               : "changed";
+          break;
       }
       return table;
     })
