@@ -80,6 +80,15 @@ describe("resolveKnexConn()", () => {
     expect(table).toBe("tablename");
   });
 
+  it("sqlite conn without path, with table", () => {
+    const { conf, table } = resolveKnexConn("sqlite://mydb.db/tablename");
+    expect(conf).toMatchObject({
+      client: "sqlite3",
+      connection: { filename: "./mydb.db" },
+    });
+    expect(table).toBe("tablename");
+  });
+
   it("bigquery conn with extra params", () => {
     const { conf } = resolveKnexConn(
       "bq://gcp-project/dataset-name?location=europe-west2&keyFilename=/path/to/service-account.json"

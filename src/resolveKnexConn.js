@@ -41,19 +41,25 @@ function resolveKnexConn(connUri, { client = null, aliases = {} } = {}) {
   let table;
 
   // SQLite case, the whole uriPath is a filename
-  if (uriPath.startsWith("/")) {
+  if (getClient(protocol) === "sqlite3") {
     const parts = uriPath.split("/");
     const dbTable = parts.pop();
     const dbName = parts.pop();
 
-    // Detect optional table name in the uri
+    // Extract optional table name from the uri path
     if (dbTable && dbName && !dbTable.includes(".") && dbName.includes(".")) {
-      uriPath = `${parts.join("/")}/${dbName}`;
-      connUri = `${protocol}://${uriPath}`;
+      uriPath = parts.concat([dbName]).join("/");
       table = dbTable;
-    } else {
-      connUri = `${protocol}://${uriPath}`;
     }
+
+    // If there is no path in the uri, assume it refers to a file in
+    // the current directory and prepend './' to the filename.
+    // Otherwise, this uri would fail in Knex's parseConn().
+    if (uriPath.indexOf("/") === -1) {
+      uriPath = `./${uriPath}`;
+    }
+
+    connUri = `${protocol}://${uriPath}`;
   } else {
     const [host, dbName, dbTable] = uriPath.split("/");
     connUri = `${protocol}://${host}/${dbName}`;

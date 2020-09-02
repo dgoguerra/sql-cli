@@ -10,6 +10,6 @@ const CLIENT_ALIASES = {
 };
 
 const getClient = (alias) =>
-  _.findKey(CLIENT_ALIASES, (val) => val.includes(alias));
+  _.findKey(CLIENT_ALIASES, (val, key) => key === alias || val.includes(alias));
 
 module.exports = { getClient };
