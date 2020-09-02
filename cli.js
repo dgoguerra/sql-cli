@@ -359,6 +359,15 @@ class CliApp {
         mysql2: "mysql",
       };
       const [protocol, ...rest] = connUri.split("://");
+
+      // Sqlite is opened directly by opening the file with the default
+      // application for its file extension, without setting a protocol.
+      if (protocol === "sqlite3") {
+        return rest[0];
+      }
+
+      // Rest of clients: build a connection uri with the protocol name
+      // understood by TablePlus.
       return [tablePlusProtos[protocol] || protocol, ...rest].join("://");
     };
 

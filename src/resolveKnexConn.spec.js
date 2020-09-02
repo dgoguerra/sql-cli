@@ -1,4 +1,4 @@
-const { resolveKnexConn } = require("./resolveKnexConn");
+const { resolveKnexConn, stringifyKnexConn } = require("./resolveKnexConn");
 
 describe("resolveKnexConn()", () => {
   it("mysql conn", () => {
@@ -166,5 +166,29 @@ describe("resolveKnexConn()", () => {
         user: "app",
       },
     });
+  });
+});
+
+describe("stringifyKnexConn()", () => {
+  it("sqlite conn", () => {
+    const str = stringifyKnexConn("sqlite:///path/to/file/mydb.db");
+    expect(str).toBe("sqlite3:///path/to/file/mydb.db");
+  });
+
+  it("sqlite conn without path", () => {
+    const str = stringifyKnexConn("sqlite://mydb.db");
+    expect(str).toBe("sqlite3://./mydb.db");
+  });
+
+  it("mysql conn", () => {
+    const str = stringifyKnexConn("my://app:secret@127.0.0.1:33060/dbname");
+    expect(str).toBe("mysql2://app:secret@127.0.0.1:33060/dbname");
+  });
+
+  it("mysql conn with alias", () => {
+    const str = stringifyKnexConn("mydb", {
+      aliases: { mydb: "mysql://app:secret@127.0.0.1:33060/dbname" },
+    });
+    expect(str).toBe("mysql2://app:secret@127.0.0.1:33060/dbname");
   });
 });

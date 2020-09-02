@@ -116,6 +116,10 @@ function stringifyKnexConn(connUri, opts) {
   const { sshConf, conf } = resolveKnexConn(connUri, opts);
   const { client, connection: conn } = conf;
 
+  if (client === "sqlite3") {
+    return `${client}://${conn.filename}`;
+  }
+
   const encodeAuth = ({ user, password }) =>
     user && password
       ? `${encodeURIComponent(user)}:${encodeURIComponent(password)}@`
