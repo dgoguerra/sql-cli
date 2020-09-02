@@ -40,6 +40,8 @@ const TEST_TABLE2_CONTENT = [
 ];
 
 const cliTestSuite = (name, knexFactory) => {
+  jest.setTimeout(15000);
+
   describe(`CLI test: ${name}`, () => {
     let knex;
     let connUri;
