@@ -74,6 +74,12 @@ const cliTestSuite = (name, knexFactory) => {
       ).toMatchSnapshot();
     });
 
+    it("can diff tables data", async () => {
+      expect(
+        await runCli(`diff ${connUri}/table_1 ${connUri}/table_2 --data`)
+      ).toMatchSnapshot();
+    });
+
     it("can diff schemas", async () => {
       expect(await runCli(`diff ${connUri} ${connUri}`)).toMatchSnapshot();
     });

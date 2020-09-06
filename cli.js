@@ -15,7 +15,6 @@ const ExcelBuilder = require("./src/ExcelBuilder");
 const { resolveKnexConn, stringifyKnexConn } = require("./src/resolveKnexConn");
 const { diffColumns, diffSchemas } = require("./src/schemaDiff");
 const { streamsDiff } = require("./src/streamUtils");
-const { summarize } = require("./src/summarize");
 
 class CliApp {
   constructor() {
@@ -59,7 +58,18 @@ class CliApp {
     cli.command({
       command: "diff <table1> <table2>",
       description: "Diff two schemas or tables",
-      handler: (argv) => this.diffTables(argv),
+      builder: (yargs) =>
+        yargs
+          .option("data", {
+            description: "Diff the tables' data",
+            type: "boolean",
+          })
+          .option("rows", {
+            description: "Number of rows to diff. Only has effect with --data",
+            type: "number",
+            default: 20,
+          }),
+      handler: (argv) => this.diffTablesOrSchemas(argv),
     });
 
     cli.command({
@@ -153,6 +163,7 @@ class CliApp {
     console.log(table(formatted, { headers: ["table", "rows", "bytes"] }));
 
     const totalBytes = tables.reduce((acc, row) => acc + (row.bytes || 0), 0);
+    console.log("");
     console.log(
       chalk.grey(`(${prettyBytes(totalBytes)} in ${tables.length} tables)`)
     );
@@ -183,116 +194,120 @@ class CliApp {
     await lib.destroy();
   }
 
-  async diffTables(argv) {
+  async diffTablesOrSchemas(argv) {
     const conn1 = this.resolveConn(argv.table1, argv);
     const conn2 = this.resolveConn(argv.table2, argv);
 
     const lib1 = await this.initLib(conn1);
     const lib2 = await this.initLib(conn2);
 
-    // Diffing two tables columns
-    if (conn1.table && conn2.table) {
-      if (!(await lib1.tableExists(conn1.table))) {
-        this.error(`Table '${conn1.table}' not found in 'before' schema`);
-      }
-      if (!(await lib2.tableExists(conn2.table))) {
-        this.error(`Table '${conn2.table}' not found in 'after' schema`);
-      }
-
-      const { columns, summary } = diffColumns(
-        await lib1.getTableSchema(conn1.table),
-        await lib2.getTableSchema(conn2.table)
-      );
-
-      const formattedCols = columns
-        .filter((col) => col.status !== "similar")
-        .map((col) => ({
-          column: col.displayColumn,
-          type: col.displayType,
-        }));
-
-      console.log(chalk.bold.underline("Diff of tables schema"));
-      console.log("");
-
-      if (formattedCols.length) {
-        console.log(
-          table(
-            formattedCols,
-            // Disable default rows formatting, since the fields
-            // already have diff colors applied.
-            { headers: ["column", "type"], format: (val) => val }
-          )
-        );
-        console.log(summary);
-        console.log("");
-      } else {
-        console.log(`No schema changes: ${summary}`);
-        console.log("");
-      }
-
-      const formattedRows = await streamsDiff(
-        lib1.knex(conn1.table).limit(100).stream(),
-        lib2.knex(conn2.table).limit(100).stream(),
-        { allRows: false, allColumns: false }
-      );
-
-      console.log(
-        chalk.bold.underline("Diff of tables content (first 100 rows)")
-      );
-      console.log("");
-
-      if (formattedRows.length) {
-        console.log(
-          summarize(
-            table(formattedRows, {
-              headers: Object.keys(formattedRows[0]),
-              format: (val) => val,
-            }).split("\n"),
-            { maxLines: 40 }
-          ).join("\n")
-        );
-      } else {
-        console.log("No table content changes");
-        console.log("");
-      }
-    }
-
-    // Diffing all tables of two schemas
-    else {
-      const tables = diffSchemas(
-        await lib1.getDatabaseSchema(),
-        await lib2.getDatabaseSchema()
-      );
-
-      const formattedTables = tables
-        .filter((col) => col.status !== "similar")
-        .map((table) => ({
-          table: table.displayTable,
-          rows: table.displayRows,
-          bytes: table.displayBytes,
-          columns: table.displaySummary,
-        }));
-
-      console.log(chalk.bold.underline("Diff of database schemas:"));
-      console.log("");
-
-      if (formattedTables.length) {
-        console.log(
-          table(formattedTables, {
-            headers: ["table", "rows", "bytes", "columns"],
-            // Disable default rows formatting, since the fields
-            // already have diff colors applied.
-            format: (val) => val,
-          })
-        );
-      } else {
-        console.log("No tables changes");
-        console.log("");
-      }
+    if (conn1.table && conn2.table && argv.data) {
+      await this._diffTablesData(lib1, lib2, conn1.table, conn2.table, argv);
+    } else if (conn1.table && conn2.table) {
+      await this._diffTablesSchema(lib1, lib2, conn1.table, conn2.table);
+    } else {
+      await this._diffSchemas(lib1, lib2);
     }
 
     await lib1.destroy();
     await lib2.destroy();
+  }
+
+  async _diffTablesSchema(lib1, lib2, table1, table2) {
+    if (!(await lib1.tableExists(table1))) {
+      this.error(`Table '${table1}' not found in 'before' schema`);
+    }
+    if (!(await lib2.tableExists(table2))) {
+      this.error(`Table '${table2}' not found in 'after' schema`);
+    }
+
+    const { columns, summary } = diffColumns(
+      await lib1.getTableSchema(table1),
+      await lib2.getTableSchema(table2)
+    );
+
+    const formattedCols = columns
+      .filter((col) => col.status !== "similar")
+      .map((col) => ({
+        column: col.displayColumn,
+        type: col.displayType,
+      }));
+
+    if (!formattedCols.length) {
+      console.log(`No schema changes: ${summary}`);
+      return;
+    }
+
+    console.log(
+      table(
+        formattedCols,
+        // Disable default rows formatting, since the fields
+        // already have diff colors applied.
+        { headers: ["column", "type"], format: (val) => val }
+      )
+    );
+    console.log("");
+    console.log(summary);
+  }
+
+  async _diffTablesData(lib1, lib2, table1, table2, argv) {
+    if (!(await lib1.tableExists(table1))) {
+      this.error(`Table '${table1}' not found in 'before' schema`);
+    }
+    if (!(await lib2.tableExists(table2))) {
+      this.error(`Table '${table2}' not found in 'after' schema`);
+    }
+
+    console.log(`Diff of tables content (first ${argv.rows} rows):`);
+    console.log("");
+
+    const formattedRows = await streamsDiff(
+      lib1.knex(table1).limit(argv.rows).stream(),
+      lib2.knex(table2).limit(argv.rows).stream(),
+      { allRows: false, allColumns: false }
+    );
+
+    if (!formattedRows.length) {
+      console.log("No table content changes");
+      return;
+    }
+
+    console.log(
+      table(formattedRows, {
+        headers: Object.keys(formattedRows[0]),
+        format: (val) => val,
+      })
+    );
+  }
+
+  async _diffSchemas(lib1, lib2) {
+    const tables = diffSchemas(
+      await lib1.getDatabaseSchema(),
+      await lib2.getDatabaseSchema()
+    );
+
+    const formattedTables = tables
+      .filter((col) => col.status !== "similar")
+      .map((table) => ({
+        table: table.displayTable,
+        rows: table.displayRows,
+        bytes: table.displayBytes,
+        columns: table.displaySummary,
+      }));
+
+    if (!formattedTables.length) {
+      console.log("No tables with changes");
+      return;
+    }
+
+    console.log(
+      table(formattedTables, {
+        headers: ["table", "rows", "bytes", "columns"],
+        // Disable default rows formatting, since the fields
+        // already have diff colors applied.
+        format: (val) => val,
+      })
+    );
   }
 
   async createXlsxExport(argv) {
@@ -414,6 +429,8 @@ class CliApp {
       this.error(`Alias '${argv.alias}' already exists`);
     }
     this.conf.set(`aliases.${argv.alias}`, argv.conn);
+
+    console.log(`Created alias '${argv.alias}'`);
   }
 
   async removeAlias(argv) {
@@ -421,6 +438,8 @@ class CliApp {
       this.error(`Alias '${argv.alias}' not found`);
     }
     this.conf.delete(`aliases.${argv.alias}`);
+
+    console.log(`Deleted alias '${argv.alias}'`);
   }
 
   async initLib(conn) {

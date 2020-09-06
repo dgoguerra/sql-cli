@@ -4,39 +4,34 @@ exports[`CLI test: sqlite3 can create conn aliases 1`] = `
 "alias  conn                                     
 alias1 mysql://app:secret@127.0.0.1:1234/dbname 
 alias2 sqlite3:///path/to/file.db               
-
 "
 `;
 
 exports[`CLI test: sqlite3 can delete conn aliases 1`] = `
 "alias  conn                       
 alias2 sqlite3:///path/to/file.db 
-
 "
 `;
 
 exports[`CLI test: sqlite3 can diff schemas 1`] = `
-"Diff of database schemas:
-
-No tables changes
-
+"No tables with changes
 "
 `;
 
 exports[`CLI test: sqlite3 can diff tables 1`] = `
-"Diff of tables schema
-
-column  type                     
+"column  type                     
 field_1 integer nullable → float 
 
 4x similar, 1x changed
+"
+`;
 
-Diff of tables content (first 100 rows)
+exports[`CLI test: sqlite3 can diff tables data 1`] = `
+"Diff of tables content (first 20 rows):
 
 id field_1    updated_at                                
 1  12 → 12.3  [null] → 2020-07-24 18:34:00              
 2  30 → 30.45 2020-07-24 18:34:00 → 2020-07-24 19:25:00 
-
 "
 `;
 
@@ -57,7 +52,6 @@ field_1    integer  true
 field_2    text     true     
 created_at datetime true     
 updated_at datetime true     
-
 "
 `;
 
@@ -68,7 +62,6 @@ field_1    float    false
 field_2    text     true     
 created_at datetime true     
 updated_at datetime true     
-
 "
 `;
 
@@ -78,7 +71,6 @@ idField    integer  false
 field_1    bigint   true     
 created_at datetime true     
 updated_at datetime true     
-
 "
 `;
 
@@ -89,7 +81,6 @@ field_1    float    false
 field_2    text     true     
 created_at datetime true     
 updated_at datetime true     
-
 "
 `;
 
