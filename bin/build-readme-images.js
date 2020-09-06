@@ -101,7 +101,7 @@ process.chdir(TMP_DIR);
       svg-term --in ${im.key}.cast \
         --out ${IMG_DIR}/${im.key}.svg \
         --at 100000 ${im.height ? `--height ${im.height}` : ''} \
-        --window --no-cursor
+        --term terminal --profile Pro --window --no-cursor
     `);
     //runCmd(`qlmanage -t -s 1000 -o ${IMG_DIR} ${IMG_DIR}/${im.key}.svg`);
   });
