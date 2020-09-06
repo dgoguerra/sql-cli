@@ -429,6 +429,8 @@ class CliApp {
       this.error(`Alias '${argv.alias}' already exists`);
     }
     this.conf.set(`aliases.${argv.alias}`, argv.conn);
+
+    console.log(`Created alias '${argv.alias}'`);
   }
 
   async removeAlias(argv) {
@@ -436,6 +438,8 @@ class CliApp {
       this.error(`Alias '${argv.alias}' not found`);
     }
     this.conf.delete(`aliases.${argv.alias}`);
+
+    console.log(`Deleted alias '${argv.alias}'`);
   }
 
   async initLib(conn) {
