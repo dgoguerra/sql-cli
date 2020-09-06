@@ -15,7 +15,7 @@ const runCli = (args, { debug = false } = {}) =>
     const proc = exec(`${process.env.PWD}/cli.js ${args}`, {
       env: {
         ...process.env,
-        // Setting a custom config directory
+        // Set a custom config directory, to avoid using the user system's config
         SQL_CONF_DIR: TEST_CONF_DIR,
         // Force default date of stringDate() to generate migrations filenames
         SQL_DUMP_DATE: "2020-07-22T18:22:50.732Z",
