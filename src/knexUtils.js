@@ -151,6 +151,7 @@ const listTables = async (knex) => {
           LEFT JOIN sys.allocation_units a ON p.partition_id = a.container_id
         WHERE s.table_schema != 'sys'
           AND (i.object_id is null OR i.object_id > 255)
+          AND i.is_primary_key = 1
         GROUP BY s.table_name, t.Name, p.Rows
         ORDER BY t.Name;`
       )
