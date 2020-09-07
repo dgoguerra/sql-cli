@@ -1,8 +1,8 @@
-## sql-cli
+# sql-cli
 
-Universal command-line interface for SQL databases.
+Universal command-line interface for SQL databases. Built on top of [Knex](https://knexjs.org/). Supports connecting over SSH.
 
-### Installation
+## Installation
 
 Install with:
 
@@ -10,7 +10,7 @@ Install with:
 npm install -g @dgoguerra/sql-cli
 ```
 
-### Usage
+## Usage
 
 The supported commands are:
 
@@ -34,3 +34,19 @@ Options:
 ```
 
 Run `sql [command] --help` to see any command usage info.
+
+## Diff command
+
+The diff command allows comparing two schemas or tables of different connections.
+
+<p align="center">
+  <img width="600" src="./img/diff.svg">
+</p>
+
+## Alias command
+
+Aliases can be created for known connections, and used instead of the full connection URI.
+
+<p align="center">
+  <img width="600" src="./img/aliases.svg">
+</p>
