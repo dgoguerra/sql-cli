@@ -7,12 +7,18 @@ const TEST_DB_DIR = `${process.env.PWD}/.tmp`;
 const TEST_DB_FILE = `${TEST_DB_DIR}/test-${process.env.JEST_WORKER_ID}.db`;
 const TEST_CONF_DIR = `${os.tmpdir()}/test-${process.env.JEST_WORKER_ID}`;
 
-const runCli = (args, { debug = false } = {}) =>
+const runCli = (args, { stdin = null, debug = false } = {}) =>
   new Promise((resolve, reject) => {
+    let command = `${process.env.PWD}/cli.js ${args}`;
     let stdout = "";
     let stderr = "";
     let all = "";
-    const proc = exec(`${process.env.PWD}/cli.js ${args}`, {
+
+    if (stdin) {
+      command = `echo "${stdin}" | ${command}`;
+    }
+
+    const proc = exec(command, {
       env: {
         ...process.env,
         // Set a custom config directory, to avoid using the user system's config
@@ -24,7 +30,7 @@ const runCli = (args, { debug = false } = {}) =>
       },
     });
     if (debug) {
-      console.log(`Running: ${process.env.PWD}/cli.js ${args}`);
+      console.log(`Running: ${command}`);
     }
     proc.stdout.on("data", (data) => {
       debug && console.log(`stdout: ${data}`);

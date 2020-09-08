@@ -7,6 +7,11 @@ class SqlRepl {
   constructor(lib) {
     this.lib = lib;
 
+    // Wether the REPL is being run interactively. If stdin is a script
+    // piped into the REPL, we don't want to print the prompt or number
+    // of rows after the results of a query.
+    this.tty = process.stdin.isTTY;
+
     // Buffer of the current query being inputted, since it might be
     // a multiline quere, received line by line.
     this.query = "";
@@ -19,7 +24,7 @@ class SqlRepl {
 
   async run() {
     this.server = repl.start({
-      prompt: "→ ",
+      prompt: this.tty ? "→ " : "",
       eval: (...args) => this.evalLine(...args),
       writer: (...args) => this.formatResult(...args),
     });
@@ -122,10 +127,8 @@ class SqlRepl {
     }
 
     return (
-      table(rows, {
-        headers: Object.keys(rows[0]),
-        format: (val) => (val === null ? chalk.grey("null") : val),
-      }) + `\n${chalk.grey(`(${rows.length} rows)`)}`
+      table(rows, { headers: Object.keys(rows[0]) }) +
+      (this.tty ? `\n\n${chalk.grey(`(${rows.length} rows)`)}` : "")
     );
   }
 }

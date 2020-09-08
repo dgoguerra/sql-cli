@@ -107,6 +107,19 @@ const cliTestSuite = (name, knexFactory) => {
       await runCli("alias rm alias2");
     });
 
+    it("can run shell", async () => {
+      const result = await runCli(`sh ${connUri}`, {
+        stdin: "select 1+1 as result;\nselect 2+3 as result2;",
+      });
+      expect(result).toMatchInlineSnapshot(`
+        "result 
+        2      
+        result2 
+        5       
+        "
+      `);
+    });
+
     it("can create database dump", async () => {
       expect(fs.existsSync(TEST_DUMP_PATH)).toBeFalsy();
       await runCli(`dump create ${getKnexUri(knex)} ${TEST_DUMP_NAME}`);
