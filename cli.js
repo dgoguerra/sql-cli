@@ -281,7 +281,7 @@ class CliApp {
   }
 
   async _diffSchemas(lib1, lib2) {
-    const tables = diffSchemas(
+    const { tables, summary } = diffSchemas(
       await lib1.getDatabaseSchema(),
       await lib2.getDatabaseSchema()
     );
@@ -292,7 +292,7 @@ class CliApp {
         table: table.displayTable,
         rows: table.displayRows,
         bytes: table.displayBytes,
-        columns: table.displaySummary,
+        columns: table.summary,
       }));
 
     if (!formattedTables.length) {
@@ -308,6 +308,8 @@ class CliApp {
         format: (val) => val,
       })
     );
+    console.log("");
+    console.log(summary);
   }
 
   async createXlsxExport(argv) {

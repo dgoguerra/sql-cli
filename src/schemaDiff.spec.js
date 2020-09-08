@@ -88,69 +88,78 @@ const SCHEMA_2 = {
 
 describe("diffSchemas()", () => {
   it("similar schemas", () => {
-    expect(diffSchemas(SCHEMA_1, SCHEMA_1)).toMatchObject([
-      {
-        displayBytes: "1 kB",
-        displayRows: 5,
-        displaySummary: "2x similar",
-        displayTable: "table1",
-        status: "similar",
-      },
-      {
-        displayBytes: "1 kB",
-        displayRows: 5,
-        displaySummary: "2x similar",
-        displayTable: "table2",
-        status: "similar",
-      },
-    ]);
+    expect(diffSchemas(SCHEMA_1, SCHEMA_1)).toMatchObject({
+      tables: [
+        {
+          displayBytes: "1 kB",
+          displayRows: 5,
+          displayTable: "table1",
+          summary: "2x similar",
+          status: "similar",
+        },
+        {
+          displayBytes: "1 kB",
+          displayRows: 5,
+          displayTable: "table2",
+          summary: "2x similar",
+          status: "similar",
+        },
+      ],
+      summary: "2x similar",
+    });
   });
 
   it("different schemas (different table schema)", () => {
     const changedSchema = _.cloneDeep(SCHEMA_1);
     changedSchema.table1.schema.name.fullType = "text";
 
-    expect(diffSchemas(SCHEMA_1, changedSchema)).toMatchObject([
-      {
-        displaySummary: "1x similar, 1x changed",
-        displayTable: "table1",
-        displayBytes: "1 kB",
-        displayRows: 5,
-        status: "changed",
-      },
-      {
-        displaySummary: "2x similar",
-        displayTable: "table2",
-        displayBytes: "1 kB",
-        displayRows: 5,
-        status: "similar",
-      },
-    ]);
+    expect(diffSchemas(SCHEMA_1, changedSchema)).toMatchObject({
+      tables: [
+        {
+          summary: "1x similar, 1x changed",
+          displayTable: "table1",
+          displayBytes: "1 kB",
+          displayRows: 5,
+          status: "changed",
+        },
+        {
+          summary: "2x similar",
+          displayTable: "table2",
+          displayBytes: "1 kB",
+          displayRows: 5,
+          status: "similar",
+        },
+      ],
+      summary: "1x changed, 1x similar",
+    });
   });
 
   it("different schemas (different size and tables)", () => {
-    expect(diffSchemas(SCHEMA_1, SCHEMA_2)).toMatchObject([
-      {
-        displayBytes: "1 kB → 48 kB",
-        displayRows: "5 → 100",
-        displaySummary: "1x changed, 1x deleted, 1x created",
-        displayTable: "table1",
-        status: "changed",
-      },
-      {
-        displayBytes: "1 kB",
-        displayRows: "5",
-        displaySummary: "2x deleted",
-        displayTable: "table2",
-        status: "deleted",
-      },
-      {
-        displayBytes: "1 kB",
-        displayRows: "5",
-        displaySummary: "2x created",
-        displayTable: "table3",
-        status: "created",
-      },
-    ]);
+    expect(diffSchemas(SCHEMA_1, SCHEMA_2)).toMatchObject({
+      tables: [
+        {
+          displayBytes: "1 kB → 48 kB",
+          displayRows: "5 → 100",
+          displayTable: "table1",
+          summary: "1x changed, 1x deleted, 1x created",
+          status: "changed",
+        },
+        {
+          displayBytes: "1 kB",
+          displayRows: "5",
+          displayTable: "table2",
+          summary: "2x deleted",
+          status: "deleted",
+        },
+        {
+          displayBytes: "1 kB",
+          displayRows: "5",
+          displayTable: "table3",
+          summary: "2x created",
+          status: "created",
+        },
+      ],
+      summary: "1x changed, 1x deleted, 1x created",
+    });
   });
 });

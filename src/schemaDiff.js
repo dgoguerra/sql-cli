@@ -14,64 +14,24 @@ const colDesc = (col) => {
 const valueOrDiff = (before, after) =>
   before === after ? before : `${chalk.red(before)} → ${chalk.green(after)}`;
 
-const diffColumns = (tableBefore, tableAfter) => {
-  const columns = _(Object.keys(tableBefore))
-    // Merge unique column keys of before and after schemas,
-    // to show any columns seen in one or both schemas.
-    .concat(Object.keys(tableAfter))
-    .uniq()
-    .map((key) => {
-      const before = tableBefore[key] || null;
-      const after = tableAfter[key] || null;
+const diffColumns = (table1, table2) => {
+  // Merge unique column keys of both tables, to show all
+  // columns in one or both of them.
+  const allColumnKeys = _.union(Object.keys(table1), Object.keys(table2));
 
-      const colInfo = {
-        column: key,
-        descBefore: (before && colDesc(before)) || null,
-        descAfter: (after && colDesc(after)) || null,
-      };
-
-      if (!after) {
-        return { ...colInfo, status: "deleted" };
-      }
-      if (!before) {
-        return { ...colInfo, status: "created" };
-      }
-
-      const changed = colHash(before) !== colHash(after);
-      return {
-        ...colInfo,
-        status: changed ? "changed" : "similar",
-      };
-    })
-    .map((col) => {
-      switch (col.status) {
-        case "deleted":
-          col.displayColumn = chalk.red(col.column);
-          col.displayType = chalk.red(col.descBefore);
-          break;
-        case "created":
-          col.displayColumn = chalk.green(col.column);
-          col.displayType = chalk.green(col.descAfter);
-          break;
-        case "changed":
-        case "similar":
-          col.displayColumn = col.column;
-          col.displayType = valueOrDiff(col.descBefore, col.descAfter);
-          break;
-      }
-      return col;
-    })
-    .value();
+  const columns = allColumnKeys.map((key) =>
+    diffColumnVersions(key, table1[key] || null, table2[key] || null)
+  );
 
   const summary = _(columns)
     .countBy("status")
     .map((num, status) => {
-      const color =
-        status === "created"
-          ? chalk.green
-          : status === "deleted"
-          ? chalk.red
-          : (val) => val;
+      const statusColors = {
+        created: chalk.green,
+        deleted: chalk.red,
+        //changed: chalk.yellow,
+      };
+      const color = statusColors[status] || ((val) => val);
       return { num, text: color(`${num}x ${status}`) };
     })
     .orderBy((c) => -c.num)
@@ -81,69 +41,105 @@ const diffColumns = (tableBefore, tableAfter) => {
   return { columns, summary };
 };
 
-module.exports.diffColumns = diffColumns;
+const diffColumnVersions = (key, col1, col2) => {
+  const desc1 = col1 && colDesc(col1);
+  const desc2 = col2 && colDesc(col2);
 
-const diffSchemas = (tablesBefore, tablesAfter) => {
-  return _(Object.keys(tablesBefore))
-    .concat(Object.keys(tablesAfter))
-    .uniq()
-    .map((tableKey) => {
-      const before = tablesBefore[tableKey] || null;
-      const after = tablesAfter[tableKey] || null;
+  if (!col2) {
+    return {
+      status: "deleted",
+      displayColumn: chalk.red(key),
+      displayType: chalk.red(desc1),
+    };
+  }
 
-      const tableInfo = {
-        table: tableKey,
-        bytesBefore: before && before.prettyBytes,
-        bytesAfter: after && after.prettyBytes,
-        rowsBefore: before && before.rows,
-        rowsAfter: after && after.rows,
-      };
+  if (!col1) {
+    return {
+      status: "created",
+      displayColumn: chalk.green(key),
+      displayType: chalk.green(desc2),
+    };
+  }
 
-      if (!before) {
-        return { ...tableInfo, status: "created" };
-      }
-      if (!after) {
-        return { ...tableInfo, status: "deleted" };
-      }
-      return tableInfo;
-    })
-    .map((table) => {
-      const tableBefore = tablesBefore[table.table];
-      const tableAfter = tablesAfter[table.table];
-
-      const { summary, columns } = diffColumns(
-        (tableBefore && tableBefore.schema) || {},
-        (tableAfter && tableAfter.schema) || {}
-      );
-      table.displaySummary = summary;
-
-      switch (table.status) {
-        case "created":
-          table.displayTable = chalk.green(table.table);
-          table.displayBytes = chalk.green(table.bytesAfter);
-          table.displayRows = chalk.green(table.rowsAfter);
-          break;
-        case "deleted":
-          table.displayTable = chalk.red(table.table);
-          table.displayBytes = chalk.red(table.bytesBefore);
-          table.displayRows = chalk.red(table.rowsBefore);
-          break;
-        default:
-          const columnsChanged = columns.filter((c) => c.status !== "similar");
-          table.displayTable = table.table;
-          table.displayBytes = valueOrDiff(table.bytesBefore, table.bytesAfter);
-          table.displayRows = valueOrDiff(table.rowsBefore, table.rowsAfter);
-          table.status =
-            !columnsChanged.length &&
-            table.bytesBefore === table.bytesAfter &&
-            table.rowsBefore === table.rowsAfter
-              ? "similar"
-              : "changed";
-          break;
-      }
-      return table;
-    })
-    .value();
+  const changed = colHash(col1) !== colHash(col2);
+  return {
+    status: changed ? "changed" : "similar",
+    displayColumn: key,
+    displayType: valueOrDiff(desc1, desc2),
+  };
 };
 
-module.exports.diffSchemas = diffSchemas;
+const diffSchemas = (tablesBefore, tablesAfter) => {
+  const allTableKeys = _.union(
+    Object.keys(tablesBefore),
+    Object.keys(tablesAfter)
+  );
+
+  const tables = allTableKeys.map((tableKey) =>
+    diffTableVersions(
+      tablesBefore[tableKey] || null,
+      tablesAfter[tableKey] || null
+    )
+  );
+
+  const summary = _(tables)
+    .countBy("status")
+    .map((num, status) => {
+      const statusColors = {
+        created: chalk.green,
+        deleted: chalk.red,
+        //changed: chalk.yellow,
+      };
+      const color = statusColors[status] || ((val) => val);
+      return { num, text: color(`${num}x ${status}`) };
+    })
+    .orderBy((c) => -c.num)
+    .map("text")
+    .join(", ");
+
+  return { tables, summary };
+};
+
+const diffTableVersions = (table1, table2) => {
+  const { summary, columns } = diffColumns(
+    (table1 && table1.schema) || {},
+    (table2 && table2.schema) || {}
+  );
+
+  if (!table1) {
+    return {
+      status: "created",
+      displayTable: chalk.green(table2.table),
+      displayRows: chalk.green(table2.rows),
+      displayBytes: chalk.green(table2.prettyBytes),
+      summary,
+    };
+  }
+
+  if (!table2) {
+    return {
+      status: "deleted",
+      displayTable: chalk.red(table1.table),
+      displayRows: chalk.red(table1.rows),
+      displayBytes: chalk.red(table1.prettyBytes),
+      summary,
+    };
+  }
+
+  const columnsChanged = columns.filter((c) => c.status !== "similar");
+
+  const areEqual =
+    !columnsChanged.length &&
+    table1.rows === table2.rows &&
+    table1.prettyBytes === table2.prettyBytes;
+
+  return {
+    status: areEqual ? "similar" : "changed",
+    displayTable: table1.table,
+    displayRows: valueOrDiff(table1.rows, table2.rows),
+    displayBytes: valueOrDiff(table1.prettyBytes, table2.prettyBytes),
+    summary,
+  };
+};
+
+module.exports = { diffColumns, diffSchemas };
