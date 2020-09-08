@@ -7,8 +7,12 @@ class SqlRepl {
   constructor(lib) {
     this.lib = lib;
 
+    // Buffer of the current query being inputted, since it might be
+    // a multiline quere, received line by line.
+    this.query = "";
+
     // Queue to run queries and schedule resolving this.run() sequentially.
-    // This allows waiting the the input queries execution when piping SQL
+    // This allows waiting for the input queries execution when piping SQL
     // statements as stdin.
     this.queue = Promise.resolve();
   }
@@ -16,7 +20,7 @@ class SqlRepl {
   async run() {
     this.server = repl.start({
       prompt: "→ ",
-      eval: (...args) => this.evalQuery(...args),
+      eval: (...args) => this.evalLine(...args),
       writer: (...args) => this.formatResult(...args),
     });
 
@@ -66,20 +70,32 @@ class SqlRepl {
     this.server.displayPrompt();
   }
 
-  async evalQuery(query, context, file, next) {
-    query = query.trim();
-    if (!query) {
+  async evalLine(line, context, file, next) {
+    // Aggregate input lines until the query to run is finished
+    // (when the line ends with ';').
+    this.query += " " + line.trim();
+
+    // There is no query in progress
+    if (!this.query) {
       return next();
     }
 
-    this.queue = this.queue.then(async () => {
-      try {
-        const rows = await this.lib.knex.raw(query);
-        next(null, rows);
-      } catch (err) {
-        next(null, err);
-      }
-    });
+    // Line is an unfinished query, print a different prompt
+    // and do nothing else.
+    if (!this.query.endsWith(";")) {
+      process.stdout.write("... ");
+      return;
+    }
+
+    // The whole query has been inputted, run it
+    const query = this.query;
+    this.query = "";
+    this.queue = this.queue.then(() =>
+      this.lib.knex
+        .raw(query)
+        .then((result) => next(null, result))
+        .catch((err) => next(null, err))
+    );
   }
 
   formatResult(result) {
