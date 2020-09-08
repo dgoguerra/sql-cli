@@ -26,7 +26,7 @@ const formatOdd = (str) => str;
 module.exports = (
   rowObjs,
   {
-    headers = Object.keys(rowObjs[0]),
+    headers = Object.keys(rowObjs[0] || []),
     format = (val, ctx) => (ctx.index % 2 ? formatEven : formatOdd)(val),
   } = {}
 ) => {

@@ -31,12 +31,12 @@ class SqlRepl {
 
     this.server.defineCommand("tables", {
       help: "List available tables",
-      action: () => this.listSchemaTables(),
+      action: () => this.runAction(() => this.listSchemaTables()),
     });
 
     this.server.defineCommand("table", {
       help: "List available tables",
-      action: (table) => this.listTableColumns(table),
+      action: (table) => this.runAction(() => this.listTableColumns(table)),
     });
 
     return new Promise((resolve) => {
@@ -47,32 +47,40 @@ class SqlRepl {
     });
   }
 
-  async listSchemaTables() {
-    const tables = await this.lib.listTables();
-    const rows = _.sortBy(tables, (row) => -row.bytes).map((row) => ({
-      ...row,
-      bytes: row.prettyBytes,
-    }));
-
-    console.log(table(rows, { headers: ["table", "rows", "bytes"] }));
-
+  async runAction(actionFunc) {
+    try {
+      const result = await actionFunc();
+      console.log(this.formatResult(result));
+    } catch (err) {
+      console.log(this.formatError(err));
+    }
     this.server.displayPrompt();
   }
 
+  async listSchemaTables() {
+    const tables = await this.lib.listTables();
+    return _.sortBy(tables, (row) => -row.bytes).map((row) => ({
+      table: row.table,
+      rows: row.rows,
+      bytes: row.prettyBytes,
+    }));
+  }
+
   async listTableColumns(tableName) {
+    if (!tableName) {
+      throw new Error(`Missing 'table' argument`);
+    }
+
     const columns = await this.lib.getTableSchema(tableName);
-    const rows = Object.keys(columns).map((key) => {
-      const column = columns[key];
-      return {
-        column: key,
-        type: column.fullType,
-        nullable: column.nullable,
-      };
-    });
+    if (!Object.keys(columns).length) {
+      throw new Error(`Table '${tableName}' not found`);
+    }
 
-    console.log(table(rows));
-
-    this.server.displayPrompt();
+    return Object.keys(columns).map((key) => ({
+      column: key,
+      type: columns[key].fullType,
+      nullable: columns[key].nullable,
+    }));
   }
 
   async evalLine(line, context, file, next) {
@@ -109,10 +117,7 @@ class SqlRepl {
     }
 
     if (result instanceof Error) {
-      const err = result;
-      return err.sqlMessage
-        ? `Error ${err.code}: ${err.sqlMessage}`
-        : `Error: ${err.message}`;
+      return this.formatError(result);
     }
 
     // Knex clients return different formats as result of knex.raw(query)
@@ -130,6 +135,12 @@ class SqlRepl {
       table(rows, { headers: Object.keys(rows[0]) }) +
       (this.tty ? `\n\n${chalk.grey(`(${rows.length} rows)`)}` : "")
     );
+  }
+
+  formatError(err) {
+    return err.sqlMessage
+      ? `Error ${err.code}: ${err.sqlMessage}`
+      : `Error: ${err.message}`;
   }
 }
 
