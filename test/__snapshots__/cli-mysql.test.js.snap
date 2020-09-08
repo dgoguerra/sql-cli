@@ -22,7 +22,7 @@ exports[`CLI test: mysql2 can diff tables 1`] = `
 "column  type                   
 field_1 int nullable → decimal 
 
-4x similar, 1x changed
+4x similar (hidden), 1x changed
 "
 `;
 

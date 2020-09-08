@@ -60,6 +60,10 @@ class CliApp {
       description: "Diff two schemas or tables",
       builder: (yargs) =>
         yargs
+          .option("all", {
+            description: "Show items without changes",
+            type: "boolean",
+          })
           .option("data", {
             description: "Diff the tables' data",
             type: "boolean",
@@ -204,16 +208,16 @@ class CliApp {
     if (conn1.table && conn2.table && argv.data) {
       await this._diffTablesData(lib1, lib2, conn1.table, conn2.table, argv);
     } else if (conn1.table && conn2.table) {
-      await this._diffTablesSchema(lib1, lib2, conn1.table, conn2.table);
+      await this._diffTablesSchema(lib1, lib2, conn1.table, conn2.table, argv);
     } else {
-      await this._diffSchemas(lib1, lib2);
+      await this._diffSchemas(lib1, lib2, argv);
     }
 
     await lib1.destroy();
     await lib2.destroy();
   }
 
-  async _diffTablesSchema(lib1, lib2, table1, table2) {
+  async _diffTablesSchema(lib1, lib2, table1, table2, argv) {
     if (!(await lib1.tableExists(table1))) {
       this.error(`Table '${table1}' not found in 'before' schema`);
     }
@@ -223,15 +227,14 @@ class CliApp {
 
     const { columns, summary } = diffColumns(
       await lib1.getTableSchema(table1),
-      await lib2.getTableSchema(table2)
+      await lib2.getTableSchema(table2),
+      { showSimilar: argv.all }
     );
 
-    const formattedCols = columns
-      .filter((col) => col.status !== "similar")
-      .map((col) => ({
-        column: col.displayColumn,
-        type: col.displayType,
-      }));
+    const formattedCols = columns.map((col) => ({
+      column: col.displayColumn,
+      type: col.displayType,
+    }));
 
     if (!formattedCols.length) {
       console.log(`No schema changes: ${summary}`);
@@ -264,7 +267,7 @@ class CliApp {
     const formattedRows = await streamsDiff(
       lib1.knex(table1).limit(argv.rows).stream(),
       lib2.knex(table2).limit(argv.rows).stream(),
-      { allRows: false, allColumns: false }
+      { allRows: argv.all, allColumns: false }
     );
 
     if (!formattedRows.length) {
@@ -280,10 +283,11 @@ class CliApp {
     );
   }
 
-  async _diffSchemas(lib1, lib2) {
+  async _diffSchemas(lib1, lib2, argv) {
     const { tables, summary } = diffSchemas(
       await lib1.getDatabaseSchema(),
-      await lib2.getDatabaseSchema()
+      await lib2.getDatabaseSchema(),
+      { showSimilar: argv.all }
     );
 
     const formattedTables = tables

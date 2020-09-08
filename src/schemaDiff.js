@@ -14,29 +14,17 @@ const colDesc = (col) => {
 const valueOrDiff = (before, after) =>
   before === after ? before : `${chalk.red(before)} → ${chalk.green(after)}`;
 
-const diffColumns = (table1, table2) => {
-  // Merge unique column keys of both tables, to show all
-  // columns in one or both of them.
-  const allColumnKeys = _.union(Object.keys(table1), Object.keys(table2));
-
-  const columns = allColumnKeys.map((key) =>
-    diffColumnVersions(key, table1[key] || null, table2[key] || null)
+const diffColumns = (table1, table2, { showSimilar = false } = {}) => {
+  // Column keys in one or both tables
+  const allColKeys = _.union(Object.keys(table1), Object.keys(table2));
+  const allColumns = allColKeys.map((key) =>
+    diffColumnVersions(key, table1[key], table2[key])
   );
 
-  const summary = _(columns)
-    .countBy("status")
-    .map((num, status) => {
-      const statusColors = {
-        created: chalk.green,
-        deleted: chalk.red,
-        //changed: chalk.yellow,
-      };
-      const color = statusColors[status] || ((val) => val);
-      return { num, text: color(`${num}x ${status}`) };
-    })
-    .orderBy((c) => -c.num)
-    .map("text")
-    .join(", ");
+  const summary = buildSummary(allColumns, { showSimilar });
+  const columns = allColumns.filter(
+    (c) => c.status !== "similar" || showSimilar
+  );
 
   return { columns, summary };
 };
@@ -69,33 +57,21 @@ const diffColumnVersions = (key, col1, col2) => {
   };
 };
 
-const diffSchemas = (tablesBefore, tablesAfter) => {
+const diffSchemas = (
+  tablesBefore,
+  tablesAfter,
+  { showSimilar = false } = {}
+) => {
+  // Table names in one or both schemas
   const allTableKeys = _.union(
     Object.keys(tablesBefore),
     Object.keys(tablesAfter)
   );
 
   const tables = allTableKeys.map((tableKey) =>
-    diffTableVersions(
-      tablesBefore[tableKey] || null,
-      tablesAfter[tableKey] || null
-    )
+    diffTableVersions(tablesBefore[tableKey], tablesAfter[tableKey])
   );
-
-  const summary = _(tables)
-    .countBy("status")
-    .map((num, status) => {
-      const statusColors = {
-        created: chalk.green,
-        deleted: chalk.red,
-        //changed: chalk.yellow,
-      };
-      const color = statusColors[status] || ((val) => val);
-      return { num, text: color(`${num}x ${status}`) };
-    })
-    .orderBy((c) => -c.num)
-    .map("text")
-    .join(", ");
+  const summary = buildSummary(tables, { showSimilar });
 
   return { tables, summary };
 };
@@ -103,7 +79,8 @@ const diffSchemas = (tablesBefore, tablesAfter) => {
 const diffTableVersions = (table1, table2) => {
   const { summary, columns } = diffColumns(
     (table1 && table1.schema) || {},
-    (table2 && table2.schema) || {}
+    (table2 && table2.schema) || {},
+    { showSimilar: true }
   );
 
   if (!table1) {
@@ -140,6 +117,33 @@ const diffTableVersions = (table1, table2) => {
     displayBytes: valueOrDiff(table1.prettyBytes, table2.prettyBytes),
     summary,
   };
+};
+
+const buildSummary = (items, { showSimilar }) => {
+  const statusColors = {
+    created: chalk.green,
+    deleted: chalk.red,
+    //changed: chalk.yellow,
+  };
+  const formatText = (status, text) => {
+    if (statusColors[status]) {
+      return statusColors[status](text);
+    }
+    return text;
+  };
+
+  return _(items)
+    .countBy("status")
+    .map((num, status) => {
+      let text = formatText(status, `${num}x ${status}`);
+      if (status === "similar" && !showSimilar) {
+        text += " (hidden)";
+      }
+      return { num, text };
+    })
+    .orderBy((c) => -c.num)
+    .map("text")
+    .join(", ");
 };
 
 module.exports = { diffColumns, diffSchemas };

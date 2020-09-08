@@ -16,7 +16,9 @@ const KNEX_TABLE_2 = {
 
 describe("diffColumns()", () => {
   it("similar tables", () => {
-    expect(diffColumns(KNEX_TABLE_1, KNEX_TABLE_1)).toMatchObject({
+    expect(
+      diffColumns(KNEX_TABLE_1, KNEX_TABLE_1, { showSimilar: true })
+    ).toMatchObject({
       columns: [
         {
           displayColumn: "id",
@@ -34,7 +36,9 @@ describe("diffColumns()", () => {
   });
 
   it("different tables", () => {
-    expect(diffColumns(KNEX_TABLE_1, KNEX_TABLE_2)).toMatchObject({
+    expect(
+      diffColumns(KNEX_TABLE_1, KNEX_TABLE_2, { showSimilar: true })
+    ).toMatchObject({
       columns: [
         {
           displayColumn: "id",
@@ -88,7 +92,9 @@ const SCHEMA_2 = {
 
 describe("diffSchemas()", () => {
   it("similar schemas", () => {
-    expect(diffSchemas(SCHEMA_1, SCHEMA_1)).toMatchObject({
+    expect(
+      diffSchemas(SCHEMA_1, SCHEMA_1, { showSimilar: true })
+    ).toMatchObject({
       tables: [
         {
           displayBytes: "1 kB",
@@ -113,7 +119,9 @@ describe("diffSchemas()", () => {
     const changedSchema = _.cloneDeep(SCHEMA_1);
     changedSchema.table1.schema.name.fullType = "text";
 
-    expect(diffSchemas(SCHEMA_1, changedSchema)).toMatchObject({
+    expect(
+      diffSchemas(SCHEMA_1, changedSchema, { showSimilar: true })
+    ).toMatchObject({
       tables: [
         {
           summary: "1x similar, 1x changed",
@@ -135,7 +143,9 @@ describe("diffSchemas()", () => {
   });
 
   it("different schemas (different size and tables)", () => {
-    expect(diffSchemas(SCHEMA_1, SCHEMA_2)).toMatchObject({
+    expect(
+      diffSchemas(SCHEMA_1, SCHEMA_2, { showSimilar: true })
+    ).toMatchObject({
       tables: [
         {
           displayBytes: "1 kB → 48 kB",
