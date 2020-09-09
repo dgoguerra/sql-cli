@@ -11,21 +11,26 @@ const prettier = require("prettier");
 const { stringDate } = require("./stringDate");
 const { runPipeline } = require("./streamUtils");
 const { sshClient, forwardPort } = require("./sshUtils");
-const {
-  columnInfo,
-  listTables,
-  listIndexes,
-  countRows,
-  toKnexType,
-  streamInsert,
-} = require("./knexUtils");
+const { hydrateKnex, toKnexType, streamInsert } = require("./knexUtils");
 
 const MIGRATIONS_TABLE = "dump_knex_migrations";
 
-class Lib {
+class SqlLib extends Function {
   constructor({ conf, sshConf = null }) {
+    super();
+
+    this.knex = null;
     this.conf = conf;
     this.sshConf = sshConf;
+
+    return new Proxy(this, {
+      apply: (target, thisArg, argArray) => {
+        return target.knex.apply(target.knex, argArray);
+      },
+      get: (target, prop) => {
+        return prop in target ? target[prop] : target.knex[prop];
+      },
+    });
   }
 
   async connect() {
@@ -47,7 +52,7 @@ class Lib {
       conn.port = freePort;
     }
 
-    this.knex = Knex({ connection: conn, ...rest });
+    this.knex = hydrateKnex(Knex({ connection: conn, ...rest }));
 
     await this.checkConnection();
 
@@ -56,6 +61,7 @@ class Lib {
 
   async checkConnection() {
     await this.knex.raw("select 1+1 as result");
+    return true;
   }
 
   async destroy() {
@@ -64,34 +70,6 @@ class Lib {
     if (this.sshClient) {
       this.sshClient.destroy();
     }
-  }
-
-  async tableExists(tableName) {
-    if (this.knex.client.constructor.name === "Client_BigQuery") {
-      return true;
-    }
-    return await this.knex.schema.hasTable(tableName);
-  }
-
-  async getDatabaseSchema() {
-    const tables = {};
-    for (const table of await this.listTables()) {
-      const name = table.table;
-      tables[name] = { ...table, schema: await this.getTableSchema(name) };
-    }
-    return tables;
-  }
-
-  async listTables() {
-    return listTables(this.knex);
-  }
-
-  async getTableSchema(table) {
-    return columnInfo(this.knex, table);
-  }
-
-  async listIndexes(table) {
-    return listIndexes(this.knex, table);
   }
 
   async createDump(name) {
@@ -119,13 +97,13 @@ class Lib {
       return row;
     };
 
-    for (const { table } of await this.listTables()) {
+    for (const { table } of await this.schema.listTables()) {
       if (table.startsWith(MIGRATIONS_TABLE)) {
         continue;
       }
 
-      const columns = await this.getTableSchema(table);
-      const indexes = await this.listIndexes(table);
+      const columns = await this(table).columnInfo();
+      const indexes = await this.schema.listIndexes(table);
 
       const primaryKeyTypes = {
         integer: "increments",
@@ -212,7 +190,7 @@ class Lib {
       );
       console.log(`Created ${migrationPath}`);
 
-      const numRows = await countRows(this.knex, table);
+      const numRows = await this(table).countRows();
       if (numRows > 0) {
         const dataPath = `data/${table}.jsonl`;
         await runPipeline(
@@ -297,4 +275,4 @@ class Lib {
   }
 }
 
-module.exports = Lib;
+module.exports = SqlLib;

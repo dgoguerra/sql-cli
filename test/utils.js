@@ -59,13 +59,4 @@ const getTestKnex = () => {
   });
 };
 
-const getKnexUri = (knex) => {
-  const { client, connection: conn } = knex.client.config;
-  if (client === "sqlite3") {
-    return `${client}://${conn.filename}`;
-  }
-  const host = conn.server || conn.host;
-  return `${client}://${conn.user}:${conn.password}@${host}:${conn.port}/${conn.database}`;
-};
-
-module.exports = { runCli, getTestKnex, getKnexUri };
+module.exports = { runCli, getTestKnex };

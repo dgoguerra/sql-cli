@@ -2,7 +2,90 @@ const prettyBytes = require("pretty-bytes");
 const writer = require("flush-write-stream");
 const { chunk, runPipeline } = require("./streamUtils");
 
-const columnInfo = async (knex, table) => {
+const hydrateKnex = (knex) => {
+  // Methods to overwrite or create over Knex
+  const KNEX_METHODS = {
+    getUri() {
+      return getUri(knex);
+    },
+  };
+
+  // Methods to overwrite or create over Knex's QueryBuilder
+  const QUERY_METHODS = {
+    async columnInfo(column = null) {
+      const columns = await getColumns(knex, this._single.table);
+      return column ? columns[column] : columns;
+    },
+    async countRows() {
+      const [row] = await this.count({ count: "*" });
+      return Number(row.count);
+    },
+  };
+
+  // Methods to overwrite or create over Knex's SchemaBuilder
+  const SCHEMA_METHODS = {
+    hasTable(table) {
+      if (knex.client.constructor.name === "Client_BigQuery") {
+        return true;
+      }
+      return knex.schema.hasTable(table);
+    },
+    listTables() {
+      return listTables(knex);
+    },
+    listIndexes(table) {
+      return listIndexes(knex, table);
+    },
+    async tablesInfo() {
+      const tables = {};
+      for (const table of await this.listTables()) {
+        const name = table.table;
+        tables[name] = {
+          ...table,
+          schema: await getColumns(knex, table.table),
+        };
+      }
+      return tables;
+    },
+  };
+
+  // Proxy the created knex instance to use our custom methods
+  return new Proxy(knex, {
+    apply: (target, thisArg, argArray) => {
+      const queryBuilder = target.apply(thisArg, argArray);
+      return new Proxy(queryBuilder, {
+        get: (target, prop) =>
+          prop in QUERY_METHODS ? QUERY_METHODS[prop] : target[prop],
+      });
+    },
+    get: (target, prop) => {
+      if (prop in KNEX_METHODS) {
+        return KNEX_METHODS[prop];
+      }
+
+      if (prop === "schema") {
+        const schemaBuilder = target[prop];
+        return new Proxy(schemaBuilder, {
+          get: (target, prop) =>
+            prop in SCHEMA_METHODS ? SCHEMA_METHODS[prop] : target[prop],
+        });
+      }
+
+      return target[prop];
+    },
+  });
+};
+
+const getUri = (knex) => {
+  const { client, connection: conn } = knex.client.config;
+  if (client === "sqlite3") {
+    return `${client}://${conn.filename}`;
+  }
+  const host = conn.server || conn.host;
+  return `${client}://${conn.user}:${conn.password}@${host}:${conn.port}/${conn.database}`;
+};
+
+const getColumns = async (knex, table) => {
   const client = knex.client.constructor.name;
   const database = knex.client.database();
 
@@ -17,18 +100,18 @@ const columnInfo = async (knex, table) => {
     client === "Client_MySQL2" ||
     client === "Client_BigQuery"
   ) {
-    results = await _columnsInfo(knex, {
+    results = await _getColumns(knex, {
       table_schema: database,
       table_name: table,
     });
   } else if (client === "Client_PG") {
-    results = await _columnsInfo(knex, {
+    results = await _getColumns(knex, {
       table_schema: knex.raw("current_schema()"),
       table_catalog: database,
       table_name: table,
     });
   } else if (client === "Client_MSSQL") {
-    results = await _columnsInfo(knex, {
+    results = await _getColumns(knex, {
       table_schema: knex.raw("schema_name()"),
       table_catalog: database,
       table_name: table,
@@ -47,7 +130,7 @@ const columnInfo = async (knex, table) => {
   return results;
 };
 
-const _columnsInfo = (knex, where = {}) => {
+const _getColumns = (knex, where = {}) => {
   return knex("information_schema.columns")
     .where(where)
     .orderBy("ordinal_position")
@@ -220,11 +303,6 @@ const listIndexes = async (knex, table) => {
   return [];
 };
 
-const countRows = async (knex, table) => {
-  const [row] = await knex(table).count({ count: "*" });
-  return Number(row.count);
-};
-
 const toKnexType = (type, maxLength = null) => {
   const fullType = `${type}(${maxLength})`;
 
@@ -351,10 +429,7 @@ const bulkMssqlInsert = async (
 };
 
 module.exports = {
-  columnInfo,
-  listTables,
-  listIndexes,
-  countRows,
+  hydrateKnex,
   toKnexType,
   streamInsert,
 };
