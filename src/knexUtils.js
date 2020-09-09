@@ -206,15 +206,16 @@ const listTables = async (knex) => {
     // with SQLITE_ENABLE_DBSTAT_VTAB=1, which is already available
     // in the precompiled binaries since v4.3 of sqlite3. See:
     // https://github.com/mapbox/node-sqlite3/issues/1279
-    return knex("dbstat")
-      .whereRaw("name not like 'sqlite_%'")
-      .orderBy("name")
+    return knex("dbstat as s")
+      .join("sqlite_master as t", "s.name", "=", "t.name")
+      .whereRaw("s.name not like 'sqlite_%' and t.type = 'table'")
+      .orderBy("s.name")
       .select({
-        table: "name",
-        rows: knex.raw("SUM(ncell)"),
-        bytes: knex.raw("SUM(pgsize)"),
+        table: "s.name",
+        rows: knex.raw("SUM(s.ncell)"),
+        bytes: knex.raw("SUM(s.pgsize)"),
       })
-      .groupBy("name")
+      .groupBy("s.name")
       .then((rows) => formatRows(rows));
   }
 
@@ -277,6 +278,26 @@ const listIndexes = async (knex, table) => {
       unique: !!row.unique,
       columns: row.columns.split(","),
     }));
+  }
+
+  if (client === "Client_SQLite3") {
+    const extractColumns = (sql) => {
+      const matches = sql.match(/\(\`(.+)\`\)$/);
+      if (!matches.length) {
+        return [];
+      }
+      return matches[1].split("`, `");
+    };
+
+    return knex("sqlite_master")
+      .where({ type: "index", tbl_name: table })
+      .then((rows) =>
+        rows.map((row) => ({
+          name: row.name,
+          unique: row.sql.startsWith("CREATE UNIQUE "),
+          columns: extractColumns(row.sql),
+        }))
+      );
   }
 
   if (client === "Client_MSSQL") {
