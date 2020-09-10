@@ -15,6 +15,7 @@ const ExcelBuilder = require("./src/ExcelBuilder");
 const { resolveKnexConn, stringifyKnexConn } = require("./src/resolveKnexConn");
 const { diffColumns, diffSchemas } = require("./src/schemaDiff");
 const { streamsDiff } = require("./src/streamUtils");
+const SqlDumper = require("./src/SqlDumper");
 
 class CliApp {
   constructor() {
@@ -357,14 +358,18 @@ class CliApp {
 
   async createDump(argv) {
     const lib = await this.initLib(argv.conn, argv);
-    const dumpFile = await lib.createDump(argv.name || null);
+    const dumper = new SqlDumper(lib);
+
+    const dumpFile = await dumper.createDump(argv.name || null);
     console.log(dumpFile);
     await lib.destroy();
   }
 
   async loadDump(argv) {
     const lib = await this.initLib(argv.conn, argv);
-    await lib.loadDump(argv.dump);
+    const dumper = new SqlDumper(lib);
+
+    await dumper.loadDump(argv.dump);
     await lib.destroy();
   }
 
