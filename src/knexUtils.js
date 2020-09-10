@@ -2,7 +2,93 @@ const prettyBytes = require("pretty-bytes");
 const writer = require("flush-write-stream");
 const { chunk, runPipeline } = require("./streamUtils");
 
-const columnInfo = async (knex, table) => {
+const hydrateKnex = (knex) => {
+  // Methods to overwrite or create over Knex
+  const KNEX_METHODS = {
+    getUri() {
+      return getUri(knex);
+    },
+  };
+
+  // Methods to overwrite or create over Knex's QueryBuilder
+  const QUERY_METHODS = {
+    async columnInfo(column = null) {
+      const columns = await getColumns(knex, this._single.table);
+      return column ? columns[column] : columns;
+    },
+    async countRows() {
+      const [row] = await this.count({ count: "*" });
+      return Number(row.count);
+    },
+    async getPrimaryKey() {
+      return getPrimaryKey(knex, this._single.table);
+    },
+  };
+
+  // Methods to overwrite or create over Knex's SchemaBuilder
+  const SCHEMA_METHODS = {
+    hasTable(table) {
+      if (knex.client.constructor.name === "Client_BigQuery") {
+        return true;
+      }
+      return knex.schema.hasTable(table);
+    },
+    listTables() {
+      return listTables(knex);
+    },
+    listIndexes(table) {
+      return listIndexes(knex, table);
+    },
+    async tablesInfo() {
+      const tables = {};
+      for (const table of await this.listTables()) {
+        const name = table.table;
+        tables[name] = {
+          ...table,
+          schema: await getColumns(knex, table.table),
+        };
+      }
+      return tables;
+    },
+  };
+
+  // Proxy the created knex instance to use our custom methods
+  return new Proxy(knex, {
+    apply: (target, thisArg, argArray) => {
+      const queryBuilder = target.apply(thisArg, argArray);
+      return new Proxy(queryBuilder, {
+        get: (target, prop) =>
+          prop in QUERY_METHODS ? QUERY_METHODS[prop] : target[prop],
+      });
+    },
+    get: (target, prop) => {
+      if (prop in KNEX_METHODS) {
+        return KNEX_METHODS[prop];
+      }
+
+      if (prop === "schema") {
+        const schemaBuilder = target[prop];
+        return new Proxy(schemaBuilder, {
+          get: (target, prop) =>
+            prop in SCHEMA_METHODS ? SCHEMA_METHODS[prop] : target[prop],
+        });
+      }
+
+      return target[prop];
+    },
+  });
+};
+
+const getUri = (knex) => {
+  const { client, connection: conn } = knex.client.config;
+  if (client === "sqlite3") {
+    return `${client}://${conn.filename}`;
+  }
+  const host = conn.server || conn.host;
+  return `${client}://${conn.user}:${conn.password}@${host}:${conn.port}/${conn.database}`;
+};
+
+const getColumns = async (knex, table) => {
   const client = knex.client.constructor.name;
   const database = knex.client.database();
 
@@ -17,18 +103,18 @@ const columnInfo = async (knex, table) => {
     client === "Client_MySQL2" ||
     client === "Client_BigQuery"
   ) {
-    results = await _columnsInfo(knex, {
+    results = await _getColumns(knex, {
       table_schema: database,
       table_name: table,
     });
   } else if (client === "Client_PG") {
-    results = await _columnsInfo(knex, {
+    results = await _getColumns(knex, {
       table_schema: knex.raw("current_schema()"),
       table_catalog: database,
       table_name: table,
     });
   } else if (client === "Client_MSSQL") {
-    results = await _columnsInfo(knex, {
+    results = await _getColumns(knex, {
       table_schema: knex.raw("schema_name()"),
       table_catalog: database,
       table_name: table,
@@ -47,7 +133,7 @@ const columnInfo = async (knex, table) => {
   return results;
 };
 
-const _columnsInfo = (knex, where = {}) => {
+const _getColumns = (knex, where = {}) => {
   return knex("information_schema.columns")
     .where(where)
     .orderBy("ordinal_position")
@@ -123,15 +209,16 @@ const listTables = async (knex) => {
     // with SQLITE_ENABLE_DBSTAT_VTAB=1, which is already available
     // in the precompiled binaries since v4.3 of sqlite3. See:
     // https://github.com/mapbox/node-sqlite3/issues/1279
-    return knex("dbstat")
-      .whereRaw("name not like 'sqlite_%'")
-      .orderBy("name")
+    return knex("dbstat as s")
+      .join("sqlite_master as t", "s.name", "=", "t.name")
+      .whereRaw("s.name not like 'sqlite_%' and t.type = 'table'")
+      .orderBy("s.name")
       .select({
-        table: "name",
-        rows: knex.raw("SUM(ncell)"),
-        bytes: knex.raw("SUM(pgsize)"),
+        table: "s.name",
+        rows: knex.raw("SUM(s.ncell)"),
+        bytes: knex.raw("SUM(s.pgsize)"),
       })
-      .groupBy("name")
+      .groupBy("s.name")
       .then((rows) => formatRows(rows));
   }
 
@@ -196,6 +283,26 @@ const listIndexes = async (knex, table) => {
     }));
   }
 
+  if (client === "Client_SQLite3") {
+    const extractColumns = (sql) => {
+      const matches = sql.match(/\(\`(.+)\`\)$/);
+      if (!matches.length) {
+        return [];
+      }
+      return matches[1].split("`, `");
+    };
+
+    return knex("sqlite_master")
+      .where({ type: "index", tbl_name: table })
+      .then((rows) =>
+        rows.map((row) => ({
+          name: row.name,
+          unique: row.sql.startsWith("CREATE UNIQUE "),
+          columns: extractColumns(row.sql),
+        }))
+      );
+  }
+
   if (client === "Client_MSSQL") {
     const rows = await knex.raw(`
       SELECT i.name [index],
@@ -220,11 +327,6 @@ const listIndexes = async (knex, table) => {
   return [];
 };
 
-const countRows = async (knex, table) => {
-  const [row] = await knex(table).count({ count: "*" });
-  return Number(row.count);
-};
-
 const toKnexType = (type, maxLength = null) => {
   const fullType = `${type}(${maxLength})`;
 
@@ -245,13 +347,52 @@ const toKnexType = (type, maxLength = null) => {
   return TYPES_MAP[fullType] || TYPES_MAP[type] || type;
 };
 
-const findPrimaryKey = async (knex, table) => {
-  const indexes = await listIndexes(knex, table);
+const getPrimaryKey = async (knex, table) => {
+  const client = knex.client.constructor.name;
+  const database = knex.client.database();
 
-  for (const index of indexes) {
-    if (index.unique && index.columns.length === 1) {
-      return index.columns[0];
-    }
+  if (client === "Client_SQLite3") {
+    const row = await knex(knex.raw(`pragma_table_info('${table}')`))
+      .where({ pk: 1 })
+      .first("name");
+    return row.name;
+  }
+
+  if (client === "Client_PG") {
+    const { rows } = await knex.raw(`
+      SELECT pg_attribute.attname
+      FROM pg_index, pg_class, pg_attribute, pg_namespace
+      WHERE pg_class.oid = '${table}'::regclass
+        AND indrelid = pg_class.oid
+        AND nspname = current_schema()
+        AND pg_class.relnamespace = pg_namespace.oid
+        AND pg_attribute.attrelid = pg_class.oid
+        AND pg_attribute.attnum = any(pg_index.indkey)
+        AND indisprimary
+    `);
+    return rows.length ? rows[0].attname : null;
+  }
+
+  if (client === "Client_MySQL" || client === "Client_MySQL2") {
+    const row = await knex("information_schema.statistics")
+      .where({
+        table_schema: database,
+        table_name: table,
+        index_name: "PRIMARY",
+      })
+      .first({ column: "column_name" });
+    return row.column;
+  }
+
+  if (client === "Client_MSSQL") {
+    const row = await knex("information_schema.key_column_usage")
+      .whereRaw(
+        `OBJECTPROPERTY(OBJECT_ID(CONSTRAINT_SCHEMA + '.' + CONSTRAINT_NAME), 'IsPrimaryKey') = 1`
+      )
+      .andWhereRaw("TABLE_SCHEMA = SCHEMA_NAME()")
+      .andWhere({ table_name: table })
+      .first({ column: "column_name" });
+    return row.column;
   }
 
   return null;
@@ -282,7 +423,7 @@ const streamInsertGeneric = async (knex, table, stream) => {
 
 const streamInsertMssql = async (knex, table, stream) => {
   const columns = await knex(table).columnInfo();
-  const primaryKey = await findPrimaryKey(knex, table);
+  const primaryKey = await getPrimaryKey(knex, table);
 
   await runPipeline(
     stream,
@@ -351,10 +492,7 @@ const bulkMssqlInsert = async (
 };
 
 module.exports = {
-  columnInfo,
-  listTables,
-  listIndexes,
-  countRows,
+  hydrateKnex,
   toKnexType,
   streamInsert,
 };

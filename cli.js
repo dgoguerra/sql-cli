@@ -9,12 +9,13 @@ const pkg = require("./package.json");
 const debug = require("debug")("sql-cli");
 const prettyBytes = require("pretty-bytes");
 const table = require("./src/table");
-const Lib = require("./src/Lib");
+const SqlLib = require("./src/SqlLib");
 const SqlRepl = require("./src/SqlRepl");
 const ExcelBuilder = require("./src/ExcelBuilder");
 const { resolveKnexConn, stringifyKnexConn } = require("./src/resolveKnexConn");
 const { diffColumns, diffSchemas } = require("./src/schemaDiff");
 const { streamsDiff } = require("./src/streamUtils");
+const SqlDumper = require("./src/SqlDumper");
 
 class CliApp {
   constructor() {
@@ -157,7 +158,7 @@ class CliApp {
 
   async listTables(argv) {
     const lib = await this.initLib(argv.conn, argv);
-    const tables = await lib.listTables();
+    const tables = await lib.schema.listTables();
 
     const formatted = _.sortBy(tables, [
       (row) => -row.bytes,
@@ -184,14 +185,11 @@ class CliApp {
 
     const lib = await this.initLib(conn);
 
-    const formatted = _.map(
-      await lib.getTableSchema(conn.table),
-      (val, key) => ({
-        column: key,
-        type: val.fullType,
-        nullable: val.nullable,
-      })
-    );
+    const formatted = _.map(await lib(conn.table).columnInfo(), (val, key) => ({
+      column: key,
+      type: val.fullType,
+      nullable: val.nullable,
+    }));
 
     console.log(table(formatted));
 
@@ -218,16 +216,16 @@ class CliApp {
   }
 
   async _diffTablesSchema(lib1, lib2, table1, table2, argv) {
-    if (!(await lib1.tableExists(table1))) {
+    if (!(await lib1.schema.hasTable(table1))) {
       this.error(`Table '${table1}' not found in 'before' schema`);
     }
-    if (!(await lib2.tableExists(table2))) {
+    if (!(await lib2.schema.hasTable(table2))) {
       this.error(`Table '${table2}' not found in 'after' schema`);
     }
 
     const { columns, summary } = diffColumns(
-      await lib1.getTableSchema(table1),
-      await lib2.getTableSchema(table2),
+      await lib1(table1).columnInfo(),
+      await lib2(table2).columnInfo(),
       { showSimilar: argv.all }
     );
 
@@ -254,10 +252,10 @@ class CliApp {
   }
 
   async _diffTablesData(lib1, lib2, table1, table2, argv) {
-    if (!(await lib1.tableExists(table1))) {
+    if (!(await lib1.schema.hasTable(table1))) {
       this.error(`Table '${table1}' not found in 'before' schema`);
     }
-    if (!(await lib2.tableExists(table2))) {
+    if (!(await lib2.schema.hasTable(table2))) {
       this.error(`Table '${table2}' not found in 'after' schema`);
     }
 
@@ -285,8 +283,8 @@ class CliApp {
 
   async _diffSchemas(lib1, lib2, argv) {
     const { tables, summary } = diffSchemas(
-      await lib1.getDatabaseSchema(),
-      await lib2.getDatabaseSchema(),
+      await lib1.schema.tablesInfo(),
+      await lib2.schema.tablesInfo(),
       { showSimilar: argv.all }
     );
 
@@ -327,8 +325,8 @@ class CliApp {
     const filePath = `${process.env.PWD}/${lib.buildConnSlug("export")}.xlsx`;
 
     if (argv.schema) {
-      for (const table of await lib.listTables()) {
-        const schema = await lib.getTableSchema(table.table);
+      for (const table of await lib.schema.listTables()) {
+        const schema = await lib(table.table).columnInfo();
         const rows = Object.keys(schema).map((key) => {
           const { fullType, nullable } = schema[key];
           return {
@@ -342,13 +340,13 @@ class CliApp {
     }
 
     if (argv.data) {
-      for (const table of await lib.listTables()) {
-        builder.addSheet(table.table, await lib.knex(table.table));
+      for (const table of await lib.schema.listTables()) {
+        builder.addSheet(table.table, await lib(table.table));
       }
     }
 
     if (argv.query) {
-      builder.addSheet("Sheet1", await lib.knex.raw(argv.query));
+      builder.addSheet("Sheet1", await lib.raw(argv.query));
     }
 
     builder.writeFile(filePath);
@@ -360,14 +358,18 @@ class CliApp {
 
   async createDump(argv) {
     const lib = await this.initLib(argv.conn, argv);
-    const dumpFile = await lib.createDump(argv.name || null);
+    const dumper = new SqlDumper(lib);
+
+    const dumpFile = await dumper.createDump(argv.name || null);
     console.log(dumpFile);
     await lib.destroy();
   }
 
   async loadDump(argv) {
     const lib = await this.initLib(argv.conn, argv);
-    await lib.loadDump(argv.dump);
+    const dumper = new SqlDumper(lib);
+
+    await dumper.loadDump(argv.dump);
     await lib.destroy();
   }
 
@@ -451,7 +453,7 @@ class CliApp {
   async initLib(conn) {
     const { conf, sshConf } =
       typeof conn === "string" ? this.resolveConn(conn) : conn;
-    return await new Lib({ conf, sshConf }).connect();
+    return await new SqlLib({ conf, sshConf }).connect();
   }
 
   resolveConn(connStr, argv = {}) {

@@ -1,8 +1,8 @@
 const fs = require("fs");
 const tar = require("tar");
 const rimraf = require("rimraf");
-const { runCli, getKnexUri } = require("./utils");
-const { listTables } = require("../src/knexUtils");
+const { runCli } = require("./utils");
+const { hydrateKnex } = require("../src/knexUtils");
 
 const TEST_DATETIME_1 = "2020-07-24 18:34:00";
 const TEST_DATETIME_2 = "2020-07-24 19:25:00";
@@ -47,8 +47,8 @@ const cliTestSuite = (name, knexFactory) => {
     let connUri;
 
     beforeAll(async () => {
-      knex = await knexFactory();
-      connUri = getKnexUri(knex);
+      knex = hydrateKnex(await knexFactory());
+      connUri = knex.getUri();
 
       await migrateTestTables(knex);
 
@@ -122,7 +122,7 @@ const cliTestSuite = (name, knexFactory) => {
 
     it("can create database dump", async () => {
       expect(fs.existsSync(TEST_DUMP_PATH)).toBeFalsy();
-      await runCli(`dump create ${getKnexUri(knex)} ${TEST_DUMP_NAME}`);
+      await runCli(`dump create ${connUri} ${TEST_DUMP_NAME}`);
       expect(fs.existsSync(TEST_DUMP_PATH)).toBeTruthy();
     });
 
@@ -151,11 +151,11 @@ const cliTestSuite = (name, knexFactory) => {
       await knex.schema.dropTable("table_2");
       await knex.schema.dropTable("table_3");
 
-      expect(await listTables(knex)).toMatchObject([]);
+      expect(await knex.schema.listTables()).toMatchObject([]);
 
-      await runCli(`dump load ${getKnexUri(knex)} ${TEST_DUMP_PATH}`);
+      await runCli(`dump load ${connUri} ${TEST_DUMP_PATH}`);
 
-      expect(await listTables(knex)).toMatchObject([
+      expect(await knex.schema.listTables()).toMatchObject([
         { table: "dump_knex_migrations" },
         { table: "dump_knex_migrations_lock" },
         { table: "table_1" },
@@ -172,15 +172,9 @@ const cliTestSuite = (name, knexFactory) => {
         { index: 1, is_locked: 0 },
       ]);
 
-      expect(
-        await runCli(`show ${getKnexUri(knex)}/table_1`)
-      ).toMatchSnapshot();
-      expect(
-        await runCli(`show ${getKnexUri(knex)}/table_2`)
-      ).toMatchSnapshot();
-      expect(
-        await runCli(`show ${getKnexUri(knex)}/table_3`)
-      ).toMatchSnapshot();
+      expect(await runCli(`show ${connUri}/table_1`)).toMatchSnapshot();
+      expect(await runCli(`show ${connUri}/table_2`)).toMatchSnapshot();
+      expect(await runCli(`show ${connUri}/table_3`)).toMatchSnapshot();
 
       expect(await getTable(knex, "table_1")).toMatchObject(
         TEST_TABLE1_CONTENT
