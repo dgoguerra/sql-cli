@@ -235,7 +235,7 @@ class CliApp {
     }));
 
     if (!formattedCols.length) {
-      console.log(`No schema changes: ${summary}`);
+      console.log(`No columns with changes: ${summary}`);
       return;
     }
 
@@ -288,17 +288,15 @@ class CliApp {
       { showSimilar: argv.all }
     );
 
-    const formattedTables = tables
-      .filter((col) => col.status !== "similar")
-      .map((table) => ({
-        table: table.displayTable,
-        rows: table.displayRows,
-        bytes: table.displayBytes,
-        columns: table.summary,
-      }));
+    const formattedTables = tables.map((table) => ({
+      table: table.displayTable,
+      rows: table.displayRows,
+      bytes: table.displayBytes,
+      columns: table.summary,
+    }));
 
     if (!formattedTables.length) {
-      console.log("No tables with changes");
+      console.log(`No tables with changes: ${summary}`);
       return;
     }
 

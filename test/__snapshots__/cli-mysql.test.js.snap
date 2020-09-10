@@ -14,7 +14,7 @@ alias2 sqlite3:///path/to/file.db
 `;
 
 exports[`CLI test: mysql2 can diff schemas 1`] = `
-"No tables with changes
+"No tables with changes: 3x similar (hidden)
 "
 `;
 

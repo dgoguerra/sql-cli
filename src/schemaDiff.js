@@ -67,11 +67,12 @@ const diffSchemas = (
     Object.keys(tablesBefore),
     Object.keys(tablesAfter)
   );
-
-  const tables = allTableKeys.map((tableKey) =>
+  const allTables = allTableKeys.map((tableKey) =>
     diffTableVersions(tablesBefore[tableKey], tablesAfter[tableKey])
   );
-  const summary = buildSummary(tables, { showSimilar });
+
+  const summary = buildSummary(allTables, { showSimilar });
+  const tables = allTables.filter((t) => t.status !== "similar" || showSimilar);
 
   return { tables, summary };
 };
