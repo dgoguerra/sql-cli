@@ -45,6 +45,10 @@ describe("hydrateKnex()", () => {
     expect(await knex("table_1").where({ field_1: "foo" }).countRows()).toBe(1);
   });
 
+  it("can detect table primary key", async () => {
+    expect(await knex("table_1").getPrimaryKey()).toBe("id");
+  });
+
   it("can get table columns", async () => {
     expect(await knex("table_1").columnInfo()).toMatchObject(
       EXPECTED_COLUMNS_INFO

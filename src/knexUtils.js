@@ -20,6 +20,9 @@ const hydrateKnex = (knex) => {
       const [row] = await this.count({ count: "*" });
       return Number(row.count);
     },
+    async getPrimaryKey() {
+      return getPrimaryKey(knex, this._single.table);
+    },
   };
 
   // Methods to overwrite or create over Knex's SchemaBuilder
@@ -344,13 +347,52 @@ const toKnexType = (type, maxLength = null) => {
   return TYPES_MAP[fullType] || TYPES_MAP[type] || type;
 };
 
-const findPrimaryKey = async (knex, table) => {
-  const indexes = await listIndexes(knex, table);
+const getPrimaryKey = async (knex, table) => {
+  const client = knex.client.constructor.name;
+  const database = knex.client.database();
 
-  for (const index of indexes) {
-    if (index.unique && index.columns.length === 1) {
-      return index.columns[0];
-    }
+  if (client === "Client_SQLite3") {
+    const row = await knex(knex.raw(`pragma_table_info('${table}')`))
+      .where({ pk: 1 })
+      .first("name");
+    return row.name;
+  }
+
+  if (client === "Client_PG") {
+    const { rows } = await knex.raw(`
+      SELECT pg_attribute.attname
+      FROM pg_index, pg_class, pg_attribute, pg_namespace
+      WHERE pg_class.oid = '${table}'::regclass
+        AND indrelid = pg_class.oid
+        AND nspname = current_schema()
+        AND pg_class.relnamespace = pg_namespace.oid
+        AND pg_attribute.attrelid = pg_class.oid
+        AND pg_attribute.attnum = any(pg_index.indkey)
+        AND indisprimary
+    `);
+    return rows.length ? rows[0].attname : null;
+  }
+
+  if (client === "Client_MySQL" || client === "Client_MySQL2") {
+    const row = await knex("information_schema.statistics")
+      .where({
+        table_schema: database,
+        table_name: table,
+        index_name: "PRIMARY",
+      })
+      .first({ column: "column_name" });
+    return row.column;
+  }
+
+  if (client === "Client_MSSQL") {
+    const row = await knex("information_schema.key_column_usage")
+      .whereRaw(
+        `OBJECTPROPERTY(OBJECT_ID(CONSTRAINT_SCHEMA + '.' + CONSTRAINT_NAME), 'IsPrimaryKey') = 1`
+      )
+      .andWhereRaw("TABLE_SCHEMA = SCHEMA_NAME()")
+      .andWhere({ table_name: table })
+      .first({ column: "column_name" });
+    return row.column;
   }
 
   return null;
@@ -381,7 +423,7 @@ const streamInsertGeneric = async (knex, table, stream) => {
 
 const streamInsertMssql = async (knex, table, stream) => {
   const columns = await knex(table).columnInfo();
-  const primaryKey = await findPrimaryKey(knex, table);
+  const primaryKey = await getPrimaryKey(knex, table);
 
   await runPipeline(
     stream,
