@@ -92,33 +92,67 @@ const getColumns = async (knex, table) => {
   const client = knex.client.constructor.name;
   const database = knex.client.database();
 
+  const _defaultGetColumns = (where = {}) => {
+    return knex("information_schema.columns")
+      .where(where)
+      .orderBy("ordinal_position")
+      .select({
+        column: "column_name",
+        nullable: "is_nullable",
+        type: "data_type",
+        defaultValue: "column_default",
+        maxLength: "character_maximum_length",
+      })
+      .then((rows) => _defaultFormatResults(rows));
+  };
+
+  const _defaultFormatResults = (rows) => {
+    const columns = {};
+    rows.forEach((row) => {
+      columns[row.column] = {
+        nullable: row.nullable === "YES",
+        type: row.type,
+        defaultValue: row.defaultValue,
+        maxLength: row.maxLength,
+      };
+    });
+    return columns;
+  };
+
   let results = {};
 
   // If possible, query manually instead of using knex(table).columnInfo().
   // The reason for this is to ensure ordering of the resulting columns
   // (the keys creation order should be kept in the returned object).
   // This expected ordering will facilitate testing.
-  if (
-    client === "Client_MySQL" ||
-    client === "Client_MySQL2" ||
-    client === "Client_BigQuery"
-  ) {
-    results = await _getColumns(knex, {
+  if (client === "Client_MySQL" || client === "Client_MySQL2") {
+    results = await _defaultGetColumns({
       table_schema: database,
       table_name: table,
     });
   } else if (client === "Client_PG") {
-    results = await _getColumns(knex, {
+    results = await _defaultGetColumns({
       table_schema: knex.raw("current_schema()"),
       table_catalog: database,
       table_name: table,
     });
   } else if (client === "Client_MSSQL") {
-    results = await _getColumns(knex, {
+    results = await _defaultGetColumns({
       table_schema: knex.raw("schema_name()"),
       table_catalog: database,
       table_name: table,
     });
+  } else if (client === "Client_BigQuery") {
+    // BigQuery table names are case sensitive
+    results = await knex("INFORMATION_SCHEMA.COLUMNS")
+      .where({ table_schema: database, table_name: table })
+      .orderBy("ordinal_position")
+      .select({
+        column: "column_name",
+        nullable: "is_nullable",
+        type: "data_type",
+      })
+      .then((rows) => _defaultFormatResults(rows));
   } else {
     // Fallback to knex's columnInfo()
     results = await knex(table).columnInfo();
@@ -131,31 +165,6 @@ const getColumns = async (knex, table) => {
   }
 
   return results;
-};
-
-const _getColumns = (knex, where = {}) => {
-  return knex("information_schema.columns")
-    .where(where)
-    .orderBy("ordinal_position")
-    .select({
-      column: "column_name",
-      nullable: "is_nullable",
-      type: "data_type",
-      defaultValue: "column_default",
-      maxLength: "character_maximum_length",
-    })
-    .then((rows) => {
-      const columns = {};
-      rows.forEach((row) => {
-        columns[row.column] = {
-          nullable: row.nullable === "YES",
-          type: row.type,
-          defaultValue: row.defaultValue,
-          maxLength: row.maxLength,
-        };
-      });
-      return columns;
-    });
 };
 
 // Snippet based on: https://github.com/knex/knex/issues/360#issuecomment-406483016
