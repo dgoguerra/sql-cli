@@ -27,12 +27,6 @@ const hydrateKnex = (knex) => {
 
   // Methods to overwrite or create over Knex's SchemaBuilder
   const SCHEMA_METHODS = {
-    hasTable(table) {
-      if (knex.client.constructor.name === "Client_BigQuery") {
-        return true;
-      }
-      return knex.schema.hasTable(table);
-    },
     listTables() {
       return listTables(knex);
     },

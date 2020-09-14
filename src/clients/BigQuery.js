@@ -1,6 +1,18 @@
 const Client = require("knex/lib/client");
-const { makeEscape } = require("knex/lib/query/string");
+const SchemaCompiler = require("knex/lib/schema/compiler");
+const { BigQuery } = require("@google-cloud/bigquery");
 const debug = require("debug")("knex:bigquery");
+
+class SchemaCompiler_BigQuery extends SchemaCompiler {
+  // Check whether a table exists on the query
+  hasTable(tableName) {
+    const sql =
+      "select * from INFORMATION_SCHEMA.TABLES where table_name = ? and table_schema = ?";
+    const bindings = [tableName, this.schema || this.client.database()];
+
+    this.pushQuery({ sql, bindings, output: (res) => res.length > 0 });
+  }
+}
 
 class Client_BigQuery extends Client {
   constructor(config) {
@@ -9,23 +21,21 @@ class Client_BigQuery extends Client {
   }
 
   _driver() {
-    const { BigQuery } = require("@google-cloud/bigquery");
     this.bigQueryTypes = [
       BigQuery.date,
       BigQuery.datetime,
       BigQuery.time,
       BigQuery.timestamp,
     ];
-
     return new BigQuery(this.connectionSettings);
   }
 
-  schemaCompiler() {
-    throw new Error("schema management not supported by BigQuery");
+  schemaCompiler(builder) {
+    return new SchemaCompiler_BigQuery(this, builder);
   }
 
   transaction() {
-    throw new Error("transaction not supported by BigQuery");
+    throw new Error("Transactions not supported for BigQuery");
   }
 
   wrapIdentifierImpl(value) {
@@ -178,7 +188,6 @@ Object.assign(Client_BigQuery.prototype, {
   dialect: "bigquery",
   driverName: "@google-cloud/bigquery",
   canCancelQuery: true,
-  _escapeBinding: makeEscape(),
 });
 
 module.exports = Client_BigQuery;
