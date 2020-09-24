@@ -230,7 +230,7 @@ const listTables = async (knex) => {
       .raw(
         `SELECT
           s.table_name AS [table],
-          p.rows AS [rows],
+          MAX(p.rows) AS [rows],
           SUM(a.used_pages) * 8 * 1000 AS [bytes]
         FROM information_schema.tables [s]
           LEFT JOIN sys.tables [t]
@@ -241,8 +241,7 @@ const listTables = async (knex) => {
           LEFT JOIN sys.allocation_units a ON p.partition_id = a.container_id
         WHERE s.table_schema != 'sys'
           AND (i.object_id is null OR i.object_id > 255)
-          AND i.is_primary_key = 1
-        GROUP BY s.table_name, t.Name, p.Rows
+        GROUP BY s.table_name, t.Name
         ORDER BY t.Name;`
       )
       .then((rows) => formatRows(rows));
@@ -358,7 +357,7 @@ const getPrimaryKey = async (knex, table) => {
     const row = await knex(knex.raw(`pragma_table_info('${table}')`))
       .where({ pk: 1 })
       .first("name");
-    return row.name;
+    return row ? row.name : null;
   }
 
   if (client === "Client_PG") {
@@ -384,7 +383,7 @@ const getPrimaryKey = async (knex, table) => {
         index_name: "PRIMARY",
       })
       .first({ column: "column_name" });
-    return row.column;
+    return row ? row.column : null;
   }
 
   if (client === "Client_MSSQL") {
@@ -395,7 +394,7 @@ const getPrimaryKey = async (knex, table) => {
       .andWhereRaw("TABLE_SCHEMA = SCHEMA_NAME()")
       .andWhere({ table_name: table })
       .first({ column: "column_name" });
-    return row.column;
+    return row ? row.column : null;
   }
 
   return null;
