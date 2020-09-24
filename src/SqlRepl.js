@@ -58,7 +58,7 @@ class SqlRepl {
   }
 
   async listSchemaTables() {
-    const tables = await this.lib.listTables();
+    const tables = await this.lib.schema.listTables();
     return _.sortBy(tables, (row) => -row.bytes).map((row) => ({
       table: row.table,
       rows: row.rows,
@@ -71,7 +71,7 @@ class SqlRepl {
       throw new Error(`Missing 'table' argument`);
     }
 
-    const columns = await this.lib.getTableSchema(tableName);
+    const columns = await this.lib(tableName).columnInfo();
     if (!Object.keys(columns).length) {
       throw new Error(`Table '${tableName}' not found`);
     }
