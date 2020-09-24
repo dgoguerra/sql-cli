@@ -90,6 +90,7 @@ function resolveKnexConn(connUri, { client = null, aliases = {} } = {}) {
     conf.connection = {
       charset: "utf8mb4",
       timezone: "+00:00",
+      port: 3306, // port must be set in mysql
       ...conf.connection,
     };
   }
