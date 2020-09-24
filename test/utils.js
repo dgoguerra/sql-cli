@@ -25,6 +25,8 @@ const runCli = (args, { stdin = null, debug = false } = {}) =>
         SQL_CONF_DIR: TEST_CONF_DIR,
         // Force default date of stringDate() to generate migrations filenames
         SQL_DUMP_DATE: "2020-07-22T18:22:50.732Z",
+        // Disable importing aliases from the user's TablePlus and Sequel Pro
+        SQL_NO_IMPORT_ALIASES: 1,
         // Disable chalk's coloring of outputs
         FORCE_COLOR: 0,
       },

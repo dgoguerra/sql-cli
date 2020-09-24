@@ -1,10 +1,13 @@
 #!/usr/bin/env node
 
+const fs = require("fs");
 const cp = require("child_process");
 const _ = require("lodash");
 const Conf = require("conf");
 const yargs = require("yargs");
 const chalk = require("chalk");
+const plist = require("plist");
+const keytar = require("keytar");
 const pkg = require("./package.json");
 const debug = require("debug")("sql-cli");
 const prettyBytes = require("pretty-bytes");
@@ -12,10 +15,16 @@ const table = require("./src/table");
 const SqlLib = require("./src/SqlLib");
 const SqlRepl = require("./src/SqlRepl");
 const ExcelBuilder = require("./src/ExcelBuilder");
-const { resolveKnexConn, stringifyKnexConn } = require("./src/resolveKnexConn");
 const { diffColumns, diffIndexes, diffSchemas } = require("./src/schemaDiff");
+const { resolveKnexConn, stringifyConn } = require("./src/resolveKnexConn");
 const { streamsDiff } = require("./src/streamUtils");
 const SqlDumper = require("./src/SqlDumper");
+
+const TABLEPLUS_CONNECTIONS_PATH =
+  "~/Library/Application Support/com.tinyapp.TablePlus/Data/Connections.plist";
+
+const SEQUELPRO_FAVORITES_PATH =
+  "~/Library/Application Support/Sequel Pro/Data/Favorites.plist";
 
 class CliApp {
   constructor() {
@@ -26,6 +35,19 @@ class CliApp {
       defaults: { aliases: {} },
     });
     debug(`loading config from ${this.conf.path}`);
+
+    this.aliases = {};
+    this.aliasKeychains = {};
+
+    // Load all saved aliases as an object indexed by the alias key.
+    // Add also as aliases saved connections from TablePlus and Sequel Pro.
+    this.loadInternalAliases();
+
+    if (!process.env.SQL_NO_IMPORT_ALIASES) {
+      this.loadTablePlusAliases();
+      this.loadSequelProAliases();
+    }
+
     this.cli = this.buildYargs();
     this.argv = this.cli.argv;
   }
@@ -438,12 +460,100 @@ class CliApp {
   }
 
   async listAliases() {
-    const aliases = this.conf.get("aliases") || {};
-    console.log(table(_.map(aliases, (conn, alias) => ({ alias, conn }))));
+    console.log(table(_.map(this.aliases, (conn, alias) => ({ alias, conn }))));
+  }
+
+  loadInternalAliases() {
+    const internalAliases = this.conf.get("aliases");
+    Object.keys(internalAliases).forEach((alias) => {
+      this.aliases[alias] = internalAliases[alias];
+    });
+  }
+
+  loadTablePlusAliases() {
+    let connections;
+
+    try {
+      connections = this.readPlistFile(TABLEPLUS_CONNECTIONS_PATH);
+    } catch (err) {
+      // File not found, assume TablePlus is not installed or has no config
+      return;
+    }
+
+    for (const c of connections) {
+      const alias = _.snakeCase(`tableplus-${c.ConnectionName}`).replace(
+        /_/g,
+        "-"
+      );
+      const conn = stringifyConn({
+        protocol: c.Driver.toLowerCase(),
+        path: c.DatabasePath, // only for SQLite
+        host: c.DatabaseHost,
+        port: c.DatabasePort,
+        user: c.DatabaseUser,
+        database: c.DatabaseName,
+        sshHost: c.isOverSSH && c.ServerAddress,
+        sshPort: c.isOverSSH && c.ServerPort,
+        sshUser: c.isOverSSH && c.ServerUser,
+      });
+      this.aliases[alias] = conn;
+      this.aliasKeychains[alias] = {
+        service: "com.tableplus.TablePlus",
+        account: `${c.ID}_database`,
+      };
+    }
+  }
+
+  loadSequelProAliases() {
+    let connections;
+    try {
+      const favorites = this.readPlistFile(SEQUELPRO_FAVORITES_PATH, {
+        parseIntegersAsString: true,
+      });
+      connections = favorites["Favorites Root"].Children;
+    } catch (err) {
+      // File not found, assume SequelPro is not installed or has no config
+      return;
+    }
+
+    for (const c of connections) {
+      const alias = _.snakeCase(`sequelpro-${c.name}`).replace(/_/g, "-");
+      const conn = stringifyConn({ protocol: "mysql", ...c });
+      this.aliases[alias] = conn;
+      this.aliasKeychains[alias] = {
+        service: `Sequel Pro : ${c.name} (${c.id})`,
+        account: `${c.user}@${c.host}/${c.database}`,
+      };
+    }
+  }
+
+  readPlistFile(filePath, { parseIntegersAsString = false } = {}) {
+    if (filePath.startsWith("~/")) {
+      filePath = filePath.replace("~/", `${process.env.HOME}/`);
+    }
+
+    let content = fs.readFileSync(filePath).toString();
+
+    // Fix: Sequel Pro uses very big numeric IDs, which JavaScript loads
+    // as unsafe integers, losing precision. For example:
+    //
+    // > require('plist').parse('<plist><integer>7508107108915805319</integer></plist>')
+    // 7508107108915805000
+    // > Number.isSafeInteger(7508107108915805319)
+    // false
+    //
+    // We work around this by converting all integers of the plist file to
+    // string befofe parsing it.
+    if (parseIntegersAsString) {
+      content = content.replace(/<integer>/g, "<string>");
+      content = content.replace(/<\/integer>/g, "</string>");
+    }
+
+    return plist.parse(content);
   }
 
   async addAlias(argv) {
-    if (this.conf.get(`aliases.${argv.alias}`)) {
+    if (this.aliases[argv.alias]) {
       this.error(`Alias '${argv.alias}' already exists`);
     }
     this.conf.set(`aliases.${argv.alias}`, argv.conn);
@@ -452,8 +562,13 @@ class CliApp {
   }
 
   async removeAlias(argv) {
-    if (!this.conf.get(`aliases.${argv.alias}`)) {
+    if (!this.aliases[argv.alias]) {
       this.error(`Alias '${argv.alias}' not found`);
+    }
+    if (!this.conf.get(`aliases.${argv.alias}`)) {
+      this.error(
+        `Alias '${argv.alias}' is an imported alias, cannot be deleted`
+      );
     }
     this.conf.delete(`aliases.${argv.alias}`);
 
@@ -463,20 +578,48 @@ class CliApp {
   async initLib(conn) {
     const { conf, sshConf } =
       typeof conn === "string" ? this.resolveConn(conn) : conn;
+
+    if (
+      conf.connection &&
+      !conf.connection.password &&
+      this.aliasKeychains[conn]
+    ) {
+      const { service, account } = this.aliasKeychains[conn];
+      debug(
+        `looking up password in system keychain (service=${service}, account=${account})`
+      );
+      const password = await keytar.getPassword(service, account);
+      if (password) {
+        debug("password found and attached to the connection");
+        conf.connection.password = password;
+      } else {
+        debug("password not found");
+      }
+    }
+
     return await new SqlLib({ conf, sshConf }).connect();
   }
 
   resolveConn(connStr, argv = {}) {
     return resolveKnexConn(connStr, {
       client: argv.client,
-      aliases: this.conf.get("aliases"),
+      aliases: this.aliases,
     });
   }
 
   stringifyConn(connStr, argv = {}) {
-    return stringifyKnexConn(connStr, {
-      client: argv.client,
-      aliases: this.conf.get("aliases"),
+    const { sshConf, conf } = this.resolveConn(connStr, argv);
+    const { client, connection: conn } = conf;
+
+    return stringifyConn({
+      protocol: client,
+      path: conn.filename, // only set in SQLite
+      host: conn.host || conn.server,
+      ...conn,
+      sshHost: sshConf && sshConf.host,
+      sshPort: sshConf && sshConf.port,
+      sshUser: sshConf && sshConf.user,
+      sshPassword: sshConf && sshConf.password,
     });
   }
 
