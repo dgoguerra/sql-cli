@@ -20,7 +20,7 @@
     "test": "bin/run-test"
   },
   "dependencies": {
-    "@google-cloud/bigquery": "^4.7.0",
+    "@google-cloud/bigquery": "^5.2.0",
     "chalk": "^3.0.0",
     "conf": "^6.2.1",
     "deep-equal": "^2.0.1",
