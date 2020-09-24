@@ -113,29 +113,46 @@ function resolveKnexConn(connUri, { client = null, aliases = {} } = {}) {
   return { sshConf, conf, table };
 }
 
-function stringifyKnexConn(connUri, opts) {
-  const { sshConf, conf } = resolveKnexConn(connUri, opts);
-  const { client, connection: conn } = conf;
+const stringifyConn = ({
+  protocol,
+  host,
+  path = null,
+  port = null,
+  user,
+  password = null,
+  database,
+  sshHost = null,
+  sshPort = 22,
+  sshUser = process.env.USER,
+  sshPassword,
+}) => {
+  const formatHost = (host, port) => (port ? `${host}:${port}` : host);
 
-  if (client === "sqlite3") {
-    return `${client}://${conn.filename}`;
-  }
-
-  const encodeAuth = ({ user, password }) =>
+  const formatAuth = (user, password) =>
     user && password
       ? `${encodeURIComponent(user)}:${encodeURIComponent(password)}@`
       : user
       ? `${encodeURIComponent(user)}@`
       : "";
 
-  const host = (conn.host || conn.server) + (conn.port ? `:${conn.port}` : "");
-  const uriPath = `${encodeAuth(conn)}${host}/${conn.database}`;
-
-  if (sshConf) {
-    return `${client}+ssh://${encodeAuth(sshConf)}${sshConf.host}/${uriPath}`;
-  } else {
-    return `${client}://${uriPath}`;
+  // Only used for SQLite
+  if (path) {
+    return `${protocol}://${path}`;
   }
-}
 
-module.exports = { resolveKnexConn, stringifyKnexConn };
+  let connUri = formatAuth(user, password) + formatHost(host, port);
+
+  if (database) {
+    connUri += `/${database}`;
+  }
+
+  if (sshHost) {
+    const sshConnUri =
+      formatAuth(sshUser, sshPassword) + formatHost(sshHost, sshPort);
+    return `${protocol}+ssh://${sshConnUri}/${connUri}`;
+  }
+
+  return `${protocol}://${connUri}`;
+};
+
+module.exports = { resolveKnexConn, stringifyConn };

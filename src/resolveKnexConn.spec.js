@@ -1,4 +1,4 @@
-const { resolveKnexConn, stringifyKnexConn } = require("./resolveKnexConn");
+const { resolveKnexConn, stringifyConn } = require("./resolveKnexConn");
 
 describe("resolveKnexConn()", () => {
   it("mysql conn", () => {
@@ -169,26 +169,47 @@ describe("resolveKnexConn()", () => {
   });
 });
 
-describe("stringifyKnexConn()", () => {
+describe("stringifyConn()", () => {
   it("sqlite conn", () => {
-    const str = stringifyKnexConn("sqlite:///path/to/file/mydb.db");
-    expect(str).toBe("sqlite3:///path/to/file/mydb.db");
+    const str = stringifyConn({
+      protocol: "sqlite",
+      path: "/path/to/file/mydb.db",
+    });
+    expect(str).toBe("sqlite:///path/to/file/mydb.db");
   });
 
   it("sqlite conn without path", () => {
-    const str = stringifyKnexConn("sqlite://mydb.db");
-    expect(str).toBe("sqlite3://./mydb.db");
+    const str = stringifyConn({ protocol: "sqlite", path: "mydb.db" });
+    expect(str).toBe("sqlite://mydb.db");
   });
 
   it("mysql conn", () => {
-    const str = stringifyKnexConn("my://app:secret@127.0.0.1:33060/dbname");
+    const str = stringifyConn({
+      protocol: "mysql2",
+      user: "app",
+      password: "secret",
+      host: "127.0.0.1",
+      port: 33060,
+      database: "dbname",
+    });
     expect(str).toBe("mysql2://app:secret@127.0.0.1:33060/dbname");
   });
 
-  it("mysql conn with alias", () => {
-    const str = stringifyKnexConn("mydb", {
-      aliases: { mydb: "mysql://app:secret@127.0.0.1:33060/dbname" },
+  it("mssql conn over ssh", () => {
+    const str = stringifyConn({
+      protocol: "mssql",
+      user: "app",
+      password: "secret",
+      host: "127.0.0.1",
+      port: 1433,
+      database: "dbname",
+      sshUser: "sshuser",
+      sshPassword: "sshsecret",
+      sshHost: "123.123.123.123",
+      sshPort: 2222,
     });
-    expect(str).toBe("mysql2://app:secret@127.0.0.1:33060/dbname");
+    expect(str).toBe(
+      "mssql+ssh://sshuser:sshsecret@123.123.123.123:2222/app:secret@127.0.0.1:1433/dbname"
+    );
   });
 });
