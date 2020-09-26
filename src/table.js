@@ -54,7 +54,7 @@ module.exports = (
 
   return tableStr
     .split("\n")
-    .map((line) => limitLine(line))
+    .map((line) => limitLine(line.trimEnd()))
     .join("\n")
     .replace(/\r?\n$/, "");
 };

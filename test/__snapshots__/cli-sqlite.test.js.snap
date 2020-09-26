@@ -1,15 +1,15 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
 exports[`CLI test: sqlite3 can create conn aliases 1`] = `
-"alias  conn                                     
-alias1 mysql://app:secret@127.0.0.1:1234/dbname 
-alias2 sqlite3:///path/to/file.db               
+"alias  conn
+alias1 mysql://app:secret@127.0.0.1:1234/dbname
+alias2 sqlite3:///path/to/file.db
 "
 `;
 
 exports[`CLI test: sqlite3 can delete conn aliases 1`] = `
-"alias  conn                       
-alias2 sqlite3:///path/to/file.db 
+"alias  conn
+alias2 sqlite3:///path/to/file.db
 "
 `;
 
@@ -19,8 +19,8 @@ exports[`CLI test: sqlite3 can diff schemas 1`] = `
 `;
 
 exports[`CLI test: sqlite3 can diff tables 1`] = `
-"column  type                     
-field_1 integer nullable → float 
+"column  type
+field_1 integer nullable → float
 
 Columns: 1x changed, 4x similar (hidden)
 Indexes: none
@@ -30,74 +30,74 @@ Indexes: none
 exports[`CLI test: sqlite3 can diff tables data 1`] = `
 "Diff of tables content (first 20 rows):
 
-id field_1    updated_at                                
-1  12 → 12.3  [null] → 2020-07-24 18:34:00              
-2  30 → 30.45 2020-07-24 18:34:00 → 2020-07-24 19:25:00 
+id field_1    updated_at
+1  12 → 12.3  [null] → 2020-07-24 18:34:00
+2  30 → 30.45 2020-07-24 18:34:00 → 2020-07-24 19:25:00
 "
 `;
 
 exports[`CLI test: sqlite3 can list tables 1`] = `
-"table   rows bytes  
-table_1 2    4.1 kB 
-table_2 2    4.1 kB 
-table_3 0    4.1 kB 
+"table   rows bytes
+table_1 2    4.1 kB
+table_2 2    4.1 kB
+table_3 0    4.1 kB
 
 (12.3 kB in 3 tables)
 "
 `;
 
 exports[`CLI test: sqlite3 can load database dump 1`] = `
-"column     type     nullable 
-id         integer  false    
-field_1    integer  true     
-field_2    text     true     
-created_at datetime true     
-updated_at datetime true     
+"column     type     nullable
+id         integer  false
+field_1    integer  true
+field_2    text     true
+created_at datetime true
+updated_at datetime true
 
 No indexes in table
 "
 `;
 
 exports[`CLI test: sqlite3 can load database dump 2`] = `
-"column     type     nullable 
-id         integer  false    
-field_1    float    false    
-field_2    text     true     
-created_at datetime true     
-updated_at datetime true     
+"column     type     nullable
+id         integer  false
+field_1    float    false
+field_2    text     true
+created_at datetime true
+updated_at datetime true
 
 No indexes in table
 "
 `;
 
 exports[`CLI test: sqlite3 can load database dump 3`] = `
-"column     type     nullable 
-idField    integer  false    
-field_1    bigint   true     
-created_at datetime true     
-updated_at datetime true     
+"column     type     nullable
+idField    integer  false
+field_1    bigint   true
+created_at datetime true
+updated_at datetime true
 
 No indexes in table
 "
 `;
 
 exports[`CLI test: sqlite3 can show table 1`] = `
-"column     type     nullable 
-id         integer  false    
-field_1    float    false    
-field_2    text     true     
-created_at datetime true     
-updated_at datetime true     
+"column     type     nullable
+id         integer  false
+field_1    float    false
+field_2    text     true
+created_at datetime true
+updated_at datetime true
 
 No indexes in table
 "
 `;
 
 exports[`CLI test: sqlite3 can use a created alias 1`] = `
-"table   rows bytes  
-table_1 2    4.1 kB 
-table_2 2    4.1 kB 
-table_3 0    4.1 kB 
+"table   rows bytes
+table_1 2    4.1 kB
+table_2 2    4.1 kB
+table_3 0    4.1 kB
 
 (12.3 kB in 3 tables)
 "
