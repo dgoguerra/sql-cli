@@ -310,7 +310,7 @@ const listIndexes = async (knex, table) => {
 
   if (client === "Client_MSSQL") {
     const rows = await knex.raw(`
-      SELECT i.name [index],
+      SELECT i.name [name],
         i.is_unique [unique],
         STRING_AGG(ac.Name, ',') WITHIN GROUP (ORDER BY ic.key_ordinal) [columns]
       FROM sys.tables [t]
@@ -323,7 +323,7 @@ const listIndexes = async (knex, table) => {
       GROUP BY i.name, i.is_unique;
     `);
     return rows.map((row) => ({
-      ...row,
+      name: row.name,
       unique: !!row.unique,
       columns: row.columns.split(","),
     }));
