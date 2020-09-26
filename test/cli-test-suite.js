@@ -65,7 +65,8 @@ const cliTestSuite = (name, knexFactory) => {
     });
 
     it("can show table", async () => {
-      expect(await runCli(`show ${connUri}/table_2`)).toMatchSnapshot();
+      const output = await runCli(`show ${connUri}/table_2`);
+      expect(cleanIndexesName(output)).toMatchSnapshot();
     });
 
     it("can diff tables", async () => {
@@ -108,10 +109,10 @@ const cliTestSuite = (name, knexFactory) => {
     });
 
     it("can run shell", async () => {
-      const result = await runCli(`sh ${connUri}`, {
+      const output = await runCli(`sh ${connUri}`, {
         stdin: "select 1+1 as result;\nselect 2+3 as result2;",
       });
-      expect(result).toMatchInlineSnapshot(`
+      expect(output).toMatchInlineSnapshot(`
         "result 
         2      
         result2 
@@ -172,9 +173,12 @@ const cliTestSuite = (name, knexFactory) => {
         { index: 1, is_locked: 0 },
       ]);
 
-      expect(await runCli(`show ${connUri}/table_1`)).toMatchSnapshot();
-      expect(await runCli(`show ${connUri}/table_2`)).toMatchSnapshot();
-      expect(await runCli(`show ${connUri}/table_3`)).toMatchSnapshot();
+      const output1 = await runCli(`show ${connUri}/table_1`);
+      const output2 = await runCli(`show ${connUri}/table_2`);
+      const output3 = await runCli(`show ${connUri}/table_3`);
+      expect(cleanIndexesName(output1)).toMatchSnapshot();
+      expect(cleanIndexesName(output2)).toMatchSnapshot();
+      expect(cleanIndexesName(output3)).toMatchSnapshot();
 
       expect(await getTable(knex, "table_1")).toMatchObject(
         TEST_TABLE1_CONTENT
@@ -241,5 +245,15 @@ const migrateTestTables = async (knex) => {
   await knex("table_1").insert(TEST_TABLE1_CONTENT);
   await knex("table_2").insert(TEST_TABLE2_CONTENT);
 };
+
+// MSSQL creates primary key indexes with a random name, ex:
+// "PK__table_1__84964D886A8CF66A" for a table "table_1".
+// Clean up output before saving its snapshot, to be able
+// to reproduce results.
+const cleanIndexesName = (content) =>
+  content.replace(
+    /PK__([a-zA-Z0-9_]+)__[a-zA-Z0-9]{16}/g,
+    "PK__$1__0000000000000000"
+  );
 
 module.exports = { cliTestSuite, migrateTestTables };

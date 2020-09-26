@@ -52,6 +52,8 @@ field_1    integer                  true
 field_2    text                     true     
 created_at timestamp with time zone true     
 updated_at timestamp with time zone true     
+
+No indexes in table
 "
 `;
 
@@ -62,6 +64,8 @@ field_1    numeric                  false
 field_2    text                     true     
 created_at timestamp with time zone true     
 updated_at timestamp with time zone true     
+
+No indexes in table
 "
 `;
 
@@ -71,6 +75,8 @@ idField    bigint                   false
 field_1    bigint                   true     
 created_at timestamp with time zone true     
 updated_at timestamp with time zone true     
+
+No indexes in table
 "
 `;
 
@@ -81,6 +87,8 @@ field_1    numeric                  false
 field_2    text                     true     
 created_at timestamp with time zone true     
 updated_at timestamp with time zone true     
+
+No indexes in table
 "
 `;
 

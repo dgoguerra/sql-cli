@@ -52,6 +52,9 @@ field_1    int          true
 field_2    nvarchar(-1) true     
 created_at datetime2    true     
 updated_at datetime2    true     
+
+index                         unique columns 
+PK__table_1__0000000000000000 true   id      
 "
 `;
 
@@ -62,6 +65,9 @@ field_1    decimal      false
 field_2    nvarchar(-1) true     
 created_at datetime2    true     
 updated_at datetime2    true     
+
+index                         unique columns 
+PK__table_2__0000000000000000 true   id      
 "
 `;
 
@@ -71,6 +77,9 @@ idField    bigint    false
 field_1    bigint    true     
 created_at datetime2 true     
 updated_at datetime2 true     
+
+index                         unique columns 
+PK__table_3__0000000000000000 true   idField 
 "
 `;
 
@@ -81,6 +90,9 @@ field_1    decimal      false
 field_2    nvarchar(-1) true     
 created_at datetime2    true     
 updated_at datetime2    true     
+
+index                         unique columns 
+PK__table_2__0000000000000000 true   id      
 "
 `;
 

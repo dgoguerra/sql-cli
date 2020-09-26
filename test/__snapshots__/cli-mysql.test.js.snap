@@ -52,6 +52,9 @@ field_1    int         true
 field_2    text(65535) true     
 created_at timestamp   true     
 updated_at timestamp   true     
+
+index   unique columns 
+PRIMARY true   id      
 "
 `;
 
@@ -62,6 +65,9 @@ field_1    decimal     false
 field_2    text(65535) true     
 created_at timestamp   true     
 updated_at timestamp   true     
+
+index   unique columns 
+PRIMARY true   id      
 "
 `;
 
@@ -71,6 +77,9 @@ idField    bigint    false
 field_1    bigint    true     
 created_at timestamp true     
 updated_at timestamp true     
+
+index   unique columns 
+PRIMARY true   idField 
 "
 `;
 
@@ -81,6 +90,9 @@ field_1    decimal     false
 field_2    text(65535) true     
 created_at datetime    true     
 updated_at datetime    true     
+
+index   unique columns 
+PRIMARY true   id      
 "
 `;
 

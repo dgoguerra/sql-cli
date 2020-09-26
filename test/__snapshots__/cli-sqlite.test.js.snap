@@ -52,6 +52,8 @@ field_1    integer  true
 field_2    text     true     
 created_at datetime true     
 updated_at datetime true     
+
+No indexes in table
 "
 `;
 
@@ -62,6 +64,8 @@ field_1    float    false
 field_2    text     true     
 created_at datetime true     
 updated_at datetime true     
+
+No indexes in table
 "
 `;
 
@@ -71,6 +75,8 @@ idField    integer  false
 field_1    bigint   true     
 created_at datetime true     
 updated_at datetime true     
+
+No indexes in table
 "
 `;
 
@@ -81,6 +87,8 @@ field_1    float    false
 field_2    text     true     
 created_at datetime true     
 updated_at datetime true     
+
+No indexes in table
 "
 `;
 
