@@ -1,5 +1,21 @@
+const _ = require("lodash");
 const parseConn = require("knex/lib/util/parse-connection");
-const { getClient } = require("./clientAliases");
+
+// Known client aliases (based on aliases in https://github.com/xo/usql)
+const CLIENT_ALIASES = {
+  mysql2: ["my", "mysql", "maria", "aurora", "mariadb", "percona"],
+  pg: ["pgsql", "postgres", "postgresql"],
+  sqlite3: ["sq", "file", "sqlite"],
+  mssql: ["ms", "sqlserver", "microsoftsqlserver"],
+  bigquery: ["bq"],
+};
+
+function resolveClient(client) {
+  return _.findKey(
+    CLIENT_ALIASES,
+    (val, key) => key === client || val.includes(client)
+  );
+}
 
 function resolveConnAlias(connAlias, { aliases = {} } = {}) {
   const [uri, params] = connAlias.split("?");
@@ -41,7 +57,7 @@ function resolveKnexConn(connUri, { client = null, aliases = {} } = {}) {
   let table;
 
   // SQLite case, the whole uriPath is a filename
-  if (getClient(protocol) === "sqlite3") {
+  if (resolveClient(protocol) === "sqlite3") {
     const parts = uriPath.split("/");
     const dbTable = parts.pop();
     const dbName = parts.pop();
@@ -74,7 +90,7 @@ function resolveKnexConn(connUri, { client = null, aliases = {} } = {}) {
 
   // The uri protocol is the client, or an alias of the client.
   // This may be overriden through the option --client.
-  conf.client = client || getClient(conf.client) || conf.client;
+  conf.client = client || resolveClient(conf.client) || conf.client;
 
   if (!conf.client) {
     throw new Error(`Unknown Knex client, set one manually with --client`);
