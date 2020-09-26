@@ -250,15 +250,7 @@ class CliApp {
         column: col.displayColumn,
         type: col.displayType,
       }));
-
-      console.log(
-        table(
-          formatted,
-          // Disable default rows formatting, since the fields
-          // already have diff colors applied.
-          { headers: ["column", "type"], format: (val) => val }
-        )
-      );
+      console.log(table(formatted));
     }
 
     const {
@@ -271,24 +263,17 @@ class CliApp {
     );
 
     if (indexes.length) {
+      if (columns.length) {
+        console.log("");
+      }
+
       const formatted = indexes.map((ind) => ({
         index: ind.displayIndex,
         algorithm: ind.displayAlgorithm,
         unique: ind.displayUnique,
         columns: ind.displayColumns,
       }));
-
-      if (columns.length) {
-        console.log("");
-      }
-      console.log(
-        table(
-          formatted,
-          // Disable default rows formatting, since the fields
-          // already have diff colors applied.
-          { format: (val) => val }
-        )
-      );
+      console.log(table(formatted));
     }
 
     if (argv.all || columns.length || indexes.length) {
@@ -310,23 +295,13 @@ class CliApp {
     console.log(`Diff of tables content (first ${argv.rows} rows):`);
     console.log("");
 
-    const formattedRows = await streamsDiff(
+    const rows = await streamsDiff(
       lib1.knex(table1).limit(argv.rows).stream(),
       lib2.knex(table2).limit(argv.rows).stream(),
       { allRows: argv.all, allColumns: false }
     );
 
-    if (!formattedRows.length) {
-      console.log("No table content changes");
-      return;
-    }
-
-    console.log(
-      table(formattedRows, {
-        headers: Object.keys(formattedRows[0]),
-        format: (val) => val,
-      })
-    );
+    console.log(rows.length ? table(rows) : "No table content changes");
   }
 
   async _diffSchemas(lib1, lib2, argv) {
@@ -336,7 +311,7 @@ class CliApp {
       { showSimilar: argv.all }
     );
 
-    const formattedTables = tables.map((table) => ({
+    const formatted = tables.map((table) => ({
       table: table.displayTable,
       rows: table.displayRows,
       bytes: table.displayBytes,
@@ -344,21 +319,14 @@ class CliApp {
       indexes: table.indSummary,
     }));
 
-    if (!formattedTables.length) {
+    if (!formatted.length) {
       console.log(`No tables with changes: ${summary}`);
       return;
     }
 
-    console.log(
-      table(formattedTables, {
-        headers: ["table", "rows", "bytes", "columns", "indexes"],
-        // Disable default rows formatting, since the fields
-        // already have diff colors applied.
-        format: (val) => val,
-      })
-    );
+    console.log(table(formatted));
     console.log("");
-    console.log(summary);
+    console.log(`Tables: ${summary}`);
   }
 
   async createXlsxExport(argv) {
@@ -471,12 +439,7 @@ class CliApp {
 
   async listAliases() {
     const aliases = this.conf.get("aliases") || {};
-    console.log(
-      table(
-        _.map(aliases, (conn, alias) => ({ alias, conn })),
-        { headers: ["alias", "conn"] }
-      )
-    );
+    console.log(table(_.map(aliases, (conn, alias) => ({ alias, conn }))));
   }
 
   async addAlias(argv) {

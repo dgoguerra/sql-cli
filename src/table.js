@@ -3,8 +3,6 @@ const chalk = require("chalk");
 const { table, getBorderCharacters } = require("table");
 const { limitLine } = require("./summarize");
 
-const formatCol = (str) => chalk.underline(str);
-
 const cleanValue = (val) => {
   if (val === null || val === undefined) {
     return "";
@@ -20,15 +18,19 @@ const cleanValue = (val) => {
   return val;
 };
 
-const formatEven = (str) => chalk.gray(str);
-const formatOdd = (str) => str;
+const formatHeader = (str) => chalk.underline(str);
+
+const formatStriped = (val, ctx) => {
+  // color in gray cells of even rows, to show a striped table
+  if (ctx.index % 2) {
+    return chalk.gray(val);
+  }
+  return val;
+};
 
 module.exports = (
   rowObjs,
-  {
-    headers = Object.keys(rowObjs[0] || []),
-    format = (val, ctx) => (ctx.index % 2 ? formatEven : formatOdd)(val),
-  } = {}
+  { headers = Object.keys(rowObjs[0] || []), format = formatStriped } = {}
 ) => {
   const rows = rowObjs.map((rowObj, index) => {
     // extract row values with the headers order
@@ -39,7 +41,7 @@ module.exports = (
   });
 
   // Add the headers names to the start of the array
-  rows.unshift(headers.map(formatCol));
+  rows.unshift(headers.map(formatHeader));
 
   const tableStr = table(rows, {
     border: getBorderCharacters("void"),
