@@ -22,7 +22,11 @@ exports[`CLI test: pg can diff tables 1`] = `
 "column  type                       
 field_1 integer nullable → numeric 
 
-4x similar (hidden), 1x changed
+index                       algorithm unique columns 
+table_1_pkey → table_2_pkey btree     true   id      
+
+Columns: 1x changed, 4x similar (hidden)
+Indexes: 1x changed
 "
 `;
 
@@ -52,6 +56,9 @@ field_1    integer                  true
 field_2    text                     true     
 created_at timestamp with time zone true     
 updated_at timestamp with time zone true     
+
+index        algorithm unique columns 
+table_1_pkey btree     true   id      
 "
 `;
 
@@ -62,6 +69,9 @@ field_1    numeric                  false
 field_2    text                     true     
 created_at timestamp with time zone true     
 updated_at timestamp with time zone true     
+
+index        algorithm unique columns 
+table_2_pkey btree     true   id      
 "
 `;
 
@@ -71,6 +81,9 @@ idField    bigint                   false
 field_1    bigint                   true     
 created_at timestamp with time zone true     
 updated_at timestamp with time zone true     
+
+index        algorithm unique columns 
+table_3_pkey btree     true   idField 
 "
 `;
 
@@ -81,6 +94,9 @@ field_1    numeric                  false
 field_2    text                     true     
 created_at timestamp with time zone true     
 updated_at timestamp with time zone true     
+
+index        algorithm unique columns 
+table_2_pkey btree     true   id      
 "
 `;
 
