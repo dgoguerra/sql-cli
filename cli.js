@@ -404,27 +404,52 @@ class CliApp {
   }
 
   async openGui(argv) {
-    const toTablePlusConnUri = (connUri) => {
+    const toTablePlusConnUri = async (alias) => {
       // Convert the conn uri protocol to one understood by TablePlus
       const tablePlusProtos = {
         mssql: "sqlserver",
         pg: "postgres",
         mysql2: "mysql",
       };
-      const [protocol, ...rest] = connUri.split("://");
+
+      const { sshConf, conf } = this.resolveConn(alias);
+      const { client, connection: conn } = conf;
 
       // Sqlite is opened directly by opening the file with the default
       // application for its file extension, without setting a protocol.
-      if (protocol === "sqlite3") {
+      if (client === "sqlite3") {
         return rest[0];
+      }
+
+      // Might need to resolve the password from the system's keychain
+      if (!conn.password && this.aliasKeychains[alias]) {
+        await this.resolveConnPassword(alias, conn);
       }
 
       // Rest of clients: build a connection uri with the protocol name
       // understood by TablePlus.
-      return [tablePlusProtos[protocol] || protocol, ...rest].join("://");
+      let connUri = stringifyConn({
+        // Convert the conn uri protocol to one understood by TablePlus
+        protocol: tablePlusProtos[client] || client,
+        path: conn.filename, // only set in SQLite
+        host: conn.host || conn.server,
+        ...conn,
+        sshHost: sshConf && sshConf.host,
+        sshPort: sshConf && sshConf.port,
+        sshUser: sshConf && sshConf.user,
+        sshPassword: sshConf && sshConf.password,
+      });
+
+      // If the connection has SSH configured but no SSH password,
+      // then TablePlus needs to auth with the user's private key.
+      if (sshConf && sshConf.host && !sshConf.password) {
+        connUri += "?usePrivateKey=true";
+      }
+
+      return connUri;
     };
 
-    const connUri = toTablePlusConnUri(this.stringifyConn(argv.conn, argv));
+    const connUri = await toTablePlusConnUri(argv.conn);
 
     // Remove password from output
     console.log(`Opening ${connUri.replace(/:([^\/]+?)@/, "@")} ...`);
@@ -513,51 +538,39 @@ class CliApp {
     console.log(`Deleted alias '${argv.alias}'`);
   }
 
-  async initLib(conn) {
+  async initLib(alias) {
     const { conf, sshConf } =
-      typeof conn === "string" ? this.resolveConn(conn) : conn;
+      typeof alias === "string" ? this.resolveConn(alias) : alias;
 
     if (
       conf.connection &&
       !conf.connection.password &&
-      this.aliasKeychains[conn]
+      this.aliasKeychains[alias]
     ) {
-      const { service, account } = this.aliasKeychains[conn];
-      debug(
-        `looking up password in system keychain (service=${service}, account=${account})`
-      );
-      const password = await keytar.getPassword(service, account);
-      if (password) {
-        debug("password found and attached to the connection");
-        conf.connection.password = password;
-      } else {
-        debug("password not found");
-      }
+      await this.resolveConnPassword(alias, conf.connection);
     }
 
     return await new SqlLib({ conf, sshConf }).connect();
   }
 
-  resolveConn(connStr, argv = {}) {
-    return resolveKnexConn(connStr, {
-      client: argv.client,
-      aliases: this.aliases,
-    });
+  async resolveConnPassword(alias, conn) {
+    const { service, account } = this.aliasKeychains[alias];
+    debug(
+      `looking up password in system keychain (service=${service}, account=${account})`
+    );
+    const password = await keytar.getPassword(service, account);
+    if (password) {
+      debug("password found and attached to the connection");
+      conn.password = password;
+    } else {
+      debug("password not found");
+    }
   }
 
-  stringifyConn(connStr, argv = {}) {
-    const { sshConf, conf } = this.resolveConn(connStr, argv);
-    const { client, connection: conn } = conf;
-
-    return stringifyConn({
-      protocol: client,
-      path: conn.filename, // only set in SQLite
-      host: conn.host || conn.server,
-      ...conn,
-      sshHost: sshConf && sshConf.host,
-      sshPort: sshConf && sshConf.port,
-      sshUser: sshConf && sshConf.user,
-      sshPassword: sshConf && sshConf.password,
+  resolveConn(alias, argv = {}) {
+    return resolveKnexConn(alias, {
+      client: argv.client,
+      aliases: this.aliases,
     });
   }
 

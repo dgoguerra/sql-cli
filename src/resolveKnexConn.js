@@ -78,7 +78,9 @@ function resolveKnexConn(connUri, { client = null, aliases = {} } = {}) {
     connUri = `${protocol}://${uriPath}`;
   } else {
     const [host, dbName, dbTable] = uriPath.split("/");
-    connUri = `${protocol}://${host}/${dbName}`;
+    // Note: if there is no database selected, we need to end the URI with "/"
+    // to prevent parseConn() from breaking.
+    connUri = `${protocol}://${host}/${dbName || ""}`;
     table = dbTable;
   }
 
