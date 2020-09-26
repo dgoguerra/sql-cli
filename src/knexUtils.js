@@ -1,3 +1,4 @@
+const _ = require("lodash");
 const prettyBytes = require("pretty-bytes");
 const writer = require("flush-write-stream");
 const { chunk, runPipeline } = require("./streamUtils");
@@ -270,6 +271,14 @@ const listIndexes = async (knex, table) => {
   const client = knex.client.constructor.name;
   const database = knex.client.database();
 
+  const extractColsFromSql = (sql) => {
+    const matches = sql.match(/\(([^\(]+)\)$/);
+    if (!matches.length) {
+      return [];
+    }
+    return matches[1].split(/, ?/).map((col) => _.trim(col, '`"'));
+  };
+
   if (client === "Client_MySQL" || client === "Client_MySQL2") {
     const rows = await knex("information_schema.statistics")
       .where({ table_schema: database, table_name: table })
@@ -289,21 +298,13 @@ const listIndexes = async (knex, table) => {
   }
 
   if (client === "Client_SQLite3") {
-    const extractColumns = (sql) => {
-      const matches = sql.match(/\(\`(.+)\`\)$/);
-      if (!matches.length) {
-        return [];
-      }
-      return matches[1].split("`, `");
-    };
-
     return knex("sqlite_master")
       .where({ type: "index", tbl_name: table })
       .then((rows) =>
         rows.map((row) => ({
           name: row.name,
           unique: row.sql.startsWith("CREATE UNIQUE "),
-          columns: extractColumns(row.sql),
+          columns: extractColsFromSql(row.sql),
         }))
       );
   }
@@ -326,6 +327,27 @@ const listIndexes = async (knex, table) => {
       name: row.name,
       unique: !!row.unique,
       columns: row.columns.split(","),
+    }));
+  }
+
+  if (client === "Client_PG") {
+    const { rows } = await knex.raw(`
+      SELECT
+        ix.relname AS name,
+        am.amname AS algorithm,
+        indisunique AS unique,
+        pg_get_indexdef(indexrelid) AS sql
+      FROM pg_index i
+        JOIN pg_class t ON t.oid = i.indrelid
+        JOIN pg_class ix ON ix.oid = i.indexrelid
+        JOIN pg_namespace n ON t.relnamespace = n.oid
+        JOIN pg_am AS am ON ix.relam = am.oid
+      WHERE t.relname = '${table}' AND n.nspname = current_schema()
+    `);
+    return rows.map((row) => ({
+      name: row.name,
+      unique: !!row.unique,
+      columns: extractColsFromSql(row.sql),
     }));
   }
 
