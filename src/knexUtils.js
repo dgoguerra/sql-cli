@@ -1,6 +1,7 @@
 const _ = require("lodash");
 const prettyBytes = require("pretty-bytes");
 const writer = require("flush-write-stream");
+const { stringifyConn } = require("./resolveKnexConn");
 const { chunk, runPipeline } = require("./streamUtils");
 
 const hydrateKnex = (knex) => {
@@ -79,11 +80,12 @@ const hydrateKnex = (knex) => {
 
 const getUri = (knex) => {
   const { client, connection: conn } = knex.client.config;
-  if (client === "sqlite3") {
-    return `${client}://${conn.filename}`;
-  }
-  const host = conn.server || conn.host;
-  return `${client}://${conn.user}:${conn.password}@${host}:${conn.port}/${conn.database}`;
+  return stringifyConn({
+    protocol: client,
+    path: conn.filename, // only set in SQLite
+    host: conn.server || conn.host,
+    ...conn,
+  });
 };
 
 const getColumns = async (knex, table) => {

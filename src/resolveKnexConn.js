@@ -1,5 +1,21 @@
+const _ = require("lodash");
 const parseConn = require("knex/lib/util/parse-connection");
-const { getClient } = require("./clientAliases");
+
+// Known client aliases (based on aliases in https://github.com/xo/usql)
+const CLIENT_ALIASES = {
+  mysql2: ["my", "mysql", "maria", "aurora", "mariadb", "percona"],
+  pg: ["pgsql", "postgres", "postgresql"],
+  sqlite3: ["sq", "file", "sqlite"],
+  mssql: ["ms", "sqlserver", "microsoftsqlserver"],
+  bigquery: ["bq"],
+};
+
+function resolveClient(client) {
+  return _.findKey(
+    CLIENT_ALIASES,
+    (val, key) => key === client || val.includes(client)
+  );
+}
 
 function resolveConnAlias(connAlias, { aliases = {} } = {}) {
   const [uri, params] = connAlias.split("?");
@@ -41,7 +57,7 @@ function resolveKnexConn(connUri, { client = null, aliases = {} } = {}) {
   let table;
 
   // SQLite case, the whole uriPath is a filename
-  if (getClient(protocol) === "sqlite3") {
+  if (resolveClient(protocol) === "sqlite3") {
     const parts = uriPath.split("/");
     const dbTable = parts.pop();
     const dbName = parts.pop();
@@ -62,7 +78,9 @@ function resolveKnexConn(connUri, { client = null, aliases = {} } = {}) {
     connUri = `${protocol}://${uriPath}`;
   } else {
     const [host, dbName, dbTable] = uriPath.split("/");
-    connUri = `${protocol}://${host}/${dbName}`;
+    // Note: if there is no database selected, we need to end the URI with "/"
+    // to prevent parseConn() from breaking.
+    connUri = `${protocol}://${host}/${dbName || ""}`;
     table = dbTable;
   }
 
@@ -74,7 +92,7 @@ function resolveKnexConn(connUri, { client = null, aliases = {} } = {}) {
 
   // The uri protocol is the client, or an alias of the client.
   // This may be overriden through the option --client.
-  conf.client = client || getClient(conf.client) || conf.client;
+  conf.client = client || resolveClient(conf.client) || conf.client;
 
   if (!conf.client) {
     throw new Error(`Unknown Knex client, set one manually with --client`);
@@ -113,29 +131,46 @@ function resolveKnexConn(connUri, { client = null, aliases = {} } = {}) {
   return { sshConf, conf, table };
 }
 
-function stringifyKnexConn(connUri, opts) {
-  const { sshConf, conf } = resolveKnexConn(connUri, opts);
-  const { client, connection: conn } = conf;
+const stringifyConn = ({
+  protocol,
+  host,
+  path = null,
+  port = null,
+  user,
+  password = null,
+  database,
+  sshHost = null,
+  sshPort = 22,
+  sshUser = process.env.USER,
+  sshPassword,
+}) => {
+  const formatHost = (host, port) => (port ? `${host}:${port}` : host);
 
-  if (client === "sqlite3") {
-    return `${client}://${conn.filename}`;
-  }
-
-  const encodeAuth = ({ user, password }) =>
+  const formatAuth = (user, password) =>
     user && password
       ? `${encodeURIComponent(user)}:${encodeURIComponent(password)}@`
       : user
       ? `${encodeURIComponent(user)}@`
       : "";
 
-  const host = (conn.host || conn.server) + (conn.port ? `:${conn.port}` : "");
-  const uriPath = `${encodeAuth(conn)}${host}/${conn.database}`;
-
-  if (sshConf) {
-    return `${client}+ssh://${encodeAuth(sshConf)}${sshConf.host}/${uriPath}`;
-  } else {
-    return `${client}://${uriPath}`;
+  // Only used for SQLite
+  if (path) {
+    return `${protocol}://${path}`;
   }
-}
 
-module.exports = { resolveKnexConn, stringifyKnexConn };
+  let connUri = formatAuth(user, password) + formatHost(host, port);
+
+  if (database) {
+    connUri += `/${database}`;
+  }
+
+  if (sshHost) {
+    const sshConnUri =
+      formatAuth(sshUser, sshPassword) + formatHost(sshHost, sshPort);
+    return `${protocol}+ssh://${sshConnUri}/${connUri}`;
+  }
+
+  return `${protocol}://${connUri}`;
+};
+
+module.exports = { resolveKnexConn, stringifyConn };

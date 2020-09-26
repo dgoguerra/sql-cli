@@ -114,10 +114,10 @@ const cliTestSuite = (name, knexFactory) => {
         stdin: "select 1+1 as result;\nselect 2+3 as result2;",
       });
       expect(output).toMatchInlineSnapshot(`
-        "result 
-        2      
-        result2 
-        5       
+        "result
+        2
+        result2
+        5
         "
       `);
     });
