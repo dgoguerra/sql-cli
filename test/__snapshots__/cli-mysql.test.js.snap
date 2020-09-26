@@ -54,8 +54,8 @@ field_2    text(65535) true
 created_at timestamp   true     
 updated_at timestamp   true     
 
-index   unique columns 
-PRIMARY true   id      
+index   algorithm unique columns 
+PRIMARY BTREE     true   id      
 "
 `;
 
@@ -67,8 +67,8 @@ field_2    text(65535) true
 created_at timestamp   true     
 updated_at timestamp   true     
 
-index   unique columns 
-PRIMARY true   id      
+index   algorithm unique columns 
+PRIMARY BTREE     true   id      
 "
 `;
 
@@ -79,8 +79,8 @@ field_1    bigint    true
 created_at timestamp true     
 updated_at timestamp true     
 
-index   unique columns 
-PRIMARY true   idField 
+index   algorithm unique columns 
+PRIMARY BTREE     true   idField 
 "
 `;
 
@@ -92,8 +92,8 @@ field_2    text(65535) true
 created_at datetime    true     
 updated_at datetime    true     
 
-index   unique columns 
-PRIMARY true   id      
+index   algorithm unique columns 
+PRIMARY BTREE     true   id      
 "
 `;
 

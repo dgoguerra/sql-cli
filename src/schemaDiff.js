@@ -3,7 +3,7 @@ const chalk = require("chalk");
 
 const colHash = (col) => `${col.fullType}:${col.nullable}`;
 
-const indHash = (col) => `${col.unique}:${col.columns}`;
+const indHash = (col) => `${col.algorithm}:${col.unique}:${col.columns}`;
 
 const colDesc = (col) => {
   let str = col.fullType;
@@ -110,7 +110,8 @@ const diffIndexVersions = (key, ind1, ind2) => {
   if (!ind2) {
     return {
       status: "deleted",
-      displayIndex: ind1.name,
+      displayIndex: chalk.red(ind1.name),
+      displayAlgorithm: chalk.red(ind1.algorithm),
       displayUnique: chalk.red(ind1.unique),
       displayColumns: chalk.red(ind1.columns),
     };
@@ -119,7 +120,8 @@ const diffIndexVersions = (key, ind1, ind2) => {
   if (!ind1) {
     return {
       status: "created",
-      displayIndex: ind2.name,
+      displayIndex: chalk.green(ind2.name),
+      displayAlgorithm: chalk.green(ind2.algorithm),
       displayUnique: chalk.green(ind2.unique),
       displayColumns: chalk.green(ind2.columns),
     };
@@ -129,6 +131,7 @@ const diffIndexVersions = (key, ind1, ind2) => {
   return {
     status: changed ? "changed" : "similar",
     displayIndex: valueOrDiff(ind1.name, ind2.name),
+    displayAlgorithm: valueOrDiff(ind1.algorithm, ind2.algorithm),
     displayUnique: valueOrDiff(ind1.unique, ind2.unique),
     displayColumns: valueOrDiff(ind1.columns, ind2.columns),
   };

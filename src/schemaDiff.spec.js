@@ -15,14 +15,24 @@ const KNEX_COLUMNS_2 = {
 };
 
 const KNEX_INDEXES_1 = [
-  { name: "id_unique", unique: true, columns: ["id"] },
-  { name: "other_index", unique: true, columns: ["name"] },
+  { name: "id_unique", unique: true, algorithm: "btree", columns: ["id"] },
+  { name: "other_index", unique: true, algorithm: "btree", columns: ["name"] },
 ];
 
 const KNEX_INDEXES_2 = [
-  { name: "id_unique", unique: true, columns: ["id"] },
-  { name: "other_index", unique: false, columns: ["name2"] },
-  { name: "other_index_2", unique: true, columns: ["id", "name2"] },
+  { name: "id_unique", unique: true, algorithm: "btree", columns: ["id"] },
+  {
+    name: "other_index",
+    unique: false,
+    algorithm: "btree",
+    columns: ["name2"],
+  },
+  {
+    name: "other_index_2",
+    unique: true,
+    algorithm: "btree",
+    columns: ["id", "name2"],
+  },
 ];
 
 const SCHEMA_1 = {

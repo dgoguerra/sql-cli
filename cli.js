@@ -200,6 +200,7 @@ class CliApp {
     if (indexes.length) {
       const formatted = indexes.map((ind) => ({
         index: ind.name,
+        algorithm: ind.algorithm,
         unique: ind.unique,
         columns: ind.columns,
       }));
@@ -272,6 +273,7 @@ class CliApp {
     if (indexes.length) {
       const formatted = indexes.map((ind) => ({
         index: ind.displayIndex,
+        algorithm: ind.displayAlgorithm,
         unique: ind.displayUnique,
         columns: ind.displayColumns,
       }));

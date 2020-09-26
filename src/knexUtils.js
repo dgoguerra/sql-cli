@@ -280,21 +280,25 @@ const listIndexes = async (knex, table) => {
   };
 
   if (client === "Client_MySQL" || client === "Client_MySQL2") {
-    const rows = await knex("information_schema.statistics")
+    return knex("information_schema.statistics")
       .where({ table_schema: database, table_name: table })
-      .groupBy("name", "non_unique")
+      .groupBy("index_name", "non_unique", "index_type")
       .select({
         name: "index_name",
+        algorithm: "index_type",
         unique: knex.raw("IF(non_unique = 0, 1, 0)"),
         columns: knex.raw(
           "GROUP_CONCAT(column_name ORDER BY seq_in_index ASC)"
         ),
-      });
-    return rows.map((row) => ({
-      ...row,
-      unique: !!row.unique,
-      columns: row.columns.split(","),
-    }));
+      })
+      .then((rows) =>
+        rows.map((row) => ({
+          name: row.name,
+          unique: !!row.unique,
+          algorithm: row.algorithm,
+          columns: row.columns.split(","),
+        }))
+      );
   }
 
   if (client === "Client_SQLite3") {
@@ -303,6 +307,7 @@ const listIndexes = async (knex, table) => {
       .then((rows) =>
         rows.map((row) => ({
           name: row.name,
+          algorithm: "unknown",
           unique: row.sql.startsWith("CREATE UNIQUE "),
           columns: extractColsFromSql(row.sql),
         }))
@@ -310,45 +315,54 @@ const listIndexes = async (knex, table) => {
   }
 
   if (client === "Client_MSSQL") {
-    const rows = await knex.raw(`
-      SELECT i.name [name],
-        i.is_unique [unique],
-        STRING_AGG(ac.Name, ',') WITHIN GROUP (ORDER BY ic.key_ordinal) [columns]
-      FROM sys.tables [t]
-        INNER JOIN sys.indexes [i] ON t.object_id = i.object_id
-        INNER JOIN sys.index_columns [ic]
-          ON ic.object_id = i.object_id AND ic.index_id = i.index_id
-        INNER JOIN sys.all_columns [ac]
-          ON ic.object_id = ac.object_id AND ic.column_id = ac.column_id
-      WHERE t.name = '${table}' AND SCHEMA_NAME(t.schema_id) = SCHEMA_NAME()
-      GROUP BY i.name, i.is_unique;
-    `);
-    return rows.map((row) => ({
-      name: row.name,
-      unique: !!row.unique,
-      columns: row.columns.split(","),
-    }));
+    return knex
+      .raw(
+        `SELECT i.name [name],
+          i.is_unique [unique],
+          i.type_desc [algorithm],
+          STRING_AGG(ac.Name, ',') WITHIN GROUP (ORDER BY ic.key_ordinal) [columns]
+        FROM sys.tables [t]
+          INNER JOIN sys.indexes [i] ON t.object_id = i.object_id
+          INNER JOIN sys.index_columns [ic]
+            ON ic.object_id = i.object_id AND ic.index_id = i.index_id
+          INNER JOIN sys.all_columns [ac]
+            ON ic.object_id = ac.object_id AND ic.column_id = ac.column_id
+        WHERE t.name = '${table}' AND SCHEMA_NAME(t.schema_id) = SCHEMA_NAME()
+        GROUP BY i.name, i.is_unique, i.type_desc`
+      )
+      .then((rows) =>
+        rows.map((row) => ({
+          name: row.name,
+          unique: !!row.unique,
+          algorithm: row.algorithm,
+          columns: row.columns.split(","),
+        }))
+      );
   }
 
   if (client === "Client_PG") {
-    const { rows } = await knex.raw(`
-      SELECT
-        ix.relname AS name,
-        am.amname AS algorithm,
-        indisunique AS unique,
-        pg_get_indexdef(indexrelid) AS sql
-      FROM pg_index i
-        JOIN pg_class t ON t.oid = i.indrelid
-        JOIN pg_class ix ON ix.oid = i.indexrelid
-        JOIN pg_namespace n ON t.relnamespace = n.oid
-        JOIN pg_am AS am ON ix.relam = am.oid
-      WHERE t.relname = '${table}' AND n.nspname = current_schema()
-    `);
-    return rows.map((row) => ({
-      name: row.name,
-      unique: !!row.unique,
-      columns: extractColsFromSql(row.sql),
-    }));
+    return knex
+      .raw(
+        `SELECT
+          ix.relname AS name,
+          am.amname AS algorithm,
+          indisunique AS unique,
+          pg_get_indexdef(indexrelid) AS sql
+        FROM pg_index i
+          JOIN pg_class t ON t.oid = i.indrelid
+          JOIN pg_class ix ON ix.oid = i.indexrelid
+          JOIN pg_namespace n ON t.relnamespace = n.oid
+          JOIN pg_am AS am ON ix.relam = am.oid
+        WHERE t.relname = '${table}' AND n.nspname = current_schema()`
+      )
+      .then(({ rows }) =>
+        rows.map((row) => ({
+          name: row.name,
+          unique: !!row.unique,
+          algorithm: row.algorithm,
+          columns: extractColsFromSql(row.sql),
+        }))
+      );
   }
 
   return [];
