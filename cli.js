@@ -1,12 +1,10 @@
 #!/usr/bin/env node
 
-const fs = require("fs");
 const cp = require("child_process");
 const _ = require("lodash");
 const Conf = require("conf");
 const yargs = require("yargs");
 const chalk = require("chalk");
-const plist = require("plist");
 const keytar = require("keytar");
 const pkg = require("./package.json");
 const debug = require("debug")("sql-cli");
@@ -15,16 +13,11 @@ const table = require("./src/table");
 const SqlLib = require("./src/SqlLib");
 const SqlRepl = require("./src/SqlRepl");
 const ExcelBuilder = require("./src/ExcelBuilder");
+const { getExternalAliases } = require("./src/externalAliases");
 const { diffColumns, diffIndexes, diffSchemas } = require("./src/schemaDiff");
 const { resolveKnexConn, stringifyConn } = require("./src/resolveKnexConn");
 const { streamsDiff } = require("./src/streamUtils");
 const SqlDumper = require("./src/SqlDumper");
-
-const TABLEPLUS_CONNECTIONS_PATH =
-  "~/Library/Application Support/com.tinyapp.TablePlus/Data/Connections.plist";
-
-const SEQUELPRO_FAVORITES_PATH =
-  "~/Library/Application Support/Sequel Pro/Data/Favorites.plist";
 
 class CliApp {
   constructor() {
@@ -37,6 +30,8 @@ class CliApp {
     debug(`loading config from ${this.conf.path}`);
 
     this.aliases = {};
+    this.hasExternalAliases = false;
+    this.aliasSources = {};
     this.aliasKeychains = {};
 
     // Load all saved aliases as an object indexed by the alias key.
@@ -44,8 +39,7 @@ class CliApp {
     this.loadInternalAliases();
 
     if (!process.env.SQL_NO_IMPORT_ALIASES) {
-      this.loadTablePlusAliases();
-      this.loadSequelProAliases();
+      this.loadExternalAliases();
     }
 
     this.cli = this.buildYargs();
@@ -460,7 +454,17 @@ class CliApp {
   }
 
   async listAliases() {
-    console.log(table(_.map(this.aliases, (conn, alias) => ({ alias, conn }))));
+    const showSource = this.hasExternalAliases;
+
+    // If there are any aliases imported from external sources,
+    // add an extra "source" column to the aliases list.
+    const formatted = _.map(this.aliases, (conn, alias) => ({
+      alias,
+      ...(showSource ? { source: this.aliasSources[alias] || "" } : {}),
+      conn,
+    }));
+
+    console.log(table(formatted));
   }
 
   loadInternalAliases() {
@@ -470,86 +474,28 @@ class CliApp {
     });
   }
 
-  loadTablePlusAliases() {
-    let connections;
+  loadExternalAliases() {
+    const allAliases = getExternalAliases();
 
-    try {
-      connections = this.readPlistFile(TABLEPLUS_CONNECTIONS_PATH);
-    } catch (err) {
-      // File not found, assume TablePlus is not installed or has no config
-      return;
-    }
+    allAliases.forEach((item) => {
+      const { source, alias, conn, keychain } = item;
 
-    for (const c of connections) {
-      const alias = _.snakeCase(`tableplus-${c.ConnectionName}`).replace(
-        /_/g,
-        "-"
-      );
-      const conn = stringifyConn({
-        protocol: c.Driver.toLowerCase(),
-        path: c.DatabasePath, // only for SQLite
-        host: c.DatabaseHost,
-        port: c.DatabasePort,
-        user: c.DatabaseUser,
-        database: c.DatabaseName,
-        sshHost: c.isOverSSH && c.ServerAddress,
-        sshPort: c.isOverSSH && c.ServerPort,
-        sshUser: c.isOverSSH && c.ServerUser,
-      });
+      if (this.aliases[alias]) {
+        debug(
+          `ignoring external alias, already exists ` +
+            `(alias=${alias}, source=${source})`
+        );
+        return;
+      }
+
+      this.hasExternalAliases = true;
       this.aliases[alias] = conn;
-      this.aliasKeychains[alias] = {
-        service: "com.tableplus.TablePlus",
-        account: `${c.ID}_database`,
-      };
-    }
-  }
+      this.aliasSources[alias] = source;
 
-  loadSequelProAliases() {
-    let connections;
-    try {
-      const favorites = this.readPlistFile(SEQUELPRO_FAVORITES_PATH, {
-        parseIntegersAsString: true,
-      });
-      connections = favorites["Favorites Root"].Children;
-    } catch (err) {
-      // File not found, assume SequelPro is not installed or has no config
-      return;
-    }
-
-    for (const c of connections) {
-      const alias = _.snakeCase(`sequelpro-${c.name}`).replace(/_/g, "-");
-      const conn = stringifyConn({ protocol: "mysql", ...c });
-      this.aliases[alias] = conn;
-      this.aliasKeychains[alias] = {
-        service: `Sequel Pro : ${c.name} (${c.id})`,
-        account: `${c.user}@${c.host}/${c.database}`,
-      };
-    }
-  }
-
-  readPlistFile(filePath, { parseIntegersAsString = false } = {}) {
-    if (filePath.startsWith("~/")) {
-      filePath = filePath.replace("~/", `${process.env.HOME}/`);
-    }
-
-    let content = fs.readFileSync(filePath).toString();
-
-    // Fix: Sequel Pro uses very big numeric IDs, which JavaScript loads
-    // as unsafe integers, losing precision. For example:
-    //
-    // > require('plist').parse('<plist><integer>7508107108915805319</integer></plist>')
-    // 7508107108915805000
-    // > Number.isSafeInteger(7508107108915805319)
-    // false
-    //
-    // We work around this by converting all integers of the plist file to
-    // string befofe parsing it.
-    if (parseIntegersAsString) {
-      content = content.replace(/<integer>/g, "<string>");
-      content = content.replace(/<\/integer>/g, "</string>");
-    }
-
-    return plist.parse(content);
+      if (keychain) {
+        this.aliasKeychains[alias] = keychain;
+      }
+    });
   }
 
   async addAlias(argv) {
