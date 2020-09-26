@@ -70,19 +70,20 @@ const cliTestSuite = (name, knexFactory) => {
     });
 
     it("can diff tables", async () => {
-      expect(
-        await runCli(`diff ${connUri}/table_1 ${connUri}/table_2`)
-      ).toMatchSnapshot();
+      const output = await runCli(`diff ${connUri}/table_1 ${connUri}/table_2`);
+      expect(cleanIndexesName(output)).toMatchSnapshot();
     });
 
     it("can diff tables data", async () => {
-      expect(
-        await runCli(`diff ${connUri}/table_1 ${connUri}/table_2 --data`)
-      ).toMatchSnapshot();
+      const output = await runCli(
+        `diff ${connUri}/table_1 ${connUri}/table_2 --data`
+      );
+      expect(output).toMatchSnapshot();
     });
 
     it("can diff schemas", async () => {
-      expect(await runCli(`diff ${connUri} ${connUri}`)).toMatchSnapshot();
+      const output = await runCli(`diff ${connUri} ${connUri}`);
+      expect(output).toMatchSnapshot();
     });
 
     it("can create conn aliases", async () => {

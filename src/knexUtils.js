@@ -34,15 +34,18 @@ const hydrateKnex = (knex) => {
       return listIndexes(knex, table);
     },
     async tablesInfo() {
-      const tables = {};
-      for (const table of await this.listTables()) {
-        const name = table.table;
-        tables[name] = {
-          ...table,
-          schema: await getColumns(knex, table.table),
-        };
-      }
-      return tables;
+      const tables = await Promise.all(
+        (await this.listTables()).map(async (table) => {
+          const columns = await getColumns(knex, table.table);
+          const indexes = await listIndexes(knex, table.table);
+          return { ...table, columns, indexes };
+        })
+      );
+
+      return tables.reduce((obj, table) => {
+        obj[table.table] = table;
+        return obj;
+      }, {});
     },
   };
 

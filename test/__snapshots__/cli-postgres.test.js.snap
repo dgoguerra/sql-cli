@@ -22,7 +22,8 @@ exports[`CLI test: pg can diff tables 1`] = `
 "column  type                       
 field_1 integer nullable → numeric 
 
-4x similar (hidden), 1x changed
+Columns: 1x changed, 4x similar (hidden)
+Indexes: none
 "
 `;
 

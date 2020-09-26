@@ -7,6 +7,19 @@ const EXPECTED_COLUMNS_INFO = {
   field_2: { fullType: "varchar(255)", nullable: true },
 };
 
+const EXPECTED_INDEXES_INFO = [
+  {
+    name: "table_1_field_1_index",
+    unique: false,
+    columns: ["field_1"],
+  },
+  {
+    name: "table_1_field_1_field_2_unique",
+    unique: true,
+    columns: ["field_1", "field_2"],
+  },
+];
+
 describe("hydrateKnex()", () => {
   let knex;
 
@@ -56,18 +69,9 @@ describe("hydrateKnex()", () => {
   });
 
   it("can list table indexes", async () => {
-    expect(await knex.schema.listIndexes("table_1")).toMatchObject([
-      {
-        name: "table_1_field_1_index",
-        unique: false,
-        columns: ["field_1"],
-      },
-      {
-        name: "table_1_field_1_field_2_unique",
-        unique: true,
-        columns: ["field_1", "field_2"],
-      },
-    ]);
+    expect(await knex.schema.listIndexes("table_1")).toMatchObject(
+      EXPECTED_INDEXES_INFO
+    );
   });
 
   it("can list tables", async () => {
@@ -83,7 +87,8 @@ describe("hydrateKnex()", () => {
         rows: 2,
         table: "table_1",
         prettyBytes: "4.1 kB",
-        schema: EXPECTED_COLUMNS_INFO,
+        columns: EXPECTED_COLUMNS_INFO,
+        indexes: EXPECTED_INDEXES_INFO,
       },
     });
   });

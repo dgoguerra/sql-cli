@@ -13,7 +13,7 @@ const SqlLib = require("./src/SqlLib");
 const SqlRepl = require("./src/SqlRepl");
 const ExcelBuilder = require("./src/ExcelBuilder");
 const { resolveKnexConn, stringifyKnexConn } = require("./src/resolveKnexConn");
-const { diffColumns, diffSchemas } = require("./src/schemaDiff");
+const { diffColumns, diffIndexes, diffSchemas } = require("./src/schemaDiff");
 const { streamsDiff } = require("./src/streamUtils");
 const SqlDumper = require("./src/SqlDumper");
 
@@ -238,32 +238,63 @@ class CliApp {
       this.error(`Table '${table2}' not found in 'after' schema`);
     }
 
-    const { columns, summary } = diffColumns(
+    const { columns, summary: colSummary } = diffColumns(
       await lib1(table1).columnInfo(),
       await lib2(table2).columnInfo(),
       { showSimilar: argv.all }
     );
 
-    const formattedCols = columns.map((col) => ({
-      column: col.displayColumn,
-      type: col.displayType,
-    }));
+    if (columns.length) {
+      const formatted = columns.map((col) => ({
+        column: col.displayColumn,
+        type: col.displayType,
+      }));
 
-    if (!formattedCols.length) {
-      console.log(`No columns with changes: ${summary}`);
-      return;
+      console.log(
+        table(
+          formatted,
+          // Disable default rows formatting, since the fields
+          // already have diff colors applied.
+          { headers: ["column", "type"], format: (val) => val }
+        )
+      );
     }
 
-    console.log(
-      table(
-        formattedCols,
-        // Disable default rows formatting, since the fields
-        // already have diff colors applied.
-        { headers: ["column", "type"], format: (val) => val }
-      )
+    const {
+      indexes,
+      summary: indSummary,
+    } = diffIndexes(
+      await lib1.schema.listIndexes(table1),
+      await lib2.schema.listIndexes(table2),
+      { showSimilar: argv.all }
     );
-    console.log("");
-    console.log(summary);
+
+    if (indexes.length) {
+      const formatted = indexes.map((ind) => ({
+        index: ind.displayIndex,
+        unique: ind.displayUnique,
+        columns: ind.displayColumns,
+      }));
+
+      if (columns.length) {
+        console.log("");
+      }
+      console.log(
+        table(
+          formatted,
+          // Disable default rows formatting, since the fields
+          // already have diff colors applied.
+          { format: (val) => val }
+        )
+      );
+    }
+
+    if (argv.all || columns.length || indexes.length) {
+      console.log("");
+    }
+
+    console.log(`Columns: ${colSummary}`);
+    console.log(`Indexes: ${indSummary}`);
   }
 
   async _diffTablesData(lib1, lib2, table1, table2, argv) {
@@ -307,7 +338,8 @@ class CliApp {
       table: table.displayTable,
       rows: table.displayRows,
       bytes: table.displayBytes,
-      columns: table.summary,
+      columns: table.colSummary,
+      indexes: table.indSummary,
     }));
 
     if (!formattedTables.length) {
@@ -317,7 +349,7 @@ class CliApp {
 
     console.log(
       table(formattedTables, {
-        headers: ["table", "rows", "bytes", "columns"],
+        headers: ["table", "rows", "bytes", "columns", "indexes"],
         // Disable default rows formatting, since the fields
         // already have diff colors applied.
         format: (val) => val,
