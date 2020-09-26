@@ -30,7 +30,6 @@ class CliApp {
     debug(`loading config from ${this.conf.path}`);
 
     this.aliases = {};
-    this.hasExternalAliases = false;
     this.aliasSources = {};
     this.aliasKeychains = {};
 
@@ -454,16 +453,10 @@ class CliApp {
   }
 
   async listAliases() {
-    const showSource = this.hasExternalAliases;
-
-    // If there are any aliases imported from external sources,
-    // add an extra "source" column to the aliases list.
-    const formatted = _.map(this.aliases, (conn, alias) => ({
-      alias,
-      ...(showSource ? { source: this.aliasSources[alias] || "" } : {}),
-      conn,
-    }));
-
+    const formatted = _.map(this.aliases, (conn, alias) => {
+      const source = this.aliasSources[alias];
+      return { alias: source ? `${alias} (${source})` : alias, conn };
+    });
     console.log(table(formatted));
   }
 
@@ -488,7 +481,6 @@ class CliApp {
         return;
       }
 
-      this.hasExternalAliases = true;
       this.aliases[alias] = conn;
       this.aliasSources[alias] = source;
 
