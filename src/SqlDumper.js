@@ -201,7 +201,7 @@ class SqlDumper {
   buildIndexStatement(index) {
     const type = index.unique ? "unique" : "index";
     const columns = index.columns.map((c) => wrapValue(c));
-    return `t.${type}([${columns}], ${wrapValue(index.index)})`;
+    return `t.${type}([${columns}], ${wrapValue(index.name)})`;
   }
 
   // Depending on the client, default values may be returned as a string
