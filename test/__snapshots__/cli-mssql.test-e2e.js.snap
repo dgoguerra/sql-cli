@@ -19,15 +19,16 @@ exports[`CLI test: mssql can diff schemas 1`] = `
 `;
 
 exports[`CLI test: mssql can diff tables 1`] = `
-"column  type
-field_1 int nullable → decimal
+"column  type          nullable     default
+field_1 int → decimal true → false
+field_2 nvarchar(-1)  true         [null] → ('default text')
 
 index                                                         algorithm    unique columns
 PK__table_1__0000000000000000 → PK__table_2__0000000000000000 CLUSTERED    true   id
 table_1_field_1_index                                         NONCLUSTERED false  field_1
 table_2_field_1_unique                                        NONCLUSTERED true   field_1
 
-Columns: 1x changed, 4x similar (hidden)
+Columns: 2x changed, 3x similar (hidden)
 Indexes: 1x deleted, 1x created, 1x changed
 "
 `;
@@ -52,7 +53,7 @@ table_3 0    0 B
 `;
 
 exports[`CLI test: mssql can load database dump 1`] = `
-"column     type         nullable
+"column     type         nullable default
 id         int          false
 field_1    int          true
 field_2    nvarchar(-1) true
@@ -66,10 +67,10 @@ table_1_field_1_index         NONCLUSTERED false  field_1
 `;
 
 exports[`CLI test: mssql can load database dump 2`] = `
-"column     type         nullable
+"column     type         nullable default
 id         int          false
 field_1    decimal      false
-field_2    nvarchar(-1) true
+field_2    nvarchar(-1) true     ('default text')
 created_at datetime2    true
 updated_at datetime2    true
 
@@ -80,7 +81,7 @@ table_2_field_1_unique        NONCLUSTERED true   field_1
 `;
 
 exports[`CLI test: mssql can load database dump 3`] = `
-"column     type      nullable
+"column     type      nullable default
 id_field   bigint    false
 field_1    bigint    true
 created_at datetime2 true
@@ -92,10 +93,10 @@ PK__table_3__0000000000000000 CLUSTERED true   id_field
 `;
 
 exports[`CLI test: mssql can show table 1`] = `
-"column     type         nullable
+"column     type         nullable default
 id         int          false
 field_1    decimal      false
-field_2    nvarchar(-1) true
+field_2    nvarchar(-1) true     ('default text')
 created_at datetime2    true
 updated_at datetime2    true
 

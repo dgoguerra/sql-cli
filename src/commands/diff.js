@@ -59,6 +59,8 @@ async function runDiffTablesSchema(lib1, lib2, table1, table2, argv) {
     const formatted = columns.map((col) => ({
       column: col.displayColumn,
       type: col.displayType,
+      nullable: col.displayNullable,
+      default: col.displayDefault,
     }));
     console.log(table(formatted));
   }

@@ -19,8 +19,8 @@ exports[`CLI test: mysql2 can diff schemas 1`] = `
 `;
 
 exports[`CLI test: mysql2 can diff tables 1`] = `
-"column  type
-field_1 int nullable → decimal
+"column  type          nullable     default
+field_1 int → decimal true → false
 
 index                  algorithm unique columns
 table_1_field_1_index  BTREE     false  field_1
@@ -51,7 +51,7 @@ table_3 0    16.4 kB
 `;
 
 exports[`CLI test: mysql2 can load database dump 1`] = `
-"column     type        nullable
+"column     type        nullable default
 id         int         false
 field_1    int         true
 field_2    text(65535) true
@@ -65,7 +65,7 @@ table_1_field_1_index BTREE     false  field_1
 `;
 
 exports[`CLI test: mysql2 can load database dump 2`] = `
-"column     type        nullable
+"column     type        nullable default
 id         int         false
 field_1    decimal     false
 field_2    text(65535) true
@@ -79,7 +79,7 @@ table_2_field_1_unique BTREE     true   field_1
 `;
 
 exports[`CLI test: mysql2 can load database dump 3`] = `
-"column     type      nullable
+"column     type      nullable default
 id_field   bigint    false
 field_1    bigint    true
 created_at timestamp true
@@ -91,7 +91,7 @@ PRIMARY BTREE     true   id_field
 `;
 
 exports[`CLI test: mysql2 can show table 1`] = `
-"column     type        nullable
+"column     type        nullable default
 id         int         false
 field_1    decimal     false
 field_2    text(65535) true

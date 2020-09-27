@@ -21,6 +21,7 @@ module.exports = {
       column: key,
       type: val.fullType,
       nullable: val.nullable,
+      default: val.defaultValue,
     }));
 
     console.log(table(formatted));

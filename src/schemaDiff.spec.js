@@ -11,7 +11,7 @@ const KNEX_COLUMNS_1 = {
 };
 const KNEX_COLUMNS_2 = {
   id: { fullType: "varchar(255)", nullable: true },
-  name2: { fullType: "varchar(255)", nullable: true },
+  name2: { fullType: "varchar(255)", nullable: true, defaultValue: "john" },
 };
 
 const KNEX_INDEXES_1 = [
@@ -77,11 +77,15 @@ describe("diffColumns()", () => {
         {
           displayColumn: "id",
           displayType: "bigint",
+          displayNullable: "false",
+          displayDefault: undefined,
           status: "similar",
         },
         {
           displayColumn: "name",
-          displayType: "varchar(255) nullable",
+          displayType: "varchar(255)",
+          displayNullable: "true",
+          displayDefault: undefined,
           status: "similar",
         },
       ],
@@ -96,17 +100,23 @@ describe("diffColumns()", () => {
       columns: [
         {
           displayColumn: "id",
-          displayType: "bigint → varchar(255) nullable",
+          displayType: "bigint → varchar(255)",
+          displayNullable: "false → true",
+          displayDefault: undefined,
           status: "changed",
         },
         {
           displayColumn: "name",
-          displayType: "varchar(255) nullable",
+          displayType: "varchar(255)",
+          displayNullable: "true",
+          displayDefault: undefined,
           status: "deleted",
         },
         {
           displayColumn: "name2",
-          displayType: "varchar(255) nullable",
+          displayType: "varchar(255)",
+          displayNullable: "true",
+          displayDefault: "john",
           status: "created",
         },
       ],

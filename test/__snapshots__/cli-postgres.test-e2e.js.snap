@@ -19,15 +19,17 @@ exports[`CLI test: pg can diff schemas 1`] = `
 `;
 
 exports[`CLI test: pg can diff tables 1`] = `
-"column  type
-field_1 integer nullable → numeric
+"column  type              nullable     default
+id      integer           false        nextval('table_1_id_seq'::regclass) → nextval('table_2_id_seq'::regclass)
+field_1 integer → numeric true → false
+field_2 text              true         [null] → 'default text'::text
 
 index                       algorithm unique columns
 table_1_pkey → table_2_pkey btree     true   id
 table_1_field_1_index       btree     false  field_1
 table_2_field_1_unique      btree     true   field_1
 
-Columns: 1x changed, 4x similar (hidden)
+Columns: 3x changed, 2x similar (hidden)
 Indexes: 1x deleted, 1x created, 1x changed
 "
 `;
@@ -52,8 +54,8 @@ table_3 0
 `;
 
 exports[`CLI test: pg can load database dump 1`] = `
-"column     type                     nullable
-id         integer                  false
+"column     type                     nullable default
+id         integer                  false    nextval('table_1_id_seq'::regclass)
 field_1    integer                  true
 field_2    text                     true
 created_at timestamp with time zone true
@@ -66,10 +68,10 @@ table_1_field_1_index btree     false  field_1
 `;
 
 exports[`CLI test: pg can load database dump 2`] = `
-"column     type                     nullable
-id         integer                  false
+"column     type                     nullable default
+id         integer                  false    nextval('table_2_id_seq'::regclass)
 field_1    numeric                  false
-field_2    text                     true
+field_2    text                     true     'default text::text'::text
 created_at timestamp with time zone true
 updated_at timestamp with time zone true
 
@@ -80,8 +82,8 @@ table_2_field_1_unique btree     true   field_1
 `;
 
 exports[`CLI test: pg can load database dump 3`] = `
-"column     type                     nullable
-id_field   bigint                   false
+"column     type                     nullable default
+id_field   bigint                   false    nextval('table_3_id_field_seq'::regclass)
 field_1    bigint                   true
 created_at timestamp with time zone true
 updated_at timestamp with time zone true
@@ -92,10 +94,10 @@ table_3_pkey btree     true   id_field
 `;
 
 exports[`CLI test: pg can show table 1`] = `
-"column     type                     nullable
-id         integer                  false
+"column     type                     nullable default
+id         integer                  false    nextval('table_2_id_seq'::regclass)
 field_1    numeric                  false
-field_2    text                     true
+field_2    text                     true     'default text'::text
 created_at timestamp with time zone true
 updated_at timestamp with time zone true
 
