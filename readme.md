@@ -35,18 +35,34 @@ Options:
 
 Run `sql [command] --help` to see any command usage info.
 
-## Diff command
+## View database contents
 
-The diff command allows comparing two schemas or tables of different connections.
+The `list` and `show` commands allow viewing the structure of a database.
+
+<p align="center">
+  <img width="600" src="./img/show.svg">
+</p>
+
+## Diff databases
+
+The `diff` command allows comparing two schemas or tables, in the same or different connections.
 
 <p align="center">
   <img width="600" src="./img/diff.svg">
 </p>
 
-## Alias command
+## Creating connection aliases
 
-Aliases can be created for known connections, and used instead of the full connection URI.
+Aliases can be saved for known connections, and used instead of the full connection URI.
 
 <p align="center">
   <img width="600" src="./img/aliases.svg">
+</p>
+
+## Creating and loading dumps
+
+Generic dumps can be created from a connection and loaded to another supported database.
+
+<p align="center">
+  <img width="600" src="./img/dump.svg">
 </p>
