@@ -42,7 +42,18 @@ class SqlLib extends Function {
       conn.port = freePort;
     }
 
-    this.knex = hydrateKnex(Knex({ connection: conn, ...rest }));
+    this.knex = hydrateKnex(
+      Knex({
+        connection: conn,
+        log: {
+          // Fix: avoid overly verbose warning during Knex migrations.
+          // See https://github.com/knex/knex/issues/3921
+          warn: (msg) =>
+            msg.startsWith("FS-related option") || console.log(msg),
+        },
+        ...rest,
+      })
+    );
 
     await this.checkConnection();
 
