@@ -22,7 +22,7 @@ const formatHeader = (str) => chalk.underline(str);
 
 const formatStriped = (val, ctx) => {
   // color in gray cells of even rows, to show a striped table
-  if (ctx.index % 2) {
+  if (ctx.index % 2 && !process.env.SQL_NO_STRIPED_TABLES) {
     return chalk.gray(val);
   }
   return val;
