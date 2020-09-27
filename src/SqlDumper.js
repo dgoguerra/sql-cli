@@ -1,4 +1,5 @@
 const fs = require("fs");
+const os = require("os");
 const path = require("path");
 const tar = require("tar");
 const _ = require("lodash");
@@ -64,14 +65,17 @@ class SqlDumper {
     const dumpPath = path.resolve(dump);
     const dumpName = path.basename(dump).replace(/.tgz$/, "");
     const dumpSlug = _.snakeCase(dumpName).replace(/-/g, "_");
+    const extractedPath = `${os.tmpdir()}/${dumpName}`;
 
     if (!fs.existsSync(dumpPath)) {
       throw new Error(`Dump file '${dumpPath}' not found`);
     }
 
-    await tar.extract({ file: dumpPath });
+    if (fs.existsSync(extractedPath)) {
+      rimraf.sync(extractedPath);
+    }
 
-    const extractedPath = dumpPath.replace(/\.tgz$/, "");
+    await tar.extract({ file: dumpPath, cwd: path.dirname(extractedPath) });
 
     if (!fs.existsSync(`${extractedPath}/migrations`)) {
       throw new Error(`Migration files at '${extractedPath}' not found`);
