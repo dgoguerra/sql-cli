@@ -1,6 +1,7 @@
 const fs = require("fs");
 const path = require("path");
 const tar = require("tar");
+const _ = require("lodash");
 const split = require("split2");
 const rimraf = require("rimraf");
 const through = require("through2");
@@ -8,8 +9,6 @@ const prettier = require("prettier");
 const { stringDate } = require("./stringDate");
 const { runPipeline } = require("./streamUtils");
 const { toKnexType, streamInsert } = require("./knexUtils");
-
-const MIGRATIONS_TABLE = "dump_knex_migrations";
 
 const isNumeric = (v) =>
   (typeof v === "number" || typeof v === "string") &&
@@ -33,10 +32,6 @@ class SqlDumper {
     fs.mkdirSync(`${dumpDir}/migrations`, { recursive: true });
 
     for (const { table } of await this.knex.schema.listTables()) {
-      if (table.startsWith(MIGRATIONS_TABLE)) {
-        continue;
-      }
-
       const migrPath = `migrations/${stringDate()}-${table}.js`;
       const dataPath = `data/${table}.jsonl`;
 
@@ -59,6 +54,8 @@ class SqlDumper {
 
   async loadDump(dump) {
     const dumpPath = path.resolve(dump);
+    const dumpName = path.basename(dump).replace(/.tgz$/, "");
+    const dumpSlug = _.snakeCase(dumpName).replace(/-/g, "_");
 
     if (!fs.existsSync(dumpPath)) {
       throw new Error(`Dump file '${dumpPath}' not found`);
@@ -72,9 +69,12 @@ class SqlDumper {
       throw new Error(`Migration files at '${extractedPath}' not found`);
     }
 
+    const tableName = `migrations_${dumpSlug}`;
+
+    console.log(`Saving migrations to table ${tableName} ...`);
     await this.knex.migrate.latest({
       directory: `${extractedPath}/migrations`,
-      tableName: MIGRATIONS_TABLE,
+      tableName,
     });
 
     // Match datetime strings with the formats used by

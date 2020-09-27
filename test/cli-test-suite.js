@@ -158,19 +158,19 @@ const cliTestSuite = (name, knexFactory, opts = {}) => {
       await runCli(`dump load ${connUri} ${TEST_DUMP_PATH}`);
 
       expect(await knex.schema.listTables()).toMatchObject([
-        { table: "dump_knex_migrations" },
-        { table: "dump_knex_migrations_lock" },
+        { table: "migrations_dump_test_1" },
+        { table: "migrations_dump_test_1_lock" },
         { table: "table_1" },
         { table: "table_2" },
         { table: "table_3" },
       ]);
 
-      expect(await knex("dump_knex_migrations")).toMatchObject([
+      expect(await knex("migrations_dump_test_1")).toMatchObject([
         { id: 1, batch: 1, name: "20200722182250-table_1.js" },
         { id: 2, batch: 1, name: "20200722182250-table_2.js" },
         { id: 3, batch: 1, name: "20200722182250-table_3.js" },
       ]);
-      expect(await knex("dump_knex_migrations_lock")).toMatchObject([
+      expect(await knex("migrations_dump_test_1_lock")).toMatchObject([
         { index: 1, is_locked: 0 },
       ]);
 
