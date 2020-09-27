@@ -1,4 +1,5 @@
 const fs = require("fs");
+const path = require("path");
 const tar = require("tar");
 const rimraf = require("rimraf");
 const { runCli } = require("./utils");
@@ -6,9 +7,11 @@ const { hydrateKnex } = require("../src/knexUtils");
 
 const TEST_DATETIME_1 = "2020-07-24 18:34:00";
 const TEST_DATETIME_2 = "2020-07-24 19:25:00";
-const TEST_DUMP_NAME = `.tmp/dump-test-${process.env.JEST_WORKER_ID}`;
-const TEST_DUMP_PATH = `${process.env.PWD}/${TEST_DUMP_NAME}.tgz`;
-const TEST_EXTRACTED_PATH = `${process.env.PWD}/${TEST_DUMP_NAME}`;
+
+const TEST_DUMP_NAME = `dump-test-${process.env.JEST_WORKER_ID}`;
+const TEST_DUMP_PATH = `${process.env.PWD}/.tmp/${TEST_DUMP_NAME}.tgz`;
+const TEST_EXTRACTED_PATH = `${process.env.PWD}/.tmp/${TEST_DUMP_NAME}`;
+const TEST_MIGRATIONS_TABLE = `migrations_${TEST_DUMP_NAME.replace(/-/g, "_")}`;
 
 const TEST_TABLE1_CONTENT = [
   {
@@ -124,14 +127,17 @@ const cliTestSuite = (name, knexFactory, opts = {}) => {
 
     it("can create database dump", async () => {
       expect(fs.existsSync(TEST_DUMP_PATH)).toBeFalsy();
-      await runCli(`dump create ${connUri} ${TEST_DUMP_NAME}`);
+      await runCli(`dump create ${connUri} ${TEST_DUMP_PATH}`);
       expect(fs.existsSync(TEST_DUMP_PATH)).toBeTruthy();
     });
 
     it("database dump contents are valid", async () => {
       expect(fs.existsSync(TEST_EXTRACTED_PATH)).toBeFalsy();
 
-      await tar.extract({ file: TEST_DUMP_PATH });
+      await tar.extract({
+        file: TEST_DUMP_PATH,
+        cwd: path.dirname(TEST_DUMP_PATH),
+      });
       expect(fs.existsSync(TEST_EXTRACTED_PATH)).toBeTruthy();
 
       const files = [
@@ -158,19 +164,19 @@ const cliTestSuite = (name, knexFactory, opts = {}) => {
       await runCli(`dump load ${connUri} ${TEST_DUMP_PATH}`);
 
       expect(await knex.schema.listTables()).toMatchObject([
-        { table: "migrations_dump_test_1" },
-        { table: "migrations_dump_test_1_lock" },
+        { table: TEST_MIGRATIONS_TABLE },
+        { table: `${TEST_MIGRATIONS_TABLE}_lock` },
         { table: "table_1" },
         { table: "table_2" },
         { table: "table_3" },
       ]);
 
-      expect(await knex("migrations_dump_test_1")).toMatchObject([
+      expect(await knex(TEST_MIGRATIONS_TABLE)).toMatchObject([
         { id: 1, batch: 1, name: "20200722182250-table_1.js" },
         { id: 2, batch: 1, name: "20200722182250-table_2.js" },
         { id: 3, batch: 1, name: "20200722182250-table_3.js" },
       ]);
-      expect(await knex("migrations_dump_test_1_lock")).toMatchObject([
+      expect(await knex(`${TEST_MIGRATIONS_TABLE}_lock`)).toMatchObject([
         { index: 1, is_locked: 0 },
       ]);
 

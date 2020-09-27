@@ -23,9 +23,14 @@ class SqlDumper {
     this.dumpsDir = dumpsDir;
   }
 
-  async createDump(name) {
-    const dumpName = name || this.knex.buildConnSlug("dump");
-    const dumpDir = `${this.dumpsDir}/${dumpName}`;
+  async createDump(name = null) {
+    const dumpName = name
+      ? name.replace(/\.tgz$/, "")
+      : this.knex.buildConnSlug("dump");
+
+    const dumpDir = path.isAbsolute(dumpName)
+      ? dumpName
+      : path.resolve(this.dumpsDir, dumpName);
 
     rimraf.sync(dumpDir);
     fs.mkdirSync(`${dumpDir}/data`, { recursive: true });
@@ -45,7 +50,10 @@ class SqlDumper {
     }
 
     const tarballPath = `${dumpDir}.tgz`;
-    await tar.create({ gzip: true, file: tarballPath }, [dumpName]);
+    await tar.create(
+      { gzip: true, file: tarballPath, cwd: path.dirname(dumpDir) },
+      [path.basename(dumpDir)]
+    );
 
     rimraf.sync(dumpDir);
 
