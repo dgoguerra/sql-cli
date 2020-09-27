@@ -24,9 +24,11 @@ field_1 integer nullable → numeric
 
 index                       algorithm unique columns
 table_1_pkey → table_2_pkey btree     true   id
+table_1_field_1_index       btree     false  field_1
+table_2_field_1_unique      btree     true   field_1
 
 Columns: 1x changed, 4x similar (hidden)
-Indexes: 1x changed
+Indexes: 1x deleted, 1x created, 1x changed
 "
 `;
 
@@ -57,8 +59,9 @@ field_2    text                     true
 created_at timestamp with time zone true
 updated_at timestamp with time zone true
 
-index        algorithm unique columns
-table_1_pkey btree     true   id
+index                 algorithm unique columns
+table_1_pkey          btree     true   id
+table_1_field_1_index btree     false  field_1
 "
 `;
 
@@ -70,20 +73,21 @@ field_2    text                     true
 created_at timestamp with time zone true
 updated_at timestamp with time zone true
 
-index        algorithm unique columns
-table_2_pkey btree     true   id
+index                  algorithm unique columns
+table_2_pkey           btree     true   id
+table_2_field_1_unique btree     true   field_1
 "
 `;
 
 exports[`CLI test: pg can load database dump 3`] = `
 "column     type                     nullable
-idField    bigint                   false
+id_field   bigint                   false
 field_1    bigint                   true
 created_at timestamp with time zone true
 updated_at timestamp with time zone true
 
 index        algorithm unique columns
-table_3_pkey btree     true   idField
+table_3_pkey btree     true   id_field
 "
 `;
 
@@ -95,8 +99,9 @@ field_2    text                     true
 created_at timestamp with time zone true
 updated_at timestamp with time zone true
 
-index        algorithm unique columns
-table_2_pkey btree     true   id
+index                  algorithm unique columns
+table_2_pkey           btree     true   id
+table_2_field_1_unique btree     true   field_1
 "
 `;
 
@@ -118,6 +123,7 @@ exports[`CLI test: pg database dump contents are valid 1`] = `
     t.text(\\"field_2\\");
     t.timestamp(\\"created_at\\");
     t.timestamp(\\"updated_at\\");
+    t.index([\\"field_1\\"], \\"table_1_field_1_index\\");
   });
 };
 module.exports.down = async (knex) => {
@@ -134,6 +140,7 @@ exports[`CLI test: pg database dump contents are valid 2`] = `
     t.text(\\"field_2\\").defaultTo(\\"default text::text\\");
     t.timestamp(\\"created_at\\");
     t.timestamp(\\"updated_at\\");
+    t.unique([\\"field_1\\"], \\"table_2_field_1_unique\\");
   });
 };
 module.exports.down = async (knex) => {
@@ -145,8 +152,8 @@ module.exports.down = async (knex) => {
 exports[`CLI test: pg database dump contents are valid 3`] = `
 "module.exports.up = async (knex) => {
   await knex.schema.createTable(\\"table_3\\", (t) => {
-    t.bigIncrements(\\"idField\\").defaultTo(
-      \\"nextvaltable_3_idField_seq::regclass\\"
+    t.bigIncrements(\\"id_field\\").defaultTo(
+      \\"nextvaltable_3_id_field_seq::regclass\\"
     );
     t.bigInteger(\\"field_1\\");
     t.timestamp(\\"created_at\\");

@@ -231,15 +231,17 @@ const migrateTestTables = async (knex) => {
     t.integer("field_1");
     t.text("field_2");
     t.timestamps();
+    t.index(["field_1"]);
   });
   await knex.schema.createTable("table_2", (t) => {
     t.increments("id");
     t.decimal("field_1").notNullable();
     t.text("field_2").defaultTo("default text");
     t.timestamps();
+    t.unique(["field_1"]);
   });
   await knex.schema.createTable("table_3", (t) => {
-    t.bigIncrements("idField");
+    t.bigIncrements("id_field");
     t.bigInteger("field_1");
     t.timestamps();
   });

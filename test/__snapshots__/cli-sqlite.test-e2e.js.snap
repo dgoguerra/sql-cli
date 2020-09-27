@@ -22,8 +22,12 @@ exports[`CLI test: sqlite3 can diff tables 1`] = `
 "column  type
 field_1 integer nullable → float
 
+index                  algorithm unique columns
+table_1_field_1_index  unknown   false  field_1
+table_2_field_1_unique unknown   true   field_1
+
 Columns: 1x changed, 4x similar (hidden)
-Indexes: none
+Indexes: 1x deleted, 1x created
 "
 `;
 
@@ -54,7 +58,8 @@ field_2    text     true
 created_at datetime true
 updated_at datetime true
 
-No indexes in table
+index                 algorithm unique columns
+table_1_field_1_index unknown   false  field_1
 "
 `;
 
@@ -66,13 +71,14 @@ field_2    text     true
 created_at datetime true
 updated_at datetime true
 
-No indexes in table
+index                  algorithm unique columns
+table_2_field_1_unique unknown   true   field_1
 "
 `;
 
 exports[`CLI test: sqlite3 can load database dump 3`] = `
 "column     type     nullable
-idField    integer  false
+id_field   integer  false
 field_1    bigint   true
 created_at datetime true
 updated_at datetime true
@@ -89,7 +95,8 @@ field_2    text     true
 created_at datetime true
 updated_at datetime true
 
-No indexes in table
+index                  algorithm unique columns
+table_2_field_1_unique unknown   true   field_1
 "
 `;
 
@@ -111,6 +118,7 @@ exports[`CLI test: sqlite3 database dump contents are valid 1`] = `
     t.text(\\"field_2\\");
     t.timestamp(\\"created_at\\");
     t.timestamp(\\"updated_at\\");
+    t.index([\\"field_1\\"], \\"table_1_field_1_index\\");
   });
 };
 module.exports.down = async (knex) => {
@@ -127,6 +135,7 @@ exports[`CLI test: sqlite3 database dump contents are valid 2`] = `
     t.text(\\"field_2\\").defaultTo(\\"default text\\");
     t.timestamp(\\"created_at\\");
     t.timestamp(\\"updated_at\\");
+    t.unique([\\"field_1\\"], \\"table_2_field_1_unique\\");
   });
 };
 module.exports.down = async (knex) => {
@@ -138,7 +147,7 @@ module.exports.down = async (knex) => {
 exports[`CLI test: sqlite3 database dump contents are valid 3`] = `
 "module.exports.up = async (knex) => {
   await knex.schema.createTable(\\"table_3\\", (t) => {
-    t.increments(\\"idField\\");
+    t.increments(\\"id_field\\");
     t.bigInteger(\\"field_1\\");
     t.timestamp(\\"created_at\\");
     t.timestamp(\\"updated_at\\");

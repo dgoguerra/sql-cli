@@ -1,6 +1,11 @@
 const chalk = require("chalk");
 const stringWidth = require("string-width");
 
+const DEFAULT_WIDTH =
+  process.stdout.columns || process.env.SQL_LINE_WIDTH || 80;
+
+const DEFAULT_SEPARATOR = "...";
+
 const linesSummary = (lines, { maxLines = 20 } = {}) => {
   const blockSize = Math.floor(maxLines / 2);
 
@@ -18,7 +23,7 @@ const linesSummary = (lines, { maxLines = 20 } = {}) => {
 
 const limitLine = (
   line,
-  { width = process.stdout.columns || 80, separator = "..." } = {}
+  { width = DEFAULT_WIDTH, separator = DEFAULT_SEPARATOR } = {}
 ) => {
   let lineWidth = stringWidth(line);
 
