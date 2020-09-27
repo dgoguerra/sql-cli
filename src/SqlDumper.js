@@ -1,6 +1,5 @@
 const fs = require("fs");
 const path = require("path");
-const _ = require("lodash");
 const tar = require("tar");
 const split = require("split2");
 const rimraf = require("rimraf");
@@ -26,7 +25,7 @@ class SqlDumper {
   }
 
   async createDump(name) {
-    const dumpName = name || this.buildConnSlug("dump");
+    const dumpName = name || this.knex.buildConnSlug("dump");
     const dumpDir = `${this.dumpsDir}/${dumpName}`;
 
     rimraf.sync(dumpDir);
@@ -171,13 +170,6 @@ class SqlDumper {
       fs.createWriteStream(filePath)
     );
     return true;
-  }
-
-  buildConnSlug(prefix = "") {
-    const { connection: conn } = this.knex.client.config;
-    return _.snakeCase(
-      `${prefix}-${conn.server || conn.host}-${conn.database}-${stringDate()}`
-    ).replace(/_/g, "-");
   }
 
   buildColumnStatement(key, col, { primaryKey = false } = {}) {

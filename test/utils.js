@@ -9,7 +9,7 @@ const TEST_CONF_DIR = `${os.tmpdir()}/test-${process.env.JEST_WORKER_ID}`;
 
 const runCli = (args, { stdin = null, debug = false } = {}) =>
   new Promise((resolve, reject) => {
-    let command = `${process.env.PWD}/cli.js ${args}`;
+    let command = `${process.env.PWD}/src/index.js ${args}`;
     let stdout = "";
     let stderr = "";
     let all = "";

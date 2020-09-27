@@ -1,7 +1,9 @@
+const _ = require("lodash");
 const Knex = require("knex");
 const getPort = require("get-port");
-const { sshClient, forwardPort } = require("./sshUtils");
+const { stringDate } = require("./stringDate");
 const { hydrateKnex } = require("./knexUtils");
+const { sshClient, forwardPort } = require("./sshUtils");
 
 class SqlLib extends Function {
   constructor({ conf, sshConf = null }) {
@@ -58,6 +60,13 @@ class SqlLib extends Function {
     if (this.sshClient) {
       this.sshClient.destroy();
     }
+  }
+
+  buildConnSlug(prefix = "") {
+    const { connection: conn } = this.knex.client.config;
+    return _.snakeCase(
+      `${prefix}-${conn.server || conn.host}-${conn.database}-${stringDate()}`
+    ).replace(/_/g, "-");
   }
 }
 

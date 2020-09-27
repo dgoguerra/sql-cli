@@ -13,7 +13,7 @@
   "license": "ISC",
   "main": "index.js",
   "bin": {
-    "sql": "cli.js"
+    "sql": "src/index.js"
   },
   "scripts": {
     "format": "prettier --write \"**/*.js\"",
