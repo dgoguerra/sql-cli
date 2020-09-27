@@ -53,19 +53,24 @@ const sshClient = async (opts) => {
 };
 
 const forwardPort = (client, { srcHost, srcPort, dstHost, dstPort }) => {
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     const sockServer = net.createServer((sock) => {
       client.forwardOut(srcHost, srcPort, dstHost, dstPort, (err, stream) => {
-        if (err) return reject(err);
+        if (err) {
+          sock.emit("error", err);
+          return;
+        }
         sock.pipe(stream).pipe(sock);
       });
     });
 
-    client.on("close", function () {
+    client.on("close", () => {
       sockServer && sockServer.close();
     });
 
-    sockServer.listen(srcPort, srcHost, () => resolve(sockServer));
+    sockServer.listen(srcPort, srcHost, () => {
+      resolve(sockServer);
+    });
   });
 };
 
