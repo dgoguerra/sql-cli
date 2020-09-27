@@ -3,7 +3,7 @@ const { cliTestSuite } = require("./cli-test-suite");
 
 const TEST_MYSQL_CONN = {
   host: "127.0.0.1",
-  port: 23306,
+  port: 23306, // mysql-1 container
   user: "test",
   password: "Secret123",
   database: "test_db",

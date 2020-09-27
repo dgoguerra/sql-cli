@@ -39,7 +39,7 @@ const TEST_TABLE2_CONTENT = [
   },
 ];
 
-const cliTestSuite = (name, knexFactory) => {
+const cliTestSuite = (name, knexFactory, opts = {}) => {
   jest.setTimeout(15000);
 
   describe(`CLI test: ${name}`, () => {
@@ -48,7 +48,8 @@ const cliTestSuite = (name, knexFactory) => {
 
     beforeAll(async () => {
       knex = hydrateKnex(await knexFactory());
-      connUri = knex.getUri();
+      // Allow passing a custom connUri for a test suite
+      connUri = opts.connUri || knex.getUri();
 
       await migrateTestTables(knex);
 
@@ -113,13 +114,12 @@ const cliTestSuite = (name, knexFactory) => {
       const output = await runCli(`sh ${connUri}`, {
         stdin: "select 1+1 as result;\nselect 2+3 as result2;",
       });
-      expect(output).toMatchInlineSnapshot(`
-        "result
-        2
-        result2
-        5
-        "
-      `);
+      expect(output.trim().split("\n")).toMatchObject([
+        "result",
+        "2",
+        "result2",
+        "5",
+      ]);
     });
 
     it("can create database dump", async () => {
