@@ -452,9 +452,17 @@ const streamInsert = async (knex, table, stream) => {
 };
 
 const streamInsertGeneric = async (knex, table, stream) => {
+  const client = knex.client.constructor.name;
+
+  // By default SQLite has a rather small maximum of SQL variables per
+  // prepared statement. Reduce the size of each chunk to bulk insert
+  // to avoid the error "SQLITE_ERROR: too many SQL variables" on
+  // tables with a large amount or columns.
+  const chunkSize = client === "Client_SQLite3" ? 10 : 500;
+
   await runPipeline(
     stream,
-    chunk(),
+    chunk(chunkSize),
     writer.obj((rows, enc, next) =>
       knex(table)
         .insert(rows)
