@@ -9,7 +9,7 @@ const TEST_CONF_DIR = `${os.tmpdir()}/test-${process.env.JEST_WORKER_ID}`;
 
 const runCli = (args, { stdin = null, debug = false } = {}) =>
   new Promise((resolve, reject) => {
-    let command = `${process.env.PWD}/cli.js ${args}`;
+    let command = `${process.env.PWD}/src/index.js ${args}`;
     let stdout = "";
     let stderr = "";
     let all = "";
@@ -27,6 +27,8 @@ const runCli = (args, { stdin = null, debug = false } = {}) =>
         SQL_DUMP_DATE: "2020-07-22T18:22:50.732Z",
         // Disable importing aliases from the user's TablePlus and Sequel Pro
         SQL_NO_IMPORT_ALIASES: 1,
+        // Increase max width of output tables
+        SQL_LINE_WIDTH: 1000,
         // Disable chalk's coloring of outputs
         FORCE_COLOR: 0,
       },

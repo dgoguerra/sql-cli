@@ -13,11 +13,12 @@
   "license": "ISC",
   "main": "index.js",
   "bin": {
-    "sql": "cli.js"
+    "sql": "src/index.js"
   },
   "scripts": {
     "format": "prettier --write \"**/*.js\"",
-    "test": "bin/run-test"
+    "test": "TZ=UTC jest",
+    "test:e2e": "bin/test-e2e"
   },
   "dependencies": {
     "@google-cloud/bigquery": "^5.2.0",

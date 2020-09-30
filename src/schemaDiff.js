@@ -1,22 +1,30 @@
 const _ = require("lodash");
 const chalk = require("chalk");
 
-const colHash = (col) => `${col.fullType}:${col.nullable}`;
+const colHash = (col) => `${col.fullType}:${col.nullable}:${col.defaultValue}`;
 
 const indHash = (col) => `${col.algorithm}:${col.unique}:${col.columns}`;
 
-const colDesc = (col) => {
-  let str = col.fullType;
-  if (col.nullable) {
-    str += " nullable";
-  }
-  return str;
-};
+const isEmpty = (val) => val === undefined || val === null;
 
-const valueOrDiff = (before, after) =>
-  String(before) === String(after)
-    ? String(before)
-    : `${chalk.red(before)} → ${chalk.green(after)}`;
+const deletedValue = (val) => (isEmpty(val) ? val : chalk.red(val));
+
+const createdValue = (val) => (isEmpty(val) ? val : chalk.green(val));
+
+const valueOrDiff = (before, after) => {
+  if (isEmpty(before) && before === after) {
+    return before;
+  }
+
+  before = isEmpty(before) ? "[null]" : String(before);
+  after = isEmpty(after) ? "[null]" : String(after);
+
+  if (before === after) {
+    return before;
+  }
+
+  return `${chalk.red(before)} → ${chalk.green(after)}`;
+};
 
 const diffColumns = (table1, table2, { showSimilar = false } = {}) => {
   // Column keys in one or both tables
@@ -34,22 +42,23 @@ const diffColumns = (table1, table2, { showSimilar = false } = {}) => {
 };
 
 const diffColumnVersions = (key, col1, col2) => {
-  const desc1 = col1 && colDesc(col1);
-  const desc2 = col2 && colDesc(col2);
-
   if (!col2) {
     return {
       status: "deleted",
-      displayColumn: chalk.red(key),
-      displayType: chalk.red(desc1),
+      displayColumn: deletedValue(key),
+      displayType: deletedValue(col1.fullType),
+      displayNullable: deletedValue(col1.nullable),
+      displayDefault: deletedValue(col1.defaultValue),
     };
   }
 
   if (!col1) {
     return {
       status: "created",
-      displayColumn: chalk.green(key),
-      displayType: chalk.green(desc2),
+      displayColumn: createdValue(key),
+      displayType: createdValue(col2.fullType),
+      displayNullable: createdValue(col2.nullable),
+      displayDefault: createdValue(col2.defaultValue),
     };
   }
 
@@ -57,7 +66,9 @@ const diffColumnVersions = (key, col1, col2) => {
   return {
     status: changed ? "changed" : "similar",
     displayColumn: key,
-    displayType: valueOrDiff(desc1, desc2),
+    displayType: valueOrDiff(col1.fullType, col2.fullType),
+    displayNullable: valueOrDiff(col1.nullable, col2.nullable),
+    displayDefault: valueOrDiff(col1.defaultValue, col2.defaultValue),
   };
 };
 
@@ -110,20 +121,20 @@ const diffIndexVersions = (key, ind1, ind2) => {
   if (!ind2) {
     return {
       status: "deleted",
-      displayIndex: chalk.red(ind1.name),
-      displayAlgorithm: chalk.red(ind1.algorithm),
-      displayUnique: chalk.red(ind1.unique),
-      displayColumns: chalk.red(ind1.columns),
+      displayIndex: deletedValue(ind1.name),
+      displayAlgorithm: deletedValue(ind1.algorithm),
+      displayUnique: deletedValue(ind1.unique),
+      displayColumns: deletedValue(ind1.columns),
     };
   }
 
   if (!ind1) {
     return {
       status: "created",
-      displayIndex: chalk.green(ind2.name),
-      displayAlgorithm: chalk.green(ind2.algorithm),
-      displayUnique: chalk.green(ind2.unique),
-      displayColumns: chalk.green(ind2.columns),
+      displayIndex: createdValue(ind2.name),
+      displayAlgorithm: createdValue(ind2.algorithm),
+      displayUnique: createdValue(ind2.unique),
+      displayColumns: createdValue(ind2.columns),
     };
   }
 
@@ -173,9 +184,9 @@ const diffTableVersions = (table1, table2) => {
   if (!table1) {
     return {
       status: "created",
-      displayTable: chalk.green(table2.table),
-      displayRows: chalk.green(table2.rows),
-      displayBytes: chalk.green(table2.prettyBytes),
+      displayTable: createdValue(table2.table),
+      displayRows: createdValue(table2.rows),
+      displayBytes: createdValue(table2.prettyBytes),
       colSummary,
       indSummary,
     };
@@ -184,9 +195,9 @@ const diffTableVersions = (table1, table2) => {
   if (!table2) {
     return {
       status: "deleted",
-      displayTable: chalk.red(table1.table),
-      displayRows: chalk.red(table1.rows),
-      displayBytes: chalk.red(table1.prettyBytes),
+      displayTable: deletedValue(table1.table),
+      displayRows: deletedValue(table1.rows),
+      displayBytes: deletedValue(table1.prettyBytes),
       colSummary,
       indSummary,
     };

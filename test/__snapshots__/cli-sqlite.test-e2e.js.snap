@@ -19,11 +19,17 @@ exports[`CLI test: sqlite3 can diff schemas 1`] = `
 `;
 
 exports[`CLI test: sqlite3 can diff tables 1`] = `
-"column  type
-field_1 integer nullable → float
+"column  type            nullable     default
+field_1 integer → float true → false
+field_2 text            true         [null] → 'default text'
 
-Columns: 1x changed, 4x similar (hidden)
-Indexes: none
+index                  algorithm unique columns
+table_1_field_1_index  unknown   false  field_1
+table_2_field_1_unique unknown   true   field_1
+
+Columns: 2x changed, 3x similar (hidden)
+Indexes: 1x deleted, 1x created
+Re-run with --all to show hidden rows
 "
 `;
 
@@ -33,6 +39,7 @@ exports[`CLI test: sqlite3 can diff tables data 1`] = `
 id field_1    updated_at
 1  12 → 12.3  [null] → 2020-07-24 18:34:00
 2  30 → 30.45 2020-07-24 18:34:00 → 2020-07-24 19:25:00
+Re-run with --all to show rows without changes
 "
 `;
 
@@ -47,32 +54,34 @@ table_3 0    4.1 kB
 `;
 
 exports[`CLI test: sqlite3 can load database dump 1`] = `
-"column     type     nullable
+"column     type     nullable default
 id         integer  false
 field_1    integer  true
 field_2    text     true
 created_at datetime true
 updated_at datetime true
 
-No indexes in table
+index                 algorithm unique columns
+table_1_field_1_index unknown   false  field_1
 "
 `;
 
 exports[`CLI test: sqlite3 can load database dump 2`] = `
-"column     type     nullable
+"column     type     nullable default
 id         integer  false
 field_1    float    false
-field_2    text     true
+field_2    text     true     'default text'
 created_at datetime true
 updated_at datetime true
 
-No indexes in table
+index                  algorithm unique columns
+table_2_field_1_unique unknown   true   field_1
 "
 `;
 
 exports[`CLI test: sqlite3 can load database dump 3`] = `
-"column     type     nullable
-idField    integer  false
+"column     type     nullable default
+id_field   integer  false
 field_1    bigint   true
 created_at datetime true
 updated_at datetime true
@@ -82,14 +91,15 @@ No indexes in table
 `;
 
 exports[`CLI test: sqlite3 can show table 1`] = `
-"column     type     nullable
+"column     type     nullable default
 id         integer  false
 field_1    float    false
-field_2    text     true
+field_2    text     true     'default text'
 created_at datetime true
 updated_at datetime true
 
-No indexes in table
+index                  algorithm unique columns
+table_2_field_1_unique unknown   true   field_1
 "
 `;
 
@@ -111,6 +121,7 @@ exports[`CLI test: sqlite3 database dump contents are valid 1`] = `
     t.text(\\"field_2\\");
     t.timestamp(\\"created_at\\");
     t.timestamp(\\"updated_at\\");
+    t.index([\\"field_1\\"], \\"table_1_field_1_index\\");
   });
 };
 module.exports.down = async (knex) => {
@@ -127,6 +138,7 @@ exports[`CLI test: sqlite3 database dump contents are valid 2`] = `
     t.text(\\"field_2\\").defaultTo(\\"default text\\");
     t.timestamp(\\"created_at\\");
     t.timestamp(\\"updated_at\\");
+    t.unique([\\"field_1\\"], \\"table_2_field_1_unique\\");
   });
 };
 module.exports.down = async (knex) => {
@@ -138,7 +150,7 @@ module.exports.down = async (knex) => {
 exports[`CLI test: sqlite3 database dump contents are valid 3`] = `
 "module.exports.up = async (knex) => {
   await knex.schema.createTable(\\"table_3\\", (t) => {
-    t.increments(\\"idField\\");
+    t.increments(\\"id_field\\");
     t.bigInteger(\\"field_1\\");
     t.timestamp(\\"created_at\\");
     t.timestamp(\\"updated_at\\");

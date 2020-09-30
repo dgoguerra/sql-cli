@@ -17,11 +17,13 @@ if (fs.existsSync(SQL_CONF_DIR)) {
   rimraf.sync(SQL_CONF_DIR);
 }
 
-const runCmd = (cmd, { debug = false } = {}) => {
+const runCmd = (cmd, { env = {}, debug = false } = {}) => {
   if (debug) {
     console.log(`Running: ${cmd}`);
   }
-  const stdall = execSync(cmd, { env: { ...process.env, SQL_CONF_DIR } });
+  const stdall = execSync(cmd, {
+    env: { ...process.env, ...env, SQL_CONF_DIR, SQL_NO_IMPORT_ALIASES: 1 },
+  });
   if (debug) {
     console.log(stdall.toString());
   }
@@ -54,7 +56,7 @@ process.chdir(TMP_DIR);
 
     await knex("table_2").where({ id: 2 }).delete();
     await knex.schema.table("table_3", (t) => {
-      t.dropColumn("idField");
+      t.dropColumn("id_field");
       t.integer("other_field_1");
       t.text("other_field_2");
     });
@@ -64,15 +66,32 @@ process.chdir(TMP_DIR);
     });
   });
 
+  if (fs.existsSync(`${TMP_DIR}/newfile.db`)) {
+    fs.unlinkSync(`${TMP_DIR}/newfile.db`);
+  }
+
   // Add some aliases to show as available
-  runCmd(`node ../cli.js alias add local-pg postgres://127.0.0.1:5432/mydb`);
-  runCmd(`node ../cli.js alias add local-my mysql://127.0.0.1:3306/mydb`);
-  runCmd(`node ../cli.js alias add project-dev mysql://12.12.12.12/dev_db`);
-  runCmd(`node ../cli.js alias add project-prod mysql://34.34.34.34/prod_db`);
+  runCmd(
+    `node ../src/index.js alias add local-pg postgres://127.0.0.1:5432/mydb`
+  );
+  runCmd(`node ../src/index.js alias add local-my mysql://127.0.0.1:3306/mydb`);
+  runCmd(
+    `node ../src/index.js alias add project-dev mysql://12.12.12.12/dev_db`
+  );
+  runCmd(
+    `node ../src/index.js alias add project-prod mysql://34.34.34.34/prod_db`
+  );
 
   const images = [
     {
+      key: "show",
+      height: 20,
+      cmds: ["list sqlite://file1.db", "show sqlite://file1.db/table_1"],
+    },
+    {
       key: "diff",
+      height: 31,
+      env: { SQL_NO_STRIPED_TABLES: 1 },
       cmds: [
         "diff sqlite://file1.db sqlite://file2.db",
         "diff sqlite://file1.db/table_1 sqlite://file2.db/table_2",
@@ -81,7 +100,7 @@ process.chdir(TMP_DIR);
     },
     {
       key: "aliases",
-      height: 27,
+      height: 32,
       cmds: [
         "alias add mydb sqlite://file1.db",
         "alias ls",
@@ -89,14 +108,24 @@ process.chdir(TMP_DIR);
         "show mydb/table_1",
       ],
     },
+    {
+      key: "dump",
+      cmds: [
+        "dump create sqlite://file1.db dump-my-file1",
+        "dump load sqlite://newfile.db dump-my-file1.tgz",
+        "diff sqlite://file1.db sqlite://newfile.db --all",
+      ],
+    },
   ];
 
   images.forEach((im) => {
     console.log(`creating ${im.key}.svg ...`);
     const command = im.cmds
-      .map((cmd) => `echo $ sql ${cmd}; node ../cli.js ${cmd}; echo`)
+      .map((cmd) => `echo $ sql ${cmd}; node ../src/index.js ${cmd}; echo`)
       .join("; ");
-    runCmd(`asciinema rec --command "${command}" --overwrite ${im.key}.cast`);
+    runCmd(`asciinema rec --command "${command}" --overwrite ${im.key}.cast`, {
+      env: im.env || {},
+    });
     runCmd(`
       svg-term --in ${im.key}.cast \
         --out ${IMG_DIR}/${im.key}.svg \

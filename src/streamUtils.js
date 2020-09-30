@@ -5,24 +5,32 @@ const through = require("through2");
 const deepEqual = require("deep-equal");
 const tupleStream = require("tuple-stream2");
 
+const isEmpty = (val) => val === undefined || val === null;
+
 const formatValue = (val) => {
   if (val instanceof Date) {
     return val.toISOString();
   }
-  if (val === null) {
-    return "[null]";
-  }
   return val;
 };
 
+const deletedValue = (val) => (isEmpty(val) ? val : chalk.red(val));
+
+const createdValue = (val) => (isEmpty(val) ? val : chalk.green(val));
+
 const valueOrDiff = (before, after) => {
+  if (isEmpty(before) && before === after) {
+    return before;
+  }
+
+  before = isEmpty(before) ? "[null]" : String(before);
+  after = isEmpty(after) ? "[null]" : String(after);
+
   if (before === after) {
-    return chalk.reset(before);
+    return before;
   }
-  if (before && after) {
-    return `${chalk.red(before)} → ${chalk.green(after)}`;
-  }
-  return before ? chalk.red(before) : chalk.green(after);
+
+  return `${chalk.red(before)} → ${chalk.green(after)}`;
 };
 
 const streamsDiff = (
@@ -48,7 +56,12 @@ const streamsDiff = (
         if (a && b && !deepEqual(valA, valB)) {
           keysWithChanges[key] = true;
         }
-        acc[key] = valueOrDiff(valA, valB);
+        acc[key] =
+          a && b
+            ? valueOrDiff(valA, valB)
+            : a
+            ? deletedValue(valA)
+            : createdValue(valB);
       });
 
     const cleanRowKeys = (row) =>

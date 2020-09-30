@@ -1,7 +1,8 @@
 const fs = require("fs");
+const os = require("os");
 const path = require("path");
-const _ = require("lodash");
 const tar = require("tar");
+const _ = require("lodash");
 const split = require("split2");
 const rimraf = require("rimraf");
 const through = require("through2");
@@ -9,8 +10,6 @@ const prettier = require("prettier");
 const { stringDate } = require("./stringDate");
 const { runPipeline } = require("./streamUtils");
 const { toKnexType, streamInsert } = require("./knexUtils");
-
-const MIGRATIONS_TABLE = "dump_knex_migrations";
 
 const isNumeric = (v) =>
   (typeof v === "number" || typeof v === "string") &&
@@ -25,19 +24,20 @@ class SqlDumper {
     this.dumpsDir = dumpsDir;
   }
 
-  async createDump(name) {
-    const dumpName = name || this.buildConnSlug("dump");
-    const dumpDir = `${this.dumpsDir}/${dumpName}`;
+  async createDump(name = null) {
+    const dumpName = name
+      ? name.replace(/\.tgz$/, "")
+      : this.knex.buildConnSlug("dump");
+
+    const dumpDir = path.isAbsolute(dumpName)
+      ? dumpName
+      : path.resolve(this.dumpsDir, dumpName);
 
     rimraf.sync(dumpDir);
     fs.mkdirSync(`${dumpDir}/data`, { recursive: true });
     fs.mkdirSync(`${dumpDir}/migrations`, { recursive: true });
 
     for (const { table } of await this.knex.schema.listTables()) {
-      if (table.startsWith(MIGRATIONS_TABLE)) {
-        continue;
-      }
-
       const migrPath = `migrations/${stringDate()}-${table}.js`;
       const dataPath = `data/${table}.jsonl`;
 
@@ -51,7 +51,10 @@ class SqlDumper {
     }
 
     const tarballPath = `${dumpDir}.tgz`;
-    await tar.create({ gzip: true, file: tarballPath }, [dumpName]);
+    await tar.create(
+      { gzip: true, file: tarballPath, cwd: path.dirname(dumpDir) },
+      [path.basename(dumpDir)]
+    );
 
     rimraf.sync(dumpDir);
 
@@ -60,22 +63,30 @@ class SqlDumper {
 
   async loadDump(dump) {
     const dumpPath = path.resolve(dump);
+    const dumpName = path.basename(dump).replace(/.tgz$/, "");
+    const dumpSlug = _.snakeCase(dumpName).replace(/-/g, "_");
+    const extractedPath = `${os.tmpdir()}/${dumpName}`;
 
     if (!fs.existsSync(dumpPath)) {
       throw new Error(`Dump file '${dumpPath}' not found`);
     }
 
-    await tar.extract({ file: dumpPath });
+    if (fs.existsSync(extractedPath)) {
+      rimraf.sync(extractedPath);
+    }
 
-    const extractedPath = dumpPath.replace(/\.tgz$/, "");
+    await tar.extract({ file: dumpPath, cwd: path.dirname(extractedPath) });
 
     if (!fs.existsSync(`${extractedPath}/migrations`)) {
       throw new Error(`Migration files at '${extractedPath}' not found`);
     }
 
+    const tableName = `migrations_${dumpSlug}`;
+
+    console.log(`Saving migrations to table ${tableName} ...`);
     await this.knex.migrate.latest({
       directory: `${extractedPath}/migrations`,
-      tableName: MIGRATIONS_TABLE,
+      tableName,
     });
 
     // Match datetime strings with the formats used by
@@ -173,13 +184,6 @@ class SqlDumper {
     return true;
   }
 
-  buildConnSlug(prefix = "") {
-    const { connection: conn } = this.knex.client.config;
-    return _.snakeCase(
-      `${prefix}-${conn.server || conn.host}-${conn.database}-${stringDate()}`
-    ).replace(/_/g, "-");
-  }
-
   buildColumnStatement(key, col, { primaryKey = false } = {}) {
     const primaryKeyTypes = {
       integer: "increments",
@@ -209,7 +213,7 @@ class SqlDumper {
   buildIndexStatement(index) {
     const type = index.unique ? "unique" : "index";
     const columns = index.columns.map((c) => wrapValue(c));
-    return `t.${type}([${columns}], ${wrapValue(index.index)})`;
+    return `t.${type}([${columns}], ${wrapValue(index.name)})`;
   }
 
   // Depending on the client, default values may be returned as a string

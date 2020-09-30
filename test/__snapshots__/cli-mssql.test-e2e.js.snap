@@ -19,14 +19,18 @@ exports[`CLI test: mssql can diff schemas 1`] = `
 `;
 
 exports[`CLI test: mssql can diff tables 1`] = `
-"column  type
-field_1 int nullable → decimal
+"column  type          nullable     default
+field_1 int → decimal true → false
+field_2 nvarchar(-1)  true         [null] → ('default text')
 
-index                                                         algorithm uniqu...
-PK__table_1__0000000000000000 → PK__table_2__0000000000000000 CLUSTERED true ...
+index                                                         algorithm    unique columns
+PK__table_1__0000000000000000 → PK__table_2__0000000000000000 CLUSTERED    true   id
+table_1_field_1_index                                         NONCLUSTERED false  field_1
+table_2_field_1_unique                                        NONCLUSTERED true   field_1
 
-Columns: 1x changed, 4x similar (hidden)
-Indexes: 1x changed
+Columns: 2x changed, 3x similar (hidden)
+Indexes: 1x deleted, 1x created, 1x changed
+Re-run with --all to show hidden rows
 "
 `;
 
@@ -36,77 +40,81 @@ exports[`CLI test: mssql can diff tables data 1`] = `
 id field_1    updated_at
 1  12 → 12.3  [null] → 2020-07-24T18:34:00.000Z
 2  30 → 30.45 2020-07-24T18:34:00.000Z → 2020-07-24T19:25:00.000Z
+Re-run with --all to show rows without changes
 "
 `;
 
 exports[`CLI test: mssql can list tables 1`] = `
 "table   rows bytes
-table_1 2    16 kB
-table_2 2    16 kB
+table_1 2    32 kB
+table_2 2    32 kB
 table_3 0    0 B
 
-(32 kB in 3 tables)
+(64 kB in 3 tables)
 "
 `;
 
 exports[`CLI test: mssql can load database dump 1`] = `
-"column     type         nullable
+"column     type         nullable default
 id         int          false
 field_1    int          true
 field_2    nvarchar(-1) true
 created_at datetime2    true
 updated_at datetime2    true
 
-index                         algorithm unique columns
-PK__table_1__0000000000000000 CLUSTERED true   id
+index                         algorithm    unique columns
+PK__table_1__0000000000000000 CLUSTERED    true   id
+table_1_field_1_index         NONCLUSTERED false  field_1
 "
 `;
 
 exports[`CLI test: mssql can load database dump 2`] = `
-"column     type         nullable
+"column     type         nullable default
 id         int          false
 field_1    decimal      false
-field_2    nvarchar(-1) true
+field_2    nvarchar(-1) true     ('default text')
 created_at datetime2    true
 updated_at datetime2    true
 
-index                         algorithm unique columns
-PK__table_2__0000000000000000 CLUSTERED true   id
+index                         algorithm    unique columns
+PK__table_2__0000000000000000 CLUSTERED    true   id
+table_2_field_1_unique        NONCLUSTERED true   field_1
 "
 `;
 
 exports[`CLI test: mssql can load database dump 3`] = `
-"column     type      nullable
-idField    bigint    false
+"column     type      nullable default
+id_field   bigint    false
 field_1    bigint    true
 created_at datetime2 true
 updated_at datetime2 true
 
 index                         algorithm unique columns
-PK__table_3__0000000000000000 CLUSTERED true   idField
+PK__table_3__0000000000000000 CLUSTERED true   id_field
 "
 `;
 
 exports[`CLI test: mssql can show table 1`] = `
-"column     type         nullable
+"column     type         nullable default
 id         int          false
 field_1    decimal      false
-field_2    nvarchar(-1) true
+field_2    nvarchar(-1) true     ('default text')
 created_at datetime2    true
 updated_at datetime2    true
 
-index                         algorithm unique columns
-PK__table_2__0000000000000000 CLUSTERED true   id
+index                         algorithm    unique columns
+PK__table_2__0000000000000000 CLUSTERED    true   id
+table_2_field_1_unique        NONCLUSTERED true   field_1
 "
 `;
 
 exports[`CLI test: mssql can use a created alias 1`] = `
 "table   rows bytes
-table_1 2    16 kB
-table_2 2    16 kB
+table_1 2    32 kB
+table_2 2    32 kB
 table_3 0    0 B
 
-(32 kB in 3 tables)
+(64 kB in 3 tables)
 "
 `;
 
@@ -118,6 +126,7 @@ exports[`CLI test: mssql database dump contents are valid 1`] = `
     t.text(\\"field_2\\");
     t.timestamp(\\"created_at\\");
     t.timestamp(\\"updated_at\\");
+    t.index([\\"field_1\\"], \\"table_1_field_1_index\\");
   });
 };
 module.exports.down = async (knex) => {
@@ -134,6 +143,7 @@ exports[`CLI test: mssql database dump contents are valid 2`] = `
     t.text(\\"field_2\\").defaultTo(\\"default text\\");
     t.timestamp(\\"created_at\\");
     t.timestamp(\\"updated_at\\");
+    t.unique([\\"field_1\\"], \\"table_2_field_1_unique\\");
   });
 };
 module.exports.down = async (knex) => {
@@ -145,7 +155,7 @@ module.exports.down = async (knex) => {
 exports[`CLI test: mssql database dump contents are valid 3`] = `
 "module.exports.up = async (knex) => {
   await knex.schema.createTable(\\"table_3\\", (t) => {
-    t.bigIncrements(\\"idField\\");
+    t.bigIncrements(\\"id_field\\");
     t.bigInteger(\\"field_1\\");
     t.timestamp(\\"created_at\\");
     t.timestamp(\\"updated_at\\");

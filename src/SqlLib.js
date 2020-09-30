@@ -1,7 +1,9 @@
+const _ = require("lodash");
 const Knex = require("knex");
 const getPort = require("get-port");
-const { sshClient, forwardPort } = require("./sshUtils");
+const { stringDate } = require("./stringDate");
 const { hydrateKnex } = require("./knexUtils");
+const { sshClient, forwardPort } = require("./sshUtils");
 
 class SqlLib extends Function {
   constructor({ conf, sshConf = null }) {
@@ -40,7 +42,18 @@ class SqlLib extends Function {
       conn.port = freePort;
     }
 
-    this.knex = hydrateKnex(Knex({ connection: conn, ...rest }));
+    this.knex = hydrateKnex(
+      Knex({
+        connection: conn,
+        log: {
+          // Fix: avoid overly verbose warning during Knex migrations.
+          // See https://github.com/knex/knex/issues/3921
+          warn: (msg) =>
+            msg.startsWith("FS-related option") || console.log(msg),
+        },
+        ...rest,
+      })
+    );
 
     await this.checkConnection();
 
@@ -58,6 +71,13 @@ class SqlLib extends Function {
     if (this.sshClient) {
       this.sshClient.destroy();
     }
+  }
+
+  buildConnSlug(prefix = "") {
+    const { connection: conn } = this.knex.client.config;
+    return _.snakeCase(
+      `${prefix}-${conn.server || conn.host}-${conn.database}-${stringDate()}`
+    ).replace(/_/g, "-");
   }
 }
 
