@@ -90,7 +90,7 @@ process.chdir(TMP_DIR);
     },
     {
       key: "diff",
-      height: 29,
+      height: 31,
       env: { SQL_NO_STRIPED_TABLES: 1 },
       cmds: [
         "diff sqlite://file1.db sqlite://file2.db",
