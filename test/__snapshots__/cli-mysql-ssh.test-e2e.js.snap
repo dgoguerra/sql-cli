@@ -28,6 +28,7 @@ table_2_field_1_unique BTREE     true   field_1
 
 Columns: 1x changed, 4x similar (hidden)
 Indexes: 1x deleted, 1x created, 1x similar (hidden)
+Re-run with --all to show hidden rows
 "
 `;
 
@@ -37,6 +38,7 @@ exports[`CLI test: mysql2+ssh can diff tables data 1`] = `
 id field_1    updated_at
 1  12 → 12.30 [null] → 2020-07-24T18:34:00.000Z
 2  30 → 30.45 2020-07-24T18:34:00.000Z → 2020-07-24T19:25:00.000Z
+Re-run with --all to show rows without changes
 "
 `;
 

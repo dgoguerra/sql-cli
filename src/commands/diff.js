@@ -2,6 +2,7 @@ const table = require("../table");
 const CliApp = require("../CliApp");
 const { streamsDiff } = require("../streamUtils");
 const { diffColumns, diffIndexes, diffSchemas } = require("../schemaDiff");
+const chalk = require("chalk");
 
 module.exports = {
   command: "diff <table1> <table2>",
@@ -94,6 +95,13 @@ async function runDiffTablesSchema(lib1, lib2, table1, table2, argv) {
 
   console.log(`Columns: ${colSummary}`);
   console.log(`Indexes: ${indSummary}`);
+
+  if (
+    !argv.all &&
+    (colSummary.includes("(hidden)") || indSummary.includes("(hidden)"))
+  ) {
+    console.log(chalk.grey("Re-run with --all to show hidden rows"));
+  }
 }
 
 async function runDiffTablesData(lib1, lib2, table1, table2, argv) {
@@ -114,6 +122,10 @@ async function runDiffTablesData(lib1, lib2, table1, table2, argv) {
   );
 
   console.log(rows.length ? table(rows) : "No table content changes");
+
+  if (!argv.all && Number(argv.rows) !== rows.length) {
+    console.log(chalk.grey("Re-run with --all to show rows without changes"));
+  }
 }
 
 async function runDiffSchemas(lib1, lib2, argv) {
@@ -139,4 +151,8 @@ async function runDiffSchemas(lib1, lib2, argv) {
   console.log(table(formatted));
   console.log("");
   console.log(`Tables: ${summary}`);
+
+  if (!argv.all && summary.includes("(hidden)")) {
+    console.log(chalk.grey("Re-run with --all to show hidden rows"));
+  }
 }

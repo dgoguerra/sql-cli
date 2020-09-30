@@ -31,6 +31,7 @@ table_2_field_1_unique      btree     true   field_1
 
 Columns: 3x changed, 2x similar (hidden)
 Indexes: 1x deleted, 1x created, 1x changed
+Re-run with --all to show hidden rows
 "
 `;
 
@@ -40,6 +41,7 @@ exports[`CLI test: pg can diff tables data 1`] = `
 id field_1    updated_at
 1  12 → 12.30 [null] → 2020-07-24T18:34:00.000Z
 2  30 → 30.45 2020-07-24T18:34:00.000Z → 2020-07-24T19:25:00.000Z
+Re-run with --all to show rows without changes
 "
 `;
 
