@@ -187,8 +187,8 @@ const diffTableVersions = (table1, table2) => {
       displayTable: createdValue(table2.table),
       displayRows: createdValue(table2.rows),
       displayBytes: createdValue(table2.prettyBytes),
-      colSummary,
-      indSummary,
+      colSummary: createdValue(colSummary),
+      indSummary: createdValue(indSummary),
     };
   }
 
@@ -198,8 +198,8 @@ const diffTableVersions = (table1, table2) => {
       displayTable: deletedValue(table1.table),
       displayRows: deletedValue(table1.rows),
       displayBytes: deletedValue(table1.prettyBytes),
-      colSummary,
-      indSummary,
+      colSummary: deletedValue(colSummary),
+      indSummary: deletedValue(indSummary),
     };
   }
 
