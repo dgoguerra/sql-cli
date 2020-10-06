@@ -23,6 +23,8 @@ async function createDump(argv) {
   const lib = await CliApp.initLib(argv.conn, argv);
   const dumper = new SqlDumper(lib);
 
+  dumper.on("log", (msg) => console.log(msg));
+
   const dumpFile = await dumper.createDump(argv.name || null);
   console.log(dumpFile);
   await lib.destroy();
@@ -31,6 +33,8 @@ async function createDump(argv) {
 async function loadDump(argv) {
   const lib = await CliApp.initLib(argv.conn, argv);
   const dumper = new SqlDumper(lib);
+
+  dumper.on("log", (msg) => console.log(msg));
 
   await dumper.loadDump(argv.dump);
   await lib.destroy();

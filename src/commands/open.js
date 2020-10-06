@@ -37,7 +37,7 @@ const toTablePlusConnUri = async (connUri) => {
 
   // Might need to resolve the password from the system's keychain
   if (conn._alias && !conn.password && CliApp.aliasKeychains[conn._alias]) {
-    await CliApp.resolveConnPassword(conn._alias, conn);
+    await CliApp.lookupConnPassword(conn._alias, conn);
   }
 
   // Rest of clients: build a connection uri with the protocol name
