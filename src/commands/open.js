@@ -1,6 +1,6 @@
 const cp = require("child_process");
 const CliApp = require("../CliApp");
-const { stringifyConn } = require("../resolveKnexConn");
+const { resolveProtocol, stringifyConn } = require("../connUtils");
 
 module.exports = {
   command: "open <conn>",
@@ -19,7 +19,7 @@ module.exports = {
   },
 };
 
-const toTablePlusConnUri = async (alias) => {
+const toTablePlusConnUri = async (connUri) => {
   // Convert the conn uri protocol to one understood by TablePlus
   const tablePlusProtos = {
     mssql: "sqlserver",
@@ -27,39 +27,38 @@ const toTablePlusConnUri = async (alias) => {
     mysql2: "mysql",
   };
 
-  const { sshConf, conf } = CliApp.resolveConn(alias);
-  const { client, connection: conn } = conf;
+  const conn = CliApp.resolveConn(connUri);
 
   // Sqlite is opened directly by opening the file with the default
   // application for its file extension, without setting a protocol.
-  if (client === "sqlite3") {
+  if (resolveProtocol(conn.protocol) === "sqlite3") {
     return rest[0];
   }
 
   // Might need to resolve the password from the system's keychain
-  if (!conn.password && CliApp.aliasKeychains[alias]) {
-    await CliApp.resolveConnPassword(alias, conn);
+  if (conn._alias && !conn.password && CliApp.aliasKeychains[conn._alias]) {
+    await CliApp.resolveConnPassword(conn._alias, conn);
   }
 
   // Rest of clients: build a connection uri with the protocol name
   // understood by TablePlus.
-  let connUri = stringifyConn({
+  let tablePlusUri = stringifyConn({
     // Convert the conn uri protocol to one understood by TablePlus
     protocol: tablePlusProtos[client] || client,
     path: conn.filename, // only set in SQLite
     host: conn.host || conn.server,
     ...conn,
-    sshHost: sshConf && sshConf.host,
-    sshPort: sshConf && sshConf.port,
-    sshUser: sshConf && sshConf.user,
-    sshPassword: sshConf && sshConf.password,
+    sshHost: conn.sshHost,
+    sshPort: conn.sshPort,
+    sshUser: conn.sshUser,
+    sshPassword: conn.sshPassword,
   });
 
   // If the connection has SSH configured but no SSH password,
   // then TablePlus needs to auth with the user's private key.
-  if (sshConf && sshConf.host && !sshConf.password) {
-    connUri += "?usePrivateKey=true";
+  if (conn.sshHost && !conn.sshPassword) {
+    tablePlusUri += "?usePrivateKey=true";
   }
 
-  return connUri;
+  return tablePlusUri;
 };

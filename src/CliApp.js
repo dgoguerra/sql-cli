@@ -5,7 +5,7 @@ const pkg = require("../package.json");
 const debug = require("debug")("sql-cli");
 const SqlLib = require("./SqlLib");
 const { getExternalAliases } = require("./externalAliases");
-const { resolveKnexConn } = require("./resolveKnexConn");
+const { resolveConn } = require("./connUtils");
 
 class CliApp {
   constructor() {
@@ -82,19 +82,16 @@ class CliApp {
     });
   }
 
-  async initLib(alias) {
-    const { conf, sshConf } =
-      typeof alias === "string" ? this.resolveConn(alias) : alias;
+  async initLib(connUri) {
+    const { _alias, ...conn } = this.resolveConn(connUri);
 
-    if (
-      conf.connection &&
-      !conf.connection.password &&
-      this.aliasKeychains[alias]
-    ) {
-      await this.resolveConnPassword(alias, conf.connection);
+    if (_alias && !conn.password && this.aliasKeychains[_alias]) {
+      await this.resolveConnPassword(_alias, conn);
     }
 
-    return await new SqlLib({ conf, sshConf }).connect();
+    const lib = new SqlLib(conn);
+    await lib.connect();
+    return lib;
   }
 
   async resolveConnPassword(alias, conn) {
@@ -111,8 +108,8 @@ class CliApp {
     }
   }
 
-  resolveConn(alias, argv = {}) {
-    return resolveKnexConn(alias, {
+  resolveConn(connUri, argv = {}) {
+    return resolveConn(connUri, {
       client: argv.client,
       aliases: this.aliases,
     });

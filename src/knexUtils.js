@@ -1,7 +1,7 @@
 const _ = require("lodash");
 const prettyBytes = require("pretty-bytes");
 const writer = require("flush-write-stream");
-const { stringifyConn } = require("./resolveKnexConn");
+const { stringifyConn } = require("./connUtils");
 const { chunk, runPipeline } = require("./streamUtils");
 
 const hydrateKnex = (knex) => {

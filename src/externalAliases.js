@@ -1,7 +1,7 @@
 const fs = require("fs");
 const _ = require("lodash");
 const plist = require("plist");
-const { stringifyConn } = require("./resolveKnexConn");
+const { stringifyConn } = require("./connUtils");
 
 const TABLEPLUS_CONNECTIONS_PATH = `${process.env.HOME}/Library/Application Support/com.tinyapp.TablePlus/Data/Connections.plist`;
 

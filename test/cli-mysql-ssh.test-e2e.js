@@ -1,6 +1,6 @@
 const Knex = require("knex");
 const { cliTestSuite } = require("./cli-test-suite");
-const { stringifyConn } = require("../src/resolveKnexConn");
+const { stringifyConn } = require("../src/connUtils");
 
 const TEST_MYSQL_CONN = {
   host: "127.0.0.1",

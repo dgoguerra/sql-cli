@@ -3,15 +3,16 @@ const Knex = require("knex");
 const getPort = require("get-port");
 const { stringDate } = require("./stringDate");
 const { hydrateKnex } = require("./knexUtils");
+const { resolveProtocol } = require("./connUtils");
 const { sshClient, forwardPort } = require("./sshUtils");
 
 class SqlLib extends Function {
-  constructor({ conf, sshConf = null }) {
+  constructor(conn) {
     super();
 
+    this.conn = conn;
     this.knex = null;
-    this.conf = conf;
-    this.sshConf = sshConf;
+    this.sshClient = null;
 
     return new Proxy(this, {
       apply: (target, thisArg, argArray) => {
@@ -24,36 +25,13 @@ class SqlLib extends Function {
   }
 
   async connect() {
-    const { connection: conn, ...rest } = this.conf;
-
-    if (this.sshConf) {
-      this.sshClient = await sshClient(this.sshConf);
-
-      const freePort = await getPort();
-      await forwardPort(this.sshClient, {
-        srcHost: "127.0.0.1",
-        srcPort: freePort,
-        dstHost: conn.host || conn.server,
-        dstPort: conn.port,
-      });
-
-      // Host may be set in a 'server' property, for example in MSSQL
-      conn[conn.host ? "host" : "server"] = "127.0.0.1";
-      conn.port = freePort;
+    if (this.conn.sshHost) {
+      await this._setupPortForwarding();
     }
 
-    this.knex = hydrateKnex(
-      Knex({
-        connection: conn,
-        log: {
-          // Fix: avoid overly verbose warning during Knex migrations.
-          // See https://github.com/knex/knex/issues/3921
-          warn: (msg) =>
-            msg.startsWith("FS-related option") || console.log(msg),
-        },
-        ...rest,
-      })
-    );
+    const knex = this.createKnex();
+
+    this.knex = hydrateKnex(knex);
 
     await this.checkConnection();
 
@@ -78,6 +56,81 @@ class SqlLib extends Function {
     return _.snakeCase(
       `${prefix}-${conn.server || conn.host}-${conn.database}-${stringDate()}`
     ).replace(/_/g, "-");
+  }
+
+  async _setupPortForwarding() {
+    this.sshClient = await sshClient({
+      host: this.conn.sshHost,
+      port: this.conn.sshPort,
+      user: this.conn.sshUser,
+      password: this.conn.sshPassword,
+    });
+
+    const freePort = await getPort();
+    await forwardPort(this.sshClient, {
+      srcHost: "127.0.0.1",
+      srcPort: freePort,
+      dstHost: this.conn.host,
+      dstPort: this.conn.port,
+    });
+
+    this.conn.host = "127.0.0.1";
+    this.conn.port = freePort;
+  }
+
+  createKnex() {
+    const rest = {
+      log: {
+        // Fix: avoid overly verbose warning during Knex migrations.
+        // See https://github.com/knex/knex/issues/3921
+        warn(msg) {
+          msg.startsWith("FS-related option") || console.log(msg);
+        },
+      },
+    };
+
+    let conn = this.conn;
+    let client = resolveProtocol(conn.protocol) || conn.protocol;
+
+    // Custom SQLite settings
+    if (client === "sqlite3") {
+      conn =
+        conn.filename === ":memory:" ? ":memory:" : { filename: conn.filename };
+      rest.useNullAsDefault = true;
+    }
+
+    // Custom BigQuery settings
+    if (client === "bigquery") {
+      client = require("./clients/BigQuery");
+      conn.keyFilename = conn.params.keyFilename;
+      conn.location = conn.params.location;
+      conn.projectId = conn.host;
+    }
+
+    // Custom MySQL settings
+    if (client === "mysql2") {
+      conn.charset = conn.params.charset || "utf8mb4";
+      conn.timezone = conn.params.timezone || "+00:00";
+      if (!conn.port) {
+        conn.port = 3306; // port is required in mysql2
+      }
+    }
+
+    // Custom MSSQL settings
+    if (client === "mssql") {
+      conn.options = { enableArithAbort: true };
+      conn.server = conn.host;
+      delete conn.host;
+    }
+
+    // Fix: cleanup unused props from connection config to avoid error:
+    // "Ignoring invalid configuration option passed to Connection".
+    if (client === "mysql2") {
+      const { host, port, user, password, database, charset, timezone } = conn;
+      conn = { host, port, user, password, database, charset, timezone };
+    }
+
+    return Knex({ client, connection: conn, ...rest });
   }
 }
 
