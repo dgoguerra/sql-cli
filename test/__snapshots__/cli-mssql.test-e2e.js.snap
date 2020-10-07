@@ -1,5 +1,29 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
+exports[`CLI test: mssql can connect through ssh 1`] = `
+"table   rows bytes
+table_1 2    32 kB
+table_2 2    32 kB
+table_3 0    0 B
+
+(64 kB in 3 tables)
+"
+`;
+
+exports[`CLI test: mssql can connect through ssh 2`] = `
+"column     type         nullable default
+id         int          false
+field_1    int          true
+field_2    nvarchar(-1) true
+created_at datetime2    true
+updated_at datetime2    true
+
+index                         algorithm    unique columns
+PK__table_1__0000000000000000 CLUSTERED    true   id
+table_1_field_1_index         NONCLUSTERED false  field_1
+"
+`;
+
 exports[`CLI test: mssql can create conn aliases 1`] = `
 "alias  conn
 alias1 mysql://app:secret@127.0.0.1:1234/dbname
@@ -94,6 +118,60 @@ PK__table_3__0000000000000000 CLUSTERED true   id_field
 "
 `;
 
+exports[`CLI test: mssql can see dump contents 1`] = `
+"table                      rows bytes
+migrations_dump_mssql      3    4.1 kB
+migrations_dump_mssql_lock 1    4.1 kB
+table_1                    2    4.1 kB
+table_2                    2    4.1 kB
+table_3                    0    4.1 kB
+
+(20.5 kB in 5 tables)
+"
+`;
+
+exports[`CLI test: mssql can see dump contents 2`] = `
+"column     type     nullable default
+id         integer  false
+field_1    integer  true
+field_2    text     true
+created_at datetime true
+updated_at datetime true
+
+index                 algorithm unique columns
+table_1_field_1_index unknown   false  field_1
+"
+`;
+
+exports[`CLI test: mssql can see dump contents 3`] = `
+"table                      rows bytes          columns                indexes
+table_1                    2    32 kB → 4.1 kB 5x changed             1x deleted, 1x changed
+table_2                    2    32 kB → 4.1 kB 5x changed             1x deleted, 1x changed
+table_3                    0    0 B → 4.1 kB   3x changed, 1x similar 1x deleted
+migrations_dump_mssql      3    4.1 kB         4x created             none
+migrations_dump_mssql_lock 1    4.1 kB         2x created             none
+
+Tables: 2x created, 3x changed
+"
+`;
+
+exports[`CLI test: mssql can see dump contents 4`] = `
+"column     type                 nullable default
+id         int → integer        false
+field_1    int → integer        true
+field_2    nvarchar(-1) → text  true
+created_at datetime2 → datetime true
+updated_at datetime2 → datetime true
+
+index                         algorithm              unique columns
+PK__table_1__0000000000000000 CLUSTERED              true   id
+table_1_field_1_index         NONCLUSTERED → unknown false  field_1
+
+Columns: 5x changed
+Indexes: 1x deleted, 1x changed
+"
+`;
+
 exports[`CLI test: mssql can show table 1`] = `
 "column     type         nullable default
 id         int          false
@@ -124,8 +202,8 @@ exports[`CLI test: mssql database dump contents are valid 1`] = `
     t.increments(\\"id\\");
     t.integer(\\"field_1\\");
     t.text(\\"field_2\\");
-    t.timestamp(\\"created_at\\");
-    t.timestamp(\\"updated_at\\");
+    t.datetime(\\"created_at\\");
+    t.datetime(\\"updated_at\\");
     t.index([\\"field_1\\"], \\"table_1_field_1_index\\");
   });
 };
@@ -141,8 +219,8 @@ exports[`CLI test: mssql database dump contents are valid 2`] = `
     t.increments(\\"id\\");
     t.decimal(\\"field_1\\").notNullable();
     t.text(\\"field_2\\").defaultTo(\\"default text\\");
-    t.timestamp(\\"created_at\\");
-    t.timestamp(\\"updated_at\\");
+    t.datetime(\\"created_at\\");
+    t.datetime(\\"updated_at\\");
     t.unique([\\"field_1\\"], \\"table_2_field_1_unique\\");
   });
 };
@@ -157,8 +235,8 @@ exports[`CLI test: mssql database dump contents are valid 3`] = `
   await knex.schema.createTable(\\"table_3\\", (t) => {
     t.bigIncrements(\\"id_field\\");
     t.bigInteger(\\"field_1\\");
-    t.timestamp(\\"created_at\\");
-    t.timestamp(\\"updated_at\\");
+    t.datetime(\\"created_at\\");
+    t.datetime(\\"updated_at\\");
   });
 };
 module.exports.down = async (knex) => {

@@ -90,6 +90,48 @@ No indexes in table
 "
 `;
 
+exports[`CLI test: sqlite3 can see dump contents 1`] = `
+"table                         rows bytes
+migrations_dump_sqlite_3      3    4.1 kB
+migrations_dump_sqlite_3_lock 1    4.1 kB
+table_1                       2    4.1 kB
+table_2                       2    4.1 kB
+table_3                       0    4.1 kB
+
+(20.5 kB in 5 tables)
+"
+`;
+
+exports[`CLI test: sqlite3 can see dump contents 2`] = `
+"column     type     nullable default
+id         integer  false
+field_1    integer  true
+field_2    text     true
+created_at datetime true
+updated_at datetime true
+
+index                 algorithm unique columns
+table_1_field_1_index unknown   false  field_1
+"
+`;
+
+exports[`CLI test: sqlite3 can see dump contents 3`] = `
+"table                         rows bytes  columns    indexes
+migrations_dump_sqlite_3      3    4.1 kB 4x created none
+migrations_dump_sqlite_3_lock 1    4.1 kB 2x created none
+
+Tables: 2x created, 3x similar (hidden)
+Re-run with --all to show hidden rows
+"
+`;
+
+exports[`CLI test: sqlite3 can see dump contents 4`] = `
+"Columns: 5x similar (hidden)
+Indexes: 1x similar (hidden)
+Re-run with --all to show hidden rows
+"
+`;
+
 exports[`CLI test: sqlite3 can show table 1`] = `
 "column     type     nullable default
 id         integer  false
@@ -119,8 +161,8 @@ exports[`CLI test: sqlite3 database dump contents are valid 1`] = `
     t.increments(\\"id\\");
     t.integer(\\"field_1\\");
     t.text(\\"field_2\\");
-    t.timestamp(\\"created_at\\");
-    t.timestamp(\\"updated_at\\");
+    t.datetime(\\"created_at\\");
+    t.datetime(\\"updated_at\\");
     t.index([\\"field_1\\"], \\"table_1_field_1_index\\");
   });
 };
@@ -136,8 +178,8 @@ exports[`CLI test: sqlite3 database dump contents are valid 2`] = `
     t.increments(\\"id\\");
     t.float(\\"field_1\\").notNullable();
     t.text(\\"field_2\\").defaultTo(\\"default text\\");
-    t.timestamp(\\"created_at\\");
-    t.timestamp(\\"updated_at\\");
+    t.datetime(\\"created_at\\");
+    t.datetime(\\"updated_at\\");
     t.unique([\\"field_1\\"], \\"table_2_field_1_unique\\");
   });
 };
@@ -152,8 +194,8 @@ exports[`CLI test: sqlite3 database dump contents are valid 3`] = `
   await knex.schema.createTable(\\"table_3\\", (t) => {
     t.increments(\\"id_field\\");
     t.bigInteger(\\"field_1\\");
-    t.timestamp(\\"created_at\\");
-    t.timestamp(\\"updated_at\\");
+    t.datetime(\\"created_at\\");
+    t.datetime(\\"updated_at\\");
   });
 };
 module.exports.down = async (knex) => {

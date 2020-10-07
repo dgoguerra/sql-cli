@@ -2,15 +2,17 @@ const repl = require("repl");
 const _ = require("lodash");
 const chalk = require("chalk");
 const table = require("./table");
+const { Readable } = require("stream");
 
 class SqlRepl {
-  constructor(lib) {
+  constructor(lib, { input = process.stdin } = {}) {
     this.lib = lib;
+    this.input = this.inputToStream(input);
 
     // Wether the REPL is being run interactively. If stdin is a script
     // piped into the REPL, we don't want to print the prompt or number
     // of rows after the results of a query.
-    this.tty = process.stdin.isTTY;
+    this.tty = input.isTTY;
 
     // Buffer of the current query being inputted, since it might be
     // a multiline quere, received line by line.
@@ -25,6 +27,9 @@ class SqlRepl {
   async run() {
     this.server = repl.start({
       prompt: this.tty ? "→ " : "",
+      input: this.input,
+      output: process.stdout,
+      terminal: false, // do not print non-tty input to stdout
       eval: (...args) => this.evalLine(...args),
       writer: (...args) => this.formatResult(...args),
     });
@@ -141,6 +146,23 @@ class SqlRepl {
     return err.sqlMessage
       ? `Error ${err.code}: ${err.sqlMessage}`
       : `Error: ${err.message}`;
+  }
+
+  inputToStream(input) {
+    // Already a readable stream
+    if (input.readable) {
+      return input;
+    }
+
+    // Input should be a string or an array of strings.
+    // Build a readable stream to expose that input.
+    return new Readable({
+      read() {
+        const arr = Array.isArray(input) ? input : [input];
+        arr.forEach((val) => this.push(val));
+        this.push(null);
+      },
+    });
   }
 }
 

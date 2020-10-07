@@ -23,16 +23,16 @@ module.exports = {
         default: 20,
       }),
   handler: async (argv) => {
-    const conn1 = CliApp.resolveConn(argv.table1, argv);
-    const conn2 = CliApp.resolveConn(argv.table2, argv);
+    const { _table: table1 } = CliApp.resolveConn(argv.table1, argv);
+    const { _table: table2 } = CliApp.resolveConn(argv.table2, argv);
 
-    const lib1 = await CliApp.initLib(conn1);
-    const lib2 = await CliApp.initLib(conn2);
+    const lib1 = await CliApp.initLib(argv.table1);
+    const lib2 = await CliApp.initLib(argv.table2);
 
-    if (conn1.table && conn2.table && argv.data) {
-      await runDiffTablesData(lib1, lib2, conn1.table, conn2.table, argv);
-    } else if (conn1.table && conn2.table) {
-      await runDiffTablesSchema(lib1, lib2, conn1.table, conn2.table, argv);
+    if (table1 && table2 && argv.data) {
+      await runDiffTablesData(lib1, lib2, table1, table2, argv);
+    } else if (table1 && table2) {
+      await runDiffTablesSchema(lib1, lib2, table1, table2, argv);
     } else {
       await runDiffSchemas(lib1, lib2, argv);
     }

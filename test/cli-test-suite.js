@@ -1,17 +1,14 @@
 const fs = require("fs");
 const path = require("path");
 const tar = require("tar");
+const _ = require("lodash");
 const rimraf = require("rimraf");
 const { runCli } = require("./utils");
 const { hydrateKnex } = require("../src/knexUtils");
+const { stringifyConn } = require("../src/connUtils");
 
 const TEST_DATETIME_1 = "2020-07-24 18:34:00";
 const TEST_DATETIME_2 = "2020-07-24 19:25:00";
-
-const TEST_DUMP_NAME = `dump-test-${process.env.JEST_WORKER_ID}`;
-const TEST_DUMP_PATH = `${process.env.PWD}/.tmp/${TEST_DUMP_NAME}.tgz`;
-const TEST_EXTRACTED_PATH = `${process.env.PWD}/.tmp/${TEST_DUMP_NAME}`;
-const TEST_MIGRATIONS_TABLE = `migrations_${TEST_DUMP_NAME.replace(/-/g, "_")}`;
 
 const TEST_TABLE1_CONTENT = [
   {
@@ -42,8 +39,24 @@ const TEST_TABLE2_CONTENT = [
   },
 ];
 
-const cliTestSuite = (name, knexFactory, opts = {}) => {
+const TEST_SSH_CONN = {
+  host: "127.0.0.1",
+  port: 2222,
+  user: "user",
+  password: "pass",
+};
+
+const cliTestSuite = (
+  name,
+  knexFactory,
+  { sshHost = null, sshPort = null } = {}
+) => {
   jest.setTimeout(15000);
+
+  const TEST_DUMP_NAME = _.snakeCase(`dump-${name}`).replace(/-/g, "_");
+  const TEST_DUMP_PATH = `${process.env.PWD}/.tmp/${TEST_DUMP_NAME}.tgz`;
+  const TEST_EXTRACTED_PATH = `${process.env.PWD}/.tmp/${TEST_DUMP_NAME}`;
+  const TEST_MIGRATIONS_TABLE = `migrations_${TEST_DUMP_NAME}`;
 
   describe(`CLI test: ${name}`, () => {
     let knex;
@@ -51,8 +64,7 @@ const cliTestSuite = (name, knexFactory, opts = {}) => {
 
     beforeAll(async () => {
       knex = hydrateKnex(await knexFactory());
-      // Allow passing a custom connUri for a test suite
-      connUri = opts.connUri || knex.getUri();
+      connUri = knex.getUri();
 
       await migrateTestTables(knex);
 
@@ -77,6 +89,29 @@ const cliTestSuite = (name, knexFactory, opts = {}) => {
       const output = await runCli(`diff ${connUri}/table_1 ${connUri}/table_2`);
       expect(cleanIndexesName(output)).toMatchSnapshot();
     });
+
+    if (sshHost && sshPort) {
+      it("can connect through ssh", async () => {
+        const { client, connection } = knex.client.config;
+        const sshUri = stringifyConn({
+          protocol: client,
+          host: sshHost,
+          port: sshPort,
+          user: connection.user,
+          password: connection.password,
+          database: connection.database,
+          sshHost: TEST_SSH_CONN.host,
+          sshPort: TEST_SSH_CONN.port,
+          sshUser: TEST_SSH_CONN.user,
+          sshPassword: TEST_SSH_CONN.password,
+        });
+
+        expect(await runCli(`ls ${sshUri}`)).toMatchSnapshot();
+
+        const output = await runCli(`show ${sshUri}/table_1`);
+        expect(cleanIndexesName(output)).toMatchSnapshot();
+      });
+    }
 
     it("can diff tables data", async () => {
       const output = await runCli(
@@ -152,6 +187,21 @@ const cliTestSuite = (name, knexFactory, opts = {}) => {
         expect(fs.existsSync(filePath)).toBeTruthy();
         expect(fs.readFileSync(filePath).toString()).toMatchSnapshot();
       });
+    });
+
+    it("can see dump contents", async () => {
+      expect(await runCli(`ls ${TEST_DUMP_PATH}`)).toMatchSnapshot();
+
+      expect(await runCli(`show ${TEST_DUMP_PATH}/table_1`)).toMatchSnapshot();
+
+      expect(
+        await runCli(`diff ${connUri} ${TEST_DUMP_PATH}`)
+      ).toMatchSnapshot();
+
+      const output = await runCli(
+        `diff ${connUri}/table_1 ${TEST_DUMP_PATH}/table_1`
+      );
+      expect(cleanIndexesName(output)).toMatchSnapshot();
     });
 
     it("can load database dump", async () => {

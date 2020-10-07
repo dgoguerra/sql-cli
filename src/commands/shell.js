@@ -2,7 +2,7 @@ const CliApp = require("../CliApp");
 const SqlRepl = require("../SqlRepl");
 
 module.exports = {
-  command: "shell <conn>",
+  command: "shell <conn> [query]",
   aliases: ["sh"],
   description: "Run REPL shell",
   handler: async (argv) => {
@@ -17,7 +17,7 @@ module.exports = {
       return CliApp.error(err.message);
     }
 
-    await new SqlRepl(lib).run();
+    await new SqlRepl(lib, { input: argv.query }).run();
     await lib.destroy();
   },
 };

@@ -3,7 +3,7 @@ const { cliTestSuite } = require("./cli-test-suite");
 
 const TEST_MYSQL_CONN = {
   host: "127.0.0.1",
-  port: 23306, // mysql-1 container
+  port: 23306,
   user: "test",
   password: "Secret123",
   database: "test_db",
@@ -11,6 +11,8 @@ const TEST_MYSQL_CONN = {
   timezone: "+00:00",
 };
 
-cliTestSuite("mysql2", () =>
-  Knex({ client: "mysql2", connection: TEST_MYSQL_CONN })
+cliTestSuite(
+  "mysql2",
+  () => Knex({ client: "mysql2", connection: TEST_MYSQL_CONN }),
+  { sshHost: "mysql", sshPort: 3306 }
 );

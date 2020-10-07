@@ -8,14 +8,14 @@ module.exports = {
   handler: async (argv) => {
     const conn = CliApp.resolveConn(argv.table, argv);
 
-    if (!conn.table) {
+    if (!conn._table) {
       CliApp.error("No table was specified in the connection");
     }
 
-    const lib = await CliApp.initLib(conn);
+    const lib = await CliApp.initLib(argv.table);
 
-    const columns = await lib(conn.table).columnInfo();
-    const indexes = await lib.schema.listIndexes(conn.table);
+    const columns = await lib(conn._table).columnInfo();
+    const indexes = await lib.schema.listIndexes(conn._table);
 
     const formatted = _.map(columns, (val, key) => ({
       column: key,

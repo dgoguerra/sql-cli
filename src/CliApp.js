@@ -4,8 +4,9 @@ const keytar = require("keytar");
 const pkg = require("../package.json");
 const debug = require("debug")("sql-cli");
 const SqlLib = require("./SqlLib");
+const SqlDumper = require("./SqlDumper");
 const { getExternalAliases } = require("./externalAliases");
-const { resolveKnexConn } = require("./resolveKnexConn");
+const { resolveConn } = require("./connUtils");
 
 class CliApp {
   constructor() {
@@ -82,22 +83,27 @@ class CliApp {
     });
   }
 
-  async initLib(alias) {
-    const { conf, sshConf } =
-      typeof alias === "string" ? this.resolveConn(alias) : alias;
+  async initLib(connUri) {
+    const conn = this.resolveConn(connUri);
 
-    if (
-      conf.connection &&
-      !conf.connection.password &&
-      this.aliasKeychains[alias]
-    ) {
-      await this.resolveConnPassword(alias, conf.connection);
+    if (conn._alias && !conn.password && this.aliasKeychains[conn._alias]) {
+      await this.lookupConnPassword(conn._alias, conn);
     }
 
-    return await new SqlLib({ conf, sshConf }).connect();
+    const lib = new SqlLib(conn);
+    await lib.connect();
+
+    // Connecting to a dumpfile as a sqlite table. Load it
+    // before returning the connection.
+    if (conn._alias && conn._alias.endsWith(".tgz")) {
+      await new SqlDumper(lib).loadDump(conn._alias);
+      return lib;
+    }
+
+    return lib;
   }
 
-  async resolveConnPassword(alias, conn) {
+  async lookupConnPassword(alias, conn) {
     const { service, account } = this.aliasKeychains[alias];
     debug(
       `looking up password in system keychain (service=${service}, account=${account})`
@@ -111,8 +117,16 @@ class CliApp {
     }
   }
 
-  resolveConn(alias, argv = {}) {
-    return resolveKnexConn(alias, {
+  resolveConn(connUri, argv = {}) {
+    // If the connection is a path to a .tgz file, assume its a dump file
+    // being passed instead of a connection.
+    const matches = connUri.match(/(^.+\.tgz)\/?([^\/]+)?$/);
+    if (matches && matches[1].endsWith(".tgz")) {
+      const [_, _alias, _table] = matches;
+      return { protocol: "sqlite3", filename: ":memory:", _table, _alias };
+    }
+
+    return resolveConn(connUri, {
       client: argv.client,
       aliases: this.aliases,
     });
