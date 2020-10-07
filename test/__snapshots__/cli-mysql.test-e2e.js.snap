@@ -3,10 +3,10 @@
 exports[`CLI test: mysql2 can connect through ssh 1`] = `
 "table   rows bytes
 table_1 2    32.8 kB
-table_2 2    16.4 kB
+table_2 2    32.8 kB
 table_3 0    16.4 kB
 
-(65.5 kB in 3 tables)
+(81.9 kB in 3 tables)
 "
 `;
 
@@ -69,10 +69,10 @@ Re-run with --all to show rows without changes
 exports[`CLI test: mysql2 can list tables 1`] = `
 "table   rows bytes
 table_1 2    32.8 kB
-table_2 2    16.4 kB
+table_2 2    32.8 kB
 table_3 0    16.4 kB
 
-(65.5 kB in 3 tables)
+(81.9 kB in 3 tables)
 "
 `;
 
@@ -144,7 +144,7 @@ table_1_field_1_index unknown   false  field_1
 exports[`CLI test: mysql2 can see dump contents 3`] = `
 "table                        rows bytes            columns                indexes
 table_1                      2    32.8 kB → 4.1 kB 3x changed, 2x similar 1x deleted, 1x changed
-table_2                      2    16.4 kB → 4.1 kB 3x changed, 2x similar 1x deleted, 1x changed
+table_2                      2    32.8 kB → 4.1 kB 3x changed, 2x similar 1x deleted, 1x changed
 table_3                      0    16.4 kB → 4.1 kB 1x changed, 3x similar 1x deleted
 migrations_dump_mysql_2      3    4.1 kB           4x created             none
 migrations_dump_mysql_2_lock 1    4.1 kB           2x created             none
@@ -186,10 +186,10 @@ table_2_field_1_unique BTREE     true   field_1
 exports[`CLI test: mysql2 can use a created alias 1`] = `
 "table   rows bytes
 table_1 2    32.8 kB
-table_2 2    16.4 kB
+table_2 2    32.8 kB
 table_3 0    16.4 kB
 
-(65.5 kB in 3 tables)
+(81.9 kB in 3 tables)
 "
 `;
 
