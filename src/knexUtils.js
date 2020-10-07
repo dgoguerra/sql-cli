@@ -381,8 +381,7 @@ const toKnexType = (type, maxLength = null) => {
     tinyint: "boolean",
     int: "integer",
     bigint: "bigInteger",
-    datetime: "timestamp",
-    datetime2: "timestamp", // mssql
+    datetime2: "datetime", // mssql
     money: "decimal", // mssql
     "timestamp with time zone": "timestamp", // postgres
     numeric: "decimal", // postgres

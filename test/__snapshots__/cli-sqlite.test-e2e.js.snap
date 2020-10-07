@@ -161,8 +161,8 @@ exports[`CLI test: sqlite3 database dump contents are valid 1`] = `
     t.increments(\\"id\\");
     t.integer(\\"field_1\\");
     t.text(\\"field_2\\");
-    t.timestamp(\\"created_at\\");
-    t.timestamp(\\"updated_at\\");
+    t.datetime(\\"created_at\\");
+    t.datetime(\\"updated_at\\");
     t.index([\\"field_1\\"], \\"table_1_field_1_index\\");
   });
 };
@@ -178,8 +178,8 @@ exports[`CLI test: sqlite3 database dump contents are valid 2`] = `
     t.increments(\\"id\\");
     t.float(\\"field_1\\").notNullable();
     t.text(\\"field_2\\").defaultTo(\\"default text\\");
-    t.timestamp(\\"created_at\\");
-    t.timestamp(\\"updated_at\\");
+    t.datetime(\\"created_at\\");
+    t.datetime(\\"updated_at\\");
     t.unique([\\"field_1\\"], \\"table_2_field_1_unique\\");
   });
 };
@@ -194,8 +194,8 @@ exports[`CLI test: sqlite3 database dump contents are valid 3`] = `
   await knex.schema.createTable(\\"table_3\\", (t) => {
     t.increments(\\"id_field\\");
     t.bigInteger(\\"field_1\\");
-    t.timestamp(\\"created_at\\");
-    t.timestamp(\\"updated_at\\");
+    t.datetime(\\"created_at\\");
+    t.datetime(\\"updated_at\\");
   });
 };
 module.exports.down = async (knex) => {
