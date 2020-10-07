@@ -119,7 +119,7 @@ function resolveConn(connUri, { aliases = {} } = {}) {
   // Custom SQLite settings
   if (resolveProtocol(conn.protocol) === "sqlite3") {
     // the host + path forms a path to a local file
-    conn.filename = `${conn.host}${conn.path}`;
+    conn.filename = `${conn.host || ""}${conn.path || ""}`;
 
     // Extract optional table name from its filename path
     const matches = conn.filename.match(/^(.*[^\/]+\.[^\/]+)\/([^\/\.]+)?$/);
@@ -131,7 +131,7 @@ function resolveConn(connUri, { aliases = {} } = {}) {
     return conn;
   }
 
-  const [, database, table] = conn.path.split("/");
+  const [, database, table] = (conn.path || "").split("/");
   conn.database = database;
   conn._table = table;
 
