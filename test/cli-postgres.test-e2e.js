@@ -9,6 +9,8 @@ const TEST_POSTGRES_CONN = {
   database: "test_db",
 };
 
-cliTestSuite("pg", () =>
-  Knex({ client: "pg", connection: TEST_POSTGRES_CONN })
+cliTestSuite(
+  "pg",
+  () => Knex({ client: "pg", connection: TEST_POSTGRES_CONN }),
+  { sshHost: "pg", sshPort: 5432 }
 );

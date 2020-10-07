@@ -1,5 +1,29 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
+exports[`CLI test: pg can connect through ssh 1`] = `
+"table   rows bytes
+table_1 0
+table_2 0
+table_3 0
+
+(0 B in 3 tables)
+"
+`;
+
+exports[`CLI test: pg can connect through ssh 2`] = `
+"column     type                     nullable default
+id         integer                  false    nextval('table_1_id_seq'::regclass)
+field_1    integer                  true
+field_2    text                     true
+created_at timestamp with time zone true
+updated_at timestamp with time zone true
+
+index                 algorithm unique columns
+table_1_pkey          btree     true   id
+table_1_field_1_index btree     false  field_1
+"
+`;
+
 exports[`CLI test: pg can create conn aliases 1`] = `
 "alias  conn
 alias1 mysql://app:secret@127.0.0.1:1234/dbname
@@ -92,6 +116,59 @@ updated_at timestamp with time zone true
 
 index        algorithm unique columns
 table_3_pkey btree     true   id_field
+"
+`;
+
+exports[`CLI test: pg can see dump contents 1`] = `
+"table                   rows bytes
+migrations_dump_pg      3    4.1 kB
+migrations_dump_pg_lock 1    4.1 kB
+table_1                 2    4.1 kB
+table_2                 2    4.1 kB
+table_3                 0    4.1 kB
+
+(20.5 kB in 5 tables)
+"
+`;
+
+exports[`CLI test: pg can see dump contents 2`] = `
+"column     type     nullable default
+id         integer  false
+field_1    integer  true
+field_2    text     true
+created_at datetime true
+updated_at datetime true
+
+index                 algorithm unique columns
+table_1_field_1_index unknown   false  field_1
+"
+`;
+
+exports[`CLI test: pg can see dump contents 3`] = `
+"table                   rows  bytes           columns                indexes
+table_1                 0 → 2 [null] → 4.1 kB 3x changed, 2x similar 1x deleted, 1x changed
+table_2                 0 → 2 [null] → 4.1 kB 5x changed             1x deleted, 1x changed
+table_3                 0     [null] → 4.1 kB 3x changed, 1x similar 1x deleted
+migrations_dump_pg      3     4.1 kB          4x created             none
+migrations_dump_pg_lock 1     4.1 kB          2x created             none
+
+Tables: 2x created, 3x changed
+"
+`;
+
+exports[`CLI test: pg can see dump contents 4`] = `
+"column     type                                nullable default
+id         integer                             false    nextval('table_1_id_seq'::regclass) → [null]
+created_at timestamp with time zone → datetime true
+updated_at timestamp with time zone → datetime true
+
+index                 algorithm       unique columns
+table_1_pkey          btree           true   id
+table_1_field_1_index btree → unknown false  field_1
+
+Columns: 3x changed, 2x similar (hidden)
+Indexes: 1x deleted, 1x changed
+Re-run with --all to show hidden rows
 "
 `;
 

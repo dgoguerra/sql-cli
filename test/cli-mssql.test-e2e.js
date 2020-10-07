@@ -10,6 +10,8 @@ const TEST_MSSQL_CONN = {
   options: { enableArithAbort: true },
 };
 
-cliTestSuite("mssql", () =>
-  Knex({ client: "mssql", connection: TEST_MSSQL_CONN })
+cliTestSuite(
+  "mssql",
+  () => Knex({ client: "mssql", connection: TEST_MSSQL_CONN }),
+  { sshHost: "mssql", sshPort: 1433 }
 );

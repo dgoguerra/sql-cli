@@ -12,7 +12,7 @@ services:
       SA_PASSWORD: Secret123
       MSSQL_PASSWORD: Secret123
 
-  mysql-1:
+  mysql:
     image: mysql:8
     ports:
       - 23306:3306
@@ -34,19 +34,6 @@ services:
       POSTGRES_PASSWORD: Secret123
       POSTGRES_DB: test_db
 
-  mysql-2:
-    image: mysql:8
-    ports:
-      - 23307:3306
-    command: |
-      --character-set-server=utf8mb4
-      --collation-server=utf8mb4_unicode_ci
-    environment:
-      MYSQL_DATABASE: test_db
-      MYSQL_USER: test
-      MYSQL_PASSWORD: Secret123
-      MYSQL_ROOT_PASSWORD: Secret123
-
   ssh-server:
     image: linuxserver/openssh-server
     ports:
@@ -63,8 +50,7 @@ services:
     image: jwilder/dockerize
     command: |
       -wait tcp://mssql:1433
-      -wait tcp://mysql-1:3306
+      -wait tcp://mysql:3306
       -wait tcp://pg:5432
-      -wait tcp://mysql-2:3306
       -wait tcp://ssh-server:2222
       -timeout 30s
