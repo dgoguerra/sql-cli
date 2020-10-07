@@ -392,17 +392,15 @@ const toKnexType = (type, maxLength = null) => {
 const getPrimaryKey = async (knex, table) => {
   const client = knex.client.constructor.name;
   const database = knex.client.database();
+  let rows;
 
   if (client === "Client_SQLite3") {
-    const row = await knex(knex.raw(`pragma_table_info('${table}')`))
+    rows = await knex(knex.raw(`pragma_table_info('${table}')`))
       .where({ pk: 1 })
-      .first("name");
-    return row ? row.name : null;
-  }
-
-  if (client === "Client_PG") {
-    const { rows } = await knex.raw(`
-      SELECT pg_attribute.attname
+      .select({ column: "name" });
+  } else if (client === "Client_PG") {
+    const result = await knex.raw(`
+      SELECT pg_attribute.attname as column
       FROM pg_index, pg_class, pg_attribute, pg_namespace
       WHERE pg_class.oid = '${table}'::regclass
         AND indrelid = pg_class.oid
@@ -412,32 +410,29 @@ const getPrimaryKey = async (knex, table) => {
         AND pg_attribute.attnum = any(pg_index.indkey)
         AND indisprimary
     `);
-    return rows.length ? rows[0].attname : null;
-  }
-
-  if (client === "Client_MySQL" || client === "Client_MySQL2") {
-    const row = await knex("information_schema.statistics")
+    rows = result.rows;
+  } else if (client === "Client_MySQL" || client === "Client_MySQL2") {
+    rows = await knex("information_schema.statistics")
       .where({
         table_schema: database,
         table_name: table,
         index_name: "PRIMARY",
       })
-      .first({ column: "column_name" });
-    return row ? row.column : null;
-  }
-
-  if (client === "Client_MSSQL") {
-    const row = await knex("information_schema.key_column_usage")
+      .select({ column: "column_name" });
+  } else if (client === "Client_MSSQL") {
+    rows = await knex("information_schema.key_column_usage")
       .whereRaw(
         `OBJECTPROPERTY(OBJECT_ID(CONSTRAINT_SCHEMA + '.' + CONSTRAINT_NAME), 'IsPrimaryKey') = 1`
       )
       .andWhereRaw("TABLE_SCHEMA = SCHEMA_NAME()")
       .andWhere({ table_name: table })
-      .first({ column: "column_name" });
-    return row ? row.column : null;
+      .select({ column: "column_name" });
   }
 
-  return null;
+  // Only return the column name its a single column was found.
+  // If a table has a primary key composed of several fields,
+  // this method will behave as if no primary key was found.
+  return rows && rows.length === 1 ? rows[0].column : null;
 };
 
 const streamInsert = async (knex, table, stream) => {

@@ -213,9 +213,21 @@ class SqlDumper extends EventEmitter {
   }
 
   buildIndexStatement(index) {
+    const client = this.knex.client.constructor.name;
     const type = index.unique ? "unique" : "index";
     const columns = index.columns.map((c) => wrapValue(c));
-    return `t.${type}([${columns}], ${wrapValue(index.name)})`;
+
+    // In MySQL primary key indexes are always called "PRIMARY". If the primary
+    // key is composed of several fields, it will be dumped as an index statement,
+    // but it cannot be saved with the "PRIMARY" name, since other databases don't
+    // allow creating several indexes with the same name.
+    const ignoreName =
+      (client === "Client_MySQL" || client === "Client_MySQL2") &&
+      index.name === "PRIMARY";
+
+    return ignoreName
+      ? `t.${type}([${columns}])`
+      : `t.${type}([${columns}], ${wrapValue(index.name)})`;
   }
 
   // Depending on the client, default values may be returned as a string
