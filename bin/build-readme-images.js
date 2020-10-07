@@ -1,18 +1,19 @@
 #!/usr/bin/env node
 
 const fs = require("fs");
-const os = require("os");
-const Knex = require("knex");
+const path = require("path");
 const rimraf = require("rimraf");
 const { execSync } = require("child_process");
 const { migrateTestTables } = require("../test/cli-test-suite");
+const CliApp = require("../src/CliApp");
 
-const TMP_DIR = `${__dirname}/../.tmp`;
-const IMG_DIR = `${__dirname}/../img`;
+const PROJ_DIR = path.resolve(__dirname, "..");
+const CLI_BIN = `node ${PROJ_DIR}/src/index.js`;
+const CONN_URI = `mysql://root:Secret123@127.0.0.1:23306`;
 
 // Use a custom fresh config directory for sql-cli,
 // to avoid using the user system's config.
-const SQL_CONF_DIR = `${os.tmpdir()}/test-config`;
+const SQL_CONF_DIR = `${PROJ_DIR}/.tmp/test-config`;
 if (fs.existsSync(SQL_CONF_DIR)) {
   rimraf.sync(SQL_CONF_DIR);
 }
@@ -29,31 +30,34 @@ const runCmd = (cmd, { env = {}, debug = false } = {}) => {
   }
 };
 
-process.chdir(TMP_DIR);
+process.chdir(`${PROJ_DIR}/.tmp`);
 
 (async () => {
-  const initDatabase = (name, knexCallback) => {
-    const dbFile = `${TMP_DIR}/${name}`;
-    if (fs.existsSync(dbFile)) {
-      fs.unlinkSync(dbFile);
-    }
-    const knex = Knex({
-      client: "sqlite3",
-      connection: { filename: dbFile },
-      useNullAsDefault: true,
-    });
-    return knexCallback(knex).then(() => knex.destroy());
-  };
+  execSync(`
+    docker-compose up --detach mysql
+    docker-compose run wait-all -wait tcp://mysql:3306 -timeout 30s
+  `);
 
-  console.log("building example file1.db ...");
-  await initDatabase("file1.db", async (knex) => {
-    await migrateTestTables(knex);
+  process.on("exit", () => {
+    execSync("docker-compose down");
   });
 
-  console.log("building example file2.db ...");
-  await initDatabase("file2.db", async (knex) => {
-    await migrateTestTables(knex);
+  await CliApp.initLib(CONN_URI).then(async (knex) => {
+    await knex.raw("create schema test1_db");
+    await knex.raw("create schema test2_db");
+    await knex.raw("create schema loaded_db");
+    await knex.destroy();
+  });
 
+  console.log("building schema test1_db ...");
+  await CliApp.initLib(`${CONN_URI}/test1_db`).then(async (knex) => {
+    await migrateTestTables(knex);
+    await knex.destroy();
+  });
+
+  console.log("building schema test2_db ...");
+  await CliApp.initLib(`${CONN_URI}/test2_db`).then(async (knex) => {
+    await migrateTestTables(knex);
     await knex("table_2").where({ id: 2 }).delete();
     await knex.schema.table("table_3", (t) => {
       t.dropColumn("id_field");
@@ -64,74 +68,83 @@ process.chdir(TMP_DIR);
     await knex.schema.createTable("table_4", (t) => {
       t.integer("id");
     });
+    await knex.destroy();
   });
 
-  if (fs.existsSync(`${TMP_DIR}/newfile.db`)) {
-    fs.unlinkSync(`${TMP_DIR}/newfile.db`);
-  }
-
   // Add some aliases to show as available
-  runCmd(
-    `node ../src/index.js alias add local-pg postgres://127.0.0.1:5432/mydb`
-  );
-  runCmd(`node ../src/index.js alias add local-my mysql://127.0.0.1:3306/mydb`);
-  runCmd(
-    `node ../src/index.js alias add project-dev mysql://12.12.12.12/dev_db`
-  );
-  runCmd(
-    `node ../src/index.js alias add project-prod mysql://34.34.34.34/prod_db`
-  );
+  runCmd(`
+    ${CLI_BIN} alias add local-sqlite sqlite:///path/to/file1.db
+    ${CLI_BIN} alias add local-pg postgres://127.0.0.1:5432/mydb
+    ${CLI_BIN} alias add project-dev mysql://12.12.12.12/dev_db
+    ${CLI_BIN} alias add project-prod mysql://34.34.34.34/prod_db
+  `);
 
   const images = [
     {
       key: "show",
       height: 20,
-      cmds: ["list sqlite://file1.db", "show sqlite://file1.db/table_1"],
-    },
-    {
-      key: "diff",
-      height: 31,
-      env: { SQL_NO_STRIPED_TABLES: 1 },
-      cmds: [
-        "diff sqlite://file1.db sqlite://file2.db",
-        "diff sqlite://file1.db/table_1 sqlite://file2.db/table_2",
-        "diff sqlite://file1.db/table_1 sqlite://file2.db/table_2 --data --rows=20",
-      ],
+      cmds: [`list ${CONN_URI}/test1_db`, `show ${CONN_URI}/test1_db/table_1`],
     },
     {
       key: "aliases",
-      height: 32,
+      height: 36,
       cmds: [
-        "alias add mydb sqlite://file1.db",
+        `alias add test-1 ${CONN_URI}/test1_db`,
+        `alias add test-2 ${CONN_URI}/test2_db`,
         "alias ls",
-        "ls mydb",
-        "show mydb/table_1",
+        "ls test-1",
+        "show test-1/table_1",
+      ],
+    },
+    {
+      key: "diff",
+      height: 29,
+      env: { SQL_NO_STRIPED_TABLES: 1 },
+      cmds: [
+        `diff test-1 test-2`,
+        `diff test-1/table_1 test-2/table_2`,
+        `diff test-1/table_1 test-2/table_2 --data --rows=20`,
       ],
     },
     {
       key: "dump",
+      env: { SQL_NO_STRIPED_TABLES: 1 },
       cmds: [
-        "dump create sqlite://file1.db dump-my-file1",
-        "dump load sqlite://newfile.db dump-my-file1.tgz",
-        "diff sqlite://file1.db sqlite://newfile.db --all",
+        `dump create test-1 dump-mydb`,
+        `dump load ${CONN_URI}/loaded_db dump-mydb.tgz`,
+        `diff test-1 ${CONN_URI}/loaded_db --all`,
+      ],
+    },
+    {
+      key: "dump-file",
+      height: 26,
+      cmds: [
+        `ls dump-mydb.tgz`,
+        `show dump-mydb.tgz/table_1`,
+        `shell dump-mydb.tgz 'select * from table_1;'`,
       ],
     },
   ];
 
   images.forEach((im) => {
-    console.log(`creating ${im.key}.svg ...`);
-    const command = im.cmds
-      .map((cmd) => `echo $ sql ${cmd}; node ../src/index.js ${cmd}; echo`)
-      .join("; ");
-    runCmd(`asciinema rec --command "${command}" --overwrite ${im.key}.cast`, {
-      env: im.env || {},
-    });
-    runCmd(`
-      svg-term --in ${im.key}.cast \
-        --out ${IMG_DIR}/${im.key}.svg \
+    const castFile = `${PROJ_DIR}/.tmp/${im.key}.cast`;
+    const svgFile = `${PROJ_DIR}/img/${im.key}.svg`;
+
+    console.log(`creating img/${im.key}.svg ...`);
+
+    const buildCmd = (cmd) => {
+      const escaped = cmd.replace(/'/g, '\\"');
+      return `echo '$ sql ${escaped}'; ${CLI_BIN} ${cmd}; echo`;
+    };
+
+    const commands = im.cmds.map(buildCmd).join("; ");
+    runCmd(
+      `asciinema rec --command "${commands}" --overwrite ${castFile}
+      svg-term --in ${castFile} --out ${svgFile} \
         --at 100000 ${im.height ? `--height ${im.height}` : ""} \
-        --term iterm2 --profile unused --window --no-cursor
-    `);
-    //runCmd(`qlmanage -t -s 1000 -o ${IMG_DIR} ${IMG_DIR}/${im.key}.svg`);
+        --term iterm2 --profile unused --window --no-cursor`,
+      { env: im.env || {} }
+    );
+    //runCmd(`qlmanage -t -s 1000 -o ${PROJ_DIR}/img ${svgFile}`);
   });
 })();
