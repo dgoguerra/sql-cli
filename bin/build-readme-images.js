@@ -103,7 +103,7 @@ process.chdir(`${PROJ_DIR}/.tmp`);
       cmds: [
         `diff test-1 test-2`,
         `diff test-1/table_1 test-2/table_2`,
-        `diff test-1/table_1 test-2/table_2 --data --rows=20`,
+        `diff test-1/table_1 test-2/table_2 --data --limit=20`,
       ],
     },
     {

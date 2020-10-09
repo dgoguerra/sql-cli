@@ -52,7 +52,7 @@ describe("diff", () => {
     await knex2("table_2").insert(TEST_TABLE2_CONTENT);
   });
 
-  it("can diff tables with changes", async () => {
+  it("can diff tables", async () => {
     const output = await runCli(`diff ${connUri1}/table_1 ${connUri2}/table_2`);
     expect(output).toMatchSnapshot();
   });
@@ -69,9 +69,17 @@ describe("diff", () => {
     expect(output).toMatchSnapshot();
   });
 
-  it("can diff tables data with changes", async () => {
+  it("can diff tables data", async () => {
     const output = await runCli(
       `diff ${connUri1}/table_1 ${connUri2}/table_2 --data`
+    );
+    expect(output).toMatchSnapshot();
+  });
+
+  it("can diff tables data with all options", async () => {
+    const output = await runCli(
+      `diff ${connUri1}/table_1 ${connUri2}/table_2 --data` +
+        ` --all --offset=1 --limit=1 --columns=id,field_1`
     );
     expect(output).toMatchSnapshot();
   });
@@ -90,7 +98,7 @@ describe("diff", () => {
     expect(output).toMatchSnapshot();
   });
 
-  it("can diff schemas with changes", async () => {
+  it("can diff schemas", async () => {
     const output = await runCli(`diff ${connUri1} ${connUri2}`);
     expect(output).toMatchSnapshot();
   });
