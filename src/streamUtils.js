@@ -36,15 +36,11 @@ const valueOrDiff = (before, after) => {
 const streamsDiff = (
   streamA,
   streamB,
-  { idKey = "id", allRows = false, allColumns = false, maxRows = 100 } = {}
+  { idKey = "id", allRows = false, allColumns = false } = {}
 ) => {
   const diffRows = [];
 
-  const comparator = (a, b) => {
-    if (!a) return 1;
-    if (!b) return -1;
-    return a[idKey] - b[idKey];
-  };
+  const comparator = (a, b) => (!a ? 1 : !b ? -1 : a[idKey] - b[idKey]);
 
   const formatResults = (rows) => {
     const keysWithChanges = {};

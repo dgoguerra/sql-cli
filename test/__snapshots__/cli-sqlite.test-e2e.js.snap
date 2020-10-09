@@ -1,20 +1,12 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`CLI test: sqlite3 can create conn aliases 1`] = `
-"alias  conn
-alias1 mysql://app:secret@127.0.0.1:1234/dbname
-alias2 sqlite3:///path/to/file.db
-"
-`;
+exports[`CLI test: sqlite3 can connect with an alias 1`] = `
+"table   rows bytes
+table_1 2    4.1 kB
+table_2 2    4.1 kB
+table_3 0    4.1 kB
 
-exports[`CLI test: sqlite3 can delete conn aliases 1`] = `
-"alias  conn
-alias2 sqlite3:///path/to/file.db
-"
-`;
-
-exports[`CLI test: sqlite3 can diff schemas 1`] = `
-"No tables with changes: 3x similar (hidden)
+(12.3 kB in 3 tables)
 "
 `;
 
@@ -34,7 +26,7 @@ Re-run with --all to show hidden rows
 `;
 
 exports[`CLI test: sqlite3 can diff tables data 1`] = `
-"Diff of tables content (first 20 rows):
+"Diff of tables content (rows 1 to 20):
 
 id field_1    updated_at
 1  12 → 12.3  [null] → 2020-07-24 18:34:00
@@ -90,48 +82,6 @@ No indexes in table
 "
 `;
 
-exports[`CLI test: sqlite3 can see dump contents 1`] = `
-"table                         rows bytes
-migrations_dump_sqlite_3      3    4.1 kB
-migrations_dump_sqlite_3_lock 1    4.1 kB
-table_1                       2    4.1 kB
-table_2                       2    4.1 kB
-table_3                       0    4.1 kB
-
-(20.5 kB in 5 tables)
-"
-`;
-
-exports[`CLI test: sqlite3 can see dump contents 2`] = `
-"column     type     nullable default
-id         integer  false
-field_1    integer  true
-field_2    text     true
-created_at datetime true
-updated_at datetime true
-
-index                 algorithm unique columns
-table_1_field_1_index unknown   false  field_1
-"
-`;
-
-exports[`CLI test: sqlite3 can see dump contents 3`] = `
-"table                         rows bytes  columns    indexes
-migrations_dump_sqlite_3      3    4.1 kB 4x created none
-migrations_dump_sqlite_3_lock 1    4.1 kB 2x created none
-
-Tables: 2x created, 3x similar (hidden)
-Re-run with --all to show hidden rows
-"
-`;
-
-exports[`CLI test: sqlite3 can see dump contents 4`] = `
-"Columns: 5x similar (hidden)
-Indexes: 1x similar (hidden)
-Re-run with --all to show hidden rows
-"
-`;
-
 exports[`CLI test: sqlite3 can show table 1`] = `
 "column     type     nullable default
 id         integer  false
@@ -142,16 +92,6 @@ updated_at datetime true
 
 index                  algorithm unique columns
 table_2_field_1_unique unknown   true   field_1
-"
-`;
-
-exports[`CLI test: sqlite3 can use a created alias 1`] = `
-"table   rows bytes
-table_1 2    4.1 kB
-table_2 2    4.1 kB
-table_3 0    4.1 kB
-
-(12.3 kB in 3 tables)
 "
 `;
 

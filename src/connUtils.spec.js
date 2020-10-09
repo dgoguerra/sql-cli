@@ -246,13 +246,13 @@ describe("stringifyConn()", () => {
   it("sqlite conn", () => {
     const str = stringifyConn({
       protocol: "sqlite",
-      path: "/path/to/file/mydb.db",
+      filename: "/path/to/file/mydb.db",
     });
     expect(str).toBe("sqlite:///path/to/file/mydb.db");
   });
 
   it("sqlite conn without path", () => {
-    const str = stringifyConn({ protocol: "sqlite", path: "mydb.db" });
+    const str = stringifyConn({ protocol: "sqlite", filename: "mydb.db" });
     expect(str).toBe("sqlite://mydb.db");
   });
 

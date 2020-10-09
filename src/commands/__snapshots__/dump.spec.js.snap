@@ -1,0 +1,158 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`dump can diff against original database 1`] = `
+"table                   rows bytes  columns    indexes
+migrations_my_dump      3    4.1 kB 4x created none
+migrations_my_dump_lock 1    4.1 kB 2x created none
+
+Tables: 2x created, 3x similar (hidden)
+Re-run with --all to show hidden rows
+"
+`;
+
+exports[`dump can diff against original database 2`] = `
+"Columns: 5x similar (hidden)
+Indexes: 1x similar (hidden)
+Re-run with --all to show hidden rows
+"
+`;
+
+exports[`dump can see dumpfile contents 1`] = `
+"table                   rows bytes
+migrations_my_dump      3    4.1 kB
+migrations_my_dump_lock 1    4.1 kB
+table_1                 2    4.1 kB
+table_2                 2    4.1 kB
+table_3                 0    4.1 kB
+
+(20.5 kB in 5 tables)
+"
+`;
+
+exports[`dump can see dumpfile contents 2`] = `
+"column     type     nullable default
+id         integer  false
+field_1    integer  true
+field_2    text     true
+created_at datetime true
+updated_at datetime true
+
+index                 algorithm unique columns
+table_1_field_1_index unknown   false  field_1
+"
+`;
+
+exports[`dump can see dumpfile contents 3`] = `
+"table                   rows bytes  columns    indexes
+migrations_my_dump      3    4.1 kB 4x created none
+migrations_my_dump_lock 1    4.1 kB 2x created none
+
+Tables: 2x created, 3x similar (hidden)
+Re-run with --all to show hidden rows
+"
+`;
+
+exports[`dump can see dumpfile contents 4`] = `
+"Columns: 5x similar (hidden)
+Indexes: 1x similar (hidden)
+Re-run with --all to show hidden rows
+"
+`;
+
+exports[`dump dumpfile contents are valid 1`] = `
+"module.exports.up = async (knex) => {
+  await knex.schema.createTable(\\"table_1\\", (t) => {
+    t.increments(\\"id\\");
+    t.integer(\\"field_1\\");
+    t.text(\\"field_2\\");
+    t.datetime(\\"created_at\\");
+    t.datetime(\\"updated_at\\");
+    t.index([\\"field_1\\"], \\"table_1_field_1_index\\");
+  });
+};
+module.exports.down = async (knex) => {
+  await knex.schema.dropTableIfExists(\\"table_1\\");
+};
+"
+`;
+
+exports[`dump dumpfile contents are valid 2`] = `
+"module.exports.up = async (knex) => {
+  await knex.schema.createTable(\\"table_2\\", (t) => {
+    t.increments(\\"id\\");
+    t.float(\\"field_1\\").notNullable();
+    t.text(\\"field_2\\").defaultTo(\\"default text\\");
+    t.datetime(\\"created_at\\");
+    t.datetime(\\"updated_at\\");
+    t.unique([\\"field_1\\"], \\"table_2_field_1_unique\\");
+  });
+};
+module.exports.down = async (knex) => {
+  await knex.schema.dropTableIfExists(\\"table_2\\");
+};
+"
+`;
+
+exports[`dump dumpfile contents are valid 3`] = `
+"module.exports.up = async (knex) => {
+  await knex.schema.createTable(\\"table_3\\", (t) => {
+    t.increments(\\"id_field\\");
+    t.bigInteger(\\"field_1\\");
+    t.datetime(\\"created_at\\");
+    t.datetime(\\"updated_at\\");
+  });
+};
+module.exports.down = async (knex) => {
+  await knex.schema.dropTableIfExists(\\"table_3\\");
+};
+"
+`;
+
+exports[`dump dumpfile contents are valid 4`] = `
+"{\\"id\\":1,\\"field_1\\":12,\\"field_2\\":\\"foo\\",\\"created_at\\":\\"2020-07-24 18:34:00\\"}
+{\\"id\\":2,\\"field_1\\":30,\\"field_2\\":\\"bar\\",\\"created_at\\":\\"2020-07-24 18:34:00\\"}
+"
+`;
+
+exports[`dump dumpfile contents are valid 5`] = `
+"{\\"id\\":1,\\"field_1\\":12.3,\\"field_2\\":\\"foo\\",\\"created_at\\":\\"2020-07-24 18:34:00\\"}
+{\\"id\\":2,\\"field_1\\":30.45,\\"field_2\\":\\"bar\\",\\"created_at\\":\\"2020-07-24 19:25:00\\"}
+"
+`;
+
+exports[`dump loaded database has expected content 1`] = `
+"column     type     nullable default
+id         integer  false
+field_1    integer  true
+field_2    text     true
+created_at datetime true
+updated_at datetime true
+
+index                 algorithm unique columns
+table_1_field_1_index unknown   false  field_1
+"
+`;
+
+exports[`dump loaded database has expected content 2`] = `
+"column     type     nullable default
+id         integer  false
+field_1    float    false
+field_2    text     true     'default text'
+created_at datetime true
+updated_at datetime true
+
+index                  algorithm unique columns
+table_2_field_1_unique unknown   true   field_1
+"
+`;
+
+exports[`dump loaded database has expected content 3`] = `
+"column     type     nullable default
+id_field   integer  false
+field_1    bigint   true
+created_at datetime true
+updated_at datetime true
+
+No indexes in table
+"
+`;

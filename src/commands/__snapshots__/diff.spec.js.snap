@@ -1,0 +1,89 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`diff can diff schemas with changes 1`] = `
+"table   rows bytes  columns    indexes
+table_1 2    4.1 kB 5x deleted 1x deleted
+table_2 2    4.1 kB 5x created 1x created
+table_3 0    4.1 kB 4x created none
+
+Tables: 1x deleted, 2x created
+"
+`;
+
+exports[`diff can diff schemas with no changes 1`] = `
+"No tables with changes: 1x similar (hidden)
+"
+`;
+
+exports[`diff can diff schemas with no changes, showing all 1`] = `
+"table   rows bytes  columns    indexes
+table_1 2    4.1 kB 5x similar 1x similar
+
+Tables: 1x similar
+"
+`;
+
+exports[`diff can diff tables data with changes 1`] = `
+"Diff of tables content (rows 1 to 20):
+
+id field_1    created_at
+1  12 → 12.3  2020-07-24 18:34:00
+2  30 → 30.45 2020-07-24 18:34:00 → 2020-07-24 19:25:00
+Re-run with --all to show rows without changes
+"
+`;
+
+exports[`diff can diff tables data with no changes 1`] = `
+"Diff of tables content (rows 1 to 20):
+
+No table content changes
+Re-run with --all to show rows without changes
+"
+`;
+
+exports[`diff can diff tables data with no changes, showing all 1`] = `
+"Diff of tables content (rows 1 to 20):
+
+id
+1
+2
+"
+`;
+
+exports[`diff can diff tables with changes 1`] = `
+"column  type            nullable     default
+field_1 integer → float true → false
+field_2 text            true         [null] → 'default text'
+
+index                  algorithm unique columns
+table_1_field_1_index  unknown   false  field_1
+table_2_field_1_unique unknown   true   field_1
+
+Columns: 2x changed, 3x similar (hidden)
+Indexes: 1x deleted, 1x created
+Re-run with --all to show hidden rows
+"
+`;
+
+exports[`diff can diff tables with no changes 1`] = `
+"Columns: 5x similar (hidden)
+Indexes: 1x similar (hidden)
+Re-run with --all to show hidden rows
+"
+`;
+
+exports[`diff can diff tables with no changes, showing all 1`] = `
+"column     type     nullable default
+id         integer  false
+field_1    integer  true
+field_2    text     true
+created_at datetime true
+updated_at datetime true
+
+index                 algorithm unique columns
+table_1_field_1_index unknown   false  field_1
+
+Columns: 5x similar
+Indexes: 1x similar
+"
+`;

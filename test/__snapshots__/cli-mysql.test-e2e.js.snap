@@ -24,21 +24,13 @@ table_1_field_1_index BTREE     false  field_1
 "
 `;
 
-exports[`CLI test: mysql2 can create conn aliases 1`] = `
-"alias  conn
-alias1 mysql://app:secret@127.0.0.1:1234/dbname
-alias2 sqlite3:///path/to/file.db
-"
-`;
+exports[`CLI test: mysql2 can connect with an alias 1`] = `
+"table   rows bytes
+table_1 2    32.8 kB
+table_2 2    32.8 kB
+table_3 0    16.4 kB
 
-exports[`CLI test: mysql2 can delete conn aliases 1`] = `
-"alias  conn
-alias2 sqlite3:///path/to/file.db
-"
-`;
-
-exports[`CLI test: mysql2 can diff schemas 1`] = `
-"No tables with changes: 3x similar (hidden)
+(81.9 kB in 3 tables)
 "
 `;
 
@@ -57,7 +49,7 @@ Re-run with --all to show hidden rows
 `;
 
 exports[`CLI test: mysql2 can diff tables data 1`] = `
-"Diff of tables content (first 20 rows):
+"Diff of tables content (rows 1 to 20):
 
 id field_1    updated_at
 1  12 → 12.30 [null] → 2020-07-24T18:34:00.000Z
@@ -116,59 +108,6 @@ PRIMARY BTREE     true   id_field
 "
 `;
 
-exports[`CLI test: mysql2 can see dump contents 1`] = `
-"table                        rows bytes
-migrations_dump_mysql_2      3    4.1 kB
-migrations_dump_mysql_2_lock 1    4.1 kB
-table_1                      2    4.1 kB
-table_2                      2    4.1 kB
-table_3                      0    4.1 kB
-
-(20.5 kB in 5 tables)
-"
-`;
-
-exports[`CLI test: mysql2 can see dump contents 2`] = `
-"column     type     nullable default
-id         integer  false
-field_1    integer  true
-field_2    text     true
-created_at datetime true
-updated_at datetime true
-
-index                 algorithm unique columns
-table_1_field_1_index unknown   false  field_1
-"
-`;
-
-exports[`CLI test: mysql2 can see dump contents 3`] = `
-"table                        rows bytes            columns                indexes
-table_1                      2    32.8 kB → 4.1 kB 3x changed, 2x similar 1x deleted, 1x changed
-table_2                      2    32.8 kB → 4.1 kB 3x changed, 2x similar 1x deleted, 1x changed
-table_3                      0    16.4 kB → 4.1 kB 1x changed, 3x similar 1x deleted
-migrations_dump_mysql_2      3    4.1 kB           4x created             none
-migrations_dump_mysql_2_lock 1    4.1 kB           2x created             none
-
-Tables: 2x created, 3x changed
-"
-`;
-
-exports[`CLI test: mysql2 can see dump contents 4`] = `
-"column  type               nullable default
-id      int → integer      false
-field_1 int → integer      true
-field_2 text(65535) → text true
-
-index                 algorithm       unique columns
-PRIMARY               BTREE           true   id
-table_1_field_1_index BTREE → unknown false  field_1
-
-Columns: 3x changed, 2x similar (hidden)
-Indexes: 1x deleted, 1x changed
-Re-run with --all to show hidden rows
-"
-`;
-
 exports[`CLI test: mysql2 can show table 1`] = `
 "column     type        nullable default
 id         int         false
@@ -180,16 +119,6 @@ updated_at datetime    true
 index                  algorithm unique columns
 PRIMARY                BTREE     true   id
 table_2_field_1_unique BTREE     true   field_1
-"
-`;
-
-exports[`CLI test: mysql2 can use a created alias 1`] = `
-"table   rows bytes
-table_1 2    32.8 kB
-table_2 2    32.8 kB
-table_3 0    16.4 kB
-
-(81.9 kB in 3 tables)
 "
 `;
 

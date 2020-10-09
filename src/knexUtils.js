@@ -82,7 +82,6 @@ const getUri = (knex) => {
   const { client, connection: conn } = knex.client.config;
   return stringifyConn({
     protocol: client,
-    path: conn.filename, // only set in SQLite
     host: conn.server || conn.host,
     ...conn,
   });

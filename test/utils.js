@@ -1,11 +1,14 @@
-const os = require("os");
 const fs = require("fs");
 const { exec } = require("child_process");
+const rimraf = require("rimraf");
 const Knex = require("knex");
 
-const TEST_DB_DIR = `${process.env.PWD}/.tmp`;
-const TEST_DB_FILE = `${TEST_DB_DIR}/test-${process.env.JEST_WORKER_ID}.db`;
-const TEST_CONF_DIR = `${os.tmpdir()}/test-${process.env.JEST_WORKER_ID}`;
+const TEST_TMP_DIR = `${process.env.PWD}/.tmp`;
+const TEST_CONF_DIR = `${TEST_TMP_DIR}/test-conf-${process.env.JEST_WORKER_ID}`;
+
+if (fs.existsSync(TEST_CONF_DIR)) {
+  rimraf.sync(TEST_CONF_DIR);
+}
 
 const runCli = (args, { stdin = null, debug = false } = {}) =>
   new Promise((resolve, reject) => {
@@ -51,14 +54,14 @@ const runCli = (args, { stdin = null, debug = false } = {}) =>
     );
   });
 
-const getTestKnex = () => {
-  fs.mkdirSync(TEST_DB_DIR, { recursive: true });
-  if (fs.existsSync(TEST_DB_FILE)) {
-    fs.unlinkSync(TEST_DB_FILE);
+const getTestKnex = (name = `test-${process.env.JEST_WORKER_ID}.db`) => {
+  const filename = `${TEST_TMP_DIR}/${name}`;
+  if (fs.existsSync(filename)) {
+    fs.unlinkSync(filename);
   }
   return Knex({
     client: "sqlite3",
-    connection: { filename: TEST_DB_FILE },
+    connection: { filename },
     useNullAsDefault: true,
   });
 };

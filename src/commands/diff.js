@@ -17,10 +17,26 @@ module.exports = {
         description: "Diff the tables' data",
         type: "boolean",
       })
-      .option("rows", {
+      .option("key", {
+        description: "Key field to diff rows by. Only has effect with --data",
+        type: "string",
+        default: "id",
+      })
+      .option("columns", {
+        description: "Columns to diff. Only has effect with --data",
+        alias: ["col"],
+        type: "string",
+        default: "*",
+      })
+      .option("limit", {
         description: "Number of rows to diff. Only has effect with --data",
         type: "number",
         default: 20,
+      })
+      .option("offset", {
+        description: "Starting row to diff. Only has effect with --data",
+        type: "number",
+        default: 0,
       }),
   handler: async (argv) => {
     const { _table: table1 } = CliApp.resolveConn(argv.table1, argv);
@@ -112,18 +128,34 @@ async function runDiffTablesData(lib1, lib2, table1, table2, argv) {
     CliApp.error(`Table '${table2}' not found in 'after' schema`);
   }
 
-  console.log(`Diff of tables content (first ${argv.rows} rows):`);
+  const first = argv.offset + 1;
+  const last = first + argv.limit - 1;
+  console.log(`Diff of tables content (rows ${first} to ${last}):`);
   console.log("");
 
+  const streamRows = (knex, table) =>
+    knex(table)
+      .orderBy(argv.key)
+      .limit(argv.limit)
+      .offset(argv.offset)
+      .select(knex.raw(argv.columns))
+      .stream();
+
   const rows = await streamsDiff(
-    lib1.knex(table1).limit(argv.rows).stream(),
-    lib2.knex(table2).limit(argv.rows).stream(),
-    { allRows: argv.all, allColumns: false }
+    streamRows(lib1, table1),
+    streamRows(lib2, table2),
+    { idKey: argv.key, allRows: argv.all, allColumns: false }
   );
 
-  console.log(rows.length ? table(rows) : "No table content changes");
+  if (rows.length) {
+    // Make sure the primary key is shown as first column of the table
+    const headers = Object.keys(rows[0]).filter((key) => key !== argv.key);
+    console.log(table(rows, { headers: [argv.key, ...headers] }));
+  } else {
+    console.log("No table content changes");
+  }
 
-  if (!argv.all && Number(argv.rows) !== rows.length) {
+  if (!argv.all && Number(argv.limit) !== rows.length) {
     console.log(chalk.grey("Re-run with --all to show rows without changes"));
   }
 }

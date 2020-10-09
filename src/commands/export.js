@@ -1,9 +1,10 @@
 const _ = require("lodash");
+const path = require("path");
 const CliApp = require("../CliApp");
 const ExcelBuilder = require("../ExcelBuilder");
 
 module.exports = {
-  command: "export <conn>",
+  command: "export <conn> [file]",
   description: "Export the connection's schema or data in XLSX",
   builder: (yargs) =>
     yargs
@@ -27,7 +28,9 @@ module.exports = {
     }
 
     const builder = new ExcelBuilder();
-    const filePath = `${process.env.PWD}/${lib.buildConnSlug("export")}.xlsx`;
+    const filePath = path.resolve(
+      argv.file || `${lib.buildConnSlug("export")}.xlsx`
+    );
 
     if (argv.schema) {
       for (const table of await lib.schema.listTables()) {

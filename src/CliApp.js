@@ -47,7 +47,7 @@ class CliApp {
       .alias("h", "help")
       .version()
       .strict()
-      .commandDir(`${__dirname}/commands`)
+      .commandDir(`${__dirname}/commands`, { exclude: /\.spec\.js$/ })
       .demandCommand();
 
     return cli;

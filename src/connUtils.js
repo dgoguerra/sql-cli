@@ -141,7 +141,7 @@ function resolveConn(connUri, { aliases = {} } = {}) {
 function stringifyConn({
   protocol,
   host,
-  path = null,
+  filename = null,
   port = null,
   user,
   password = null,
@@ -161,8 +161,8 @@ function stringifyConn({
       : "";
 
   // Only used for SQLite
-  if (path) {
-    return `${protocol}://${path}`;
+  if (filename) {
+    return `${protocol}://${filename}`;
   }
 
   let connUri = formatAuth(user, password) + formatHost(host, port);
