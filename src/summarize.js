@@ -2,7 +2,7 @@ const chalk = require("chalk");
 const stringWidth = require("string-width");
 
 const DEFAULT_WIDTH =
-  process.stdout.columns || process.env.SQL_LINE_WIDTH || 80;
+  process.env.SQL_LINE_WIDTH || process.stdout.columns || 80;
 
 const DEFAULT_SEPARATOR = "...";
 
