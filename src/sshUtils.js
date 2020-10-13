@@ -15,13 +15,17 @@ const SSH_CONN_DEFAULTS = {
 const SSH_DEFAULT_KEYS = ["~/.ssh/id_dsa", "~/.ssh/id_ecdsa", "~/.ssh/id_rsa"];
 
 const sshClient = async (opts) => {
+  for (const key in SSH_CONN_DEFAULTS) {
+    if (!opts[key]) {
+      opts[key] = SSH_CONN_DEFAULTS[key];
+    }
+  }
+
   const client = new Client();
 
   client.on("error", (err) => {
     debug(`ssh2: ${err.message}`);
   });
-
-  opts = { ...SSH_CONN_DEFAULTS, ...opts };
 
   // A password was provided, try password authentication first
   if (

@@ -9,11 +9,22 @@ const PROTOCOL_ALIASES = {
   bigquery: ["bq"],
 };
 
+// Known protocol default ports
+const PROTOCOL_PORTS = {
+  pg: 5432,
+  mssql: 1433,
+  mysql2: 3306,
+};
+
 function resolveProtocol(client) {
   return _.findKey(
     PROTOCOL_ALIASES,
     (val, key) => key === client || val.includes(client)
   );
+}
+
+function getProtocolPort(client) {
+  return PROTOCOL_PORTS[resolveProtocol(client)];
 }
 
 function parseUriParams(params) {
@@ -180,4 +191,10 @@ function stringifyConn({
   return `${protocol}://${connUri}`;
 }
 
-module.exports = { resolveProtocol, parseUri, resolveConn, stringifyConn };
+module.exports = {
+  resolveProtocol,
+  getProtocolPort,
+  parseUri,
+  resolveConn,
+  stringifyConn,
+};

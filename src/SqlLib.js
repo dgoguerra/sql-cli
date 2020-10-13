@@ -3,8 +3,8 @@ const Knex = require("knex");
 const getPort = require("get-port");
 const { stringDate } = require("./stringDate");
 const { hydrateKnex } = require("./knexUtils");
-const { resolveProtocol } = require("./connUtils");
 const { sshClient, forwardPort } = require("./sshUtils");
+const { resolveProtocol, getProtocolPort } = require("./connUtils");
 
 class SqlLib extends Function {
   constructor(conn) {
@@ -71,7 +71,7 @@ class SqlLib extends Function {
       srcHost: "127.0.0.1",
       srcPort: freePort,
       dstHost: this.conn.host,
-      dstPort: this.conn.port,
+      dstPort: this.conn.port || getProtocolPort(this.conn.protocol),
     });
 
     this.conn.host = "127.0.0.1";
@@ -112,7 +112,7 @@ class SqlLib extends Function {
       conn.charset = conn.params.charset || "utf8mb4";
       conn.timezone = conn.params.timezone || "+00:00";
       if (!conn.port) {
-        conn.port = 3306; // port is required in mysql2
+        conn.port = getProtocolPort(client); // port is required in mysql2
       }
     }
 
