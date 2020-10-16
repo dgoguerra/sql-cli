@@ -98,7 +98,7 @@ process.chdir(`${PROJ_DIR}/.tmp`);
     },
     {
       key: "diff",
-      height: 29,
+      height: 32,
       env: { SQL_NO_STRIPED_TABLES: 1 },
       cmds: [
         `diff test-1 test-2`,
