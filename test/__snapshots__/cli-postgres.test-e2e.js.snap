@@ -14,7 +14,7 @@ exports[`CLI test: pg can connect through ssh 2`] = `
 "column     type                     nullable default
 id         integer                  false    nextval('table_1_id_seq'::regclass)
 field_1    integer                  true
-field_2    text                     true
+field_2    character varying(50)    true
 created_at timestamp with time zone true
 updated_at timestamp with time zone true
 
@@ -35,10 +35,10 @@ table_3 0
 `;
 
 exports[`CLI test: pg can diff tables 1`] = `
-"column  type              nullable     default
-id      integer           false        nextval('table_1_id_seq'::regclass) → nextval('table_2_id_seq'::regclass)
-field_1 integer → numeric true → false
-field_2 text              true         [null] → 'default text'::text
+"column  type                         nullable     default
+id      integer                      false        nextval('table_1_id_seq'::regclass) → nextval('table_2_id_seq'::regclass)
+field_1 integer → numeric            true → false
+field_2 character varying(50) → text true         [null] → default text
 
 index                       algorithm unique columns
 table_1_pkey → table_2_pkey btree     true   id
@@ -72,11 +72,11 @@ table_3 0
 "
 `;
 
-exports[`CLI test: pg can load database dump 1`] = `
+exports[`CLI test: pg can load dump to database 1`] = `
 "column     type                     nullable default
 id         integer                  false    nextval('table_1_id_seq'::regclass)
 field_1    integer                  true
-field_2    text                     true
+field_2    character varying(50)    true
 created_at timestamp with time zone true
 updated_at timestamp with time zone true
 
@@ -86,11 +86,11 @@ table_1_field_1_index btree     false  field_1
 "
 `;
 
-exports[`CLI test: pg can load database dump 2`] = `
+exports[`CLI test: pg can load dump to database 2`] = `
 "column     type                     nullable default
 id         integer                  false    nextval('table_2_id_seq'::regclass)
 field_1    numeric                  false
-field_2    text                     true     'default text::text'::text
+field_2    text                     true     default text
 created_at timestamp with time zone true
 updated_at timestamp with time zone true
 
@@ -100,7 +100,7 @@ table_2_field_1_unique btree     true   field_1
 "
 `;
 
-exports[`CLI test: pg can load database dump 3`] = `
+exports[`CLI test: pg can load dump to database 3`] = `
 "column     type                     nullable default
 id_field   bigint                   false    nextval('table_3_id_field_seq'::regclass)
 field_1    bigint                   true
@@ -112,11 +112,36 @@ table_3_pkey btree     true   id_field
 "
 `;
 
+exports[`CLI test: pg can see dumpfile contents 1`] = `
+"table                   rows bytes
+migrations_dump_pg      3    4.1 kB
+migrations_dump_pg_lock 1    4.1 kB
+table_1                 2    4.1 kB
+table_2                 2    4.1 kB
+table_3                 0    4.1 kB
+
+(20.5 kB in 5 tables)
+"
+`;
+
+exports[`CLI test: pg can see dumpfile contents 2`] = `
+"column     type        nullable default
+id         integer     false
+field_1    integer     true
+field_2    varchar(50) true
+created_at datetime    true
+updated_at datetime    true
+
+index                 algorithm unique columns
+table_1_field_1_index unknown   false  field_1
+"
+`;
+
 exports[`CLI test: pg can show table 1`] = `
 "column     type                     nullable default
 id         integer                  false    nextval('table_2_id_seq'::regclass)
 field_1    numeric                  false
-field_2    text                     true     'default text'::text
+field_2    text                     true     default text
 created_at timestamp with time zone true
 updated_at timestamp with time zone true
 
@@ -129,11 +154,11 @@ table_2_field_1_unique btree     true   field_1
 exports[`CLI test: pg database dump contents are valid 1`] = `
 "module.exports.up = async (knex) => {
   await knex.schema.createTable(\\"table_1\\", (t) => {
-    t.increments(\\"id\\").defaultTo(\\"nextvaltable_1_id_seq::regclass\\");
+    t.increments(\\"id\\");
     t.integer(\\"field_1\\");
-    t.text(\\"field_2\\");
-    t.timestamp(\\"created_at\\");
-    t.timestamp(\\"updated_at\\");
+    t.string(\\"field_2\\", 50);
+    t.timestamp(\\"created_at\\").nullable();
+    t.timestamp(\\"updated_at\\").nullable();
     t.index([\\"field_1\\"], \\"table_1_field_1_index\\");
   });
 };
@@ -146,11 +171,11 @@ module.exports.down = async (knex) => {
 exports[`CLI test: pg database dump contents are valid 2`] = `
 "module.exports.up = async (knex) => {
   await knex.schema.createTable(\\"table_2\\", (t) => {
-    t.increments(\\"id\\").defaultTo(\\"nextvaltable_2_id_seq::regclass\\");
+    t.increments(\\"id\\");
     t.decimal(\\"field_1\\").notNullable();
-    t.text(\\"field_2\\").defaultTo(\\"default text::text\\");
-    t.timestamp(\\"created_at\\");
-    t.timestamp(\\"updated_at\\");
+    t.text(\\"field_2\\").defaultTo(\\"default text\\");
+    t.timestamp(\\"created_at\\").nullable();
+    t.timestamp(\\"updated_at\\").nullable();
     t.unique([\\"field_1\\"], \\"table_2_field_1_unique\\");
   });
 };
@@ -163,12 +188,10 @@ module.exports.down = async (knex) => {
 exports[`CLI test: pg database dump contents are valid 3`] = `
 "module.exports.up = async (knex) => {
   await knex.schema.createTable(\\"table_3\\", (t) => {
-    t.bigIncrements(\\"id_field\\").defaultTo(
-      \\"nextvaltable_3_id_field_seq::regclass\\"
-    );
+    t.bigIncrements(\\"id_field\\");
     t.bigInteger(\\"field_1\\");
-    t.timestamp(\\"created_at\\");
-    t.timestamp(\\"updated_at\\");
+    t.timestamp(\\"created_at\\").nullable();
+    t.timestamp(\\"updated_at\\").nullable();
   });
 };
 module.exports.down = async (knex) => {

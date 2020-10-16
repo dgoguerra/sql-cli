@@ -27,7 +27,7 @@ Tables: 1x similar
 exports[`diff can diff tables 1`] = `
 "column  type            nullable     default
 field_1 integer → float true → false
-field_2 text            true         [null] → 'default text'
+field_2 text            true         [null] → default text
 
 index                  algorithm unique columns
 table_1_field_1_index  unknown   false  field_1

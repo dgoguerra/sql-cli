@@ -198,15 +198,27 @@ class SqlDumper extends EventEmitter {
       type = primaryKeyTypes[type] || type;
     }
 
-    const statement = [`t.${type}(${wrapValue(key)})`];
+    const statement = [
+      col.maxLength
+        ? `t.${type}(${wrapValue(key)}, ${col.maxLength})`
+        : `t.${type}(${wrapValue(key)})`,
+    ];
 
-    if (!primaryKey && !col.nullable) {
-      statement.push("notNullable()");
-    }
-
-    if (col.defaultValue !== null && type !== "timestamp") {
-      const value = this.cleanDefaultValue(col.defaultValue);
-      statement.push(`defaultTo(${wrapValue(value)})`);
+    // Dont apply nullable or default value modifiers on primary keys
+    if (!primaryKey) {
+      // Set nullable timestamps explicitly (even though Knex makes columns
+      // nullable by default). Prevents older versions of MySQL (ex. 5.5)
+      // from creating the timestamp column as not null, with default
+      // value CURRENT_TIMESTAMP.
+      if (col.nullable && type === "timestamp") {
+        statement.push("nullable()");
+      }
+      if (!col.nullable) {
+        statement.push("notNullable()");
+      }
+      if (col.defaultValue !== null) {
+        statement.push(`defaultTo(${wrapValue(col.defaultValue)})`);
+      }
     }
 
     return statement.join(".");
@@ -228,20 +240,6 @@ class SqlDumper extends EventEmitter {
     return ignoreName
       ? `t.${type}([${columns}])`
       : `t.${type}([${columns}], ${wrapValue(index.name)})`;
-  }
-
-  // Depending on the client, default values may be returned as a string
-  // wrapped by quotes and/or parenthesis. Ex:
-  // default integer 0 -> returned as "('0')"
-  // default string "str" -> returned as "'str'"
-  cleanDefaultValue(val) {
-    if (typeof val !== "string" || isNumeric(val)) {
-      return val;
-    }
-    val = val.replace(/\((.*?)\)/, "$1"); // remove parenthesis
-    val = val.replace(/'(.*?)'/, "$1"); // remove ''
-    val = val.replace(/"(.*?)"/, "$1"); // remove ""
-    return val;
   }
 
   cleanRow(row) {

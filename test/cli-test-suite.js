@@ -126,7 +126,13 @@ const cliTestSuite = (
       });
     });
 
-    it("can load database dump", async () => {
+    it("can see dumpfile contents", async () => {
+      // Make sure the generated dumpfile can be opened through sqlite
+      expect(await runCli(`ls ${TEST_DUMP_PATH}`)).toMatchSnapshot();
+      expect(await runCli(`show ${TEST_DUMP_PATH}/table_1`)).toMatchSnapshot();
+    });
+
+    it("can load dump to database", async () => {
       await knex.schema.dropTable("table_1");
       await knex.schema.dropTable("table_2");
       await knex.schema.dropTable("table_3");
@@ -150,7 +156,7 @@ const migrateTestTables = async (knex) => {
   await knex.schema.createTable("table_1", (t) => {
     t.increments("id");
     t.integer("field_1");
-    t.text("field_2");
+    t.string("field_2", 50);
     t.timestamps();
     t.index(["field_1"]);
   });

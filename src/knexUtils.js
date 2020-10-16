@@ -118,6 +118,25 @@ const getColumns = async (knex, table) => {
     return columns;
   };
 
+  const isNumeric = (v) =>
+    (typeof v === "number" || typeof v === "string") &&
+    Number.isFinite(Number(v));
+
+  // Depending on the client, default values may be returned as a string
+  // wrapped by quotes and/or parenthesis. Ex:
+  // default integer 0 -> returned as "('0')"
+  // default string "str" -> returned as "'str'"
+  const cleanDefault = (val) => {
+    if (typeof val !== "string" || isNumeric(val)) {
+      return val;
+    }
+    val = val.replace(/^\((.*?)\)$/, "$1"); // remove parenthesis
+    val = val.replace(/^'(.*?)'$/, "$1"); // remove ''
+    val = val.replace(/^"(.*?)"$/, "$1"); // remove ""
+    val = val.replace(/^'(.*?)'::text$/, "$1"); // remove 'string'::text syntax (postgres)
+    return val;
+  };
+
   let results = {};
 
   // If possible, query manually instead of using knex(table).columnInfo().
@@ -161,6 +180,7 @@ const getColumns = async (knex, table) => {
   for (const key in results) {
     const { type, maxLength } = results[key];
     results[key].fullType = maxLength ? `${type}(${maxLength})` : type;
+    results[key].defaultValue = cleanDefault(results[key].defaultValue);
   }
 
   return results;
@@ -382,6 +402,7 @@ const toKnexType = (type, maxLength = null) => {
     bigint: "bigInteger",
     datetime2: "datetime", // mssql
     money: "decimal", // mssql
+    "character varying": "string", // postgres
     "timestamp with time zone": "timestamp", // postgres
     numeric: "decimal", // postgres
   };

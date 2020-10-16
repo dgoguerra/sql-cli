@@ -11,9 +11,9 @@ table_3 0    4.1 kB
 `;
 
 exports[`CLI test: sqlite3 can diff tables 1`] = `
-"column  type            nullable     default
-field_1 integer → float true → false
-field_2 text            true         [null] → 'default text'
+"column  type               nullable     default
+field_1 integer → float    true → false
+field_2 varchar(50) → text true         [null] → default text
 
 index                  algorithm unique columns
 table_1_field_1_index  unknown   false  field_1
@@ -46,24 +46,24 @@ table_3 0    4.1 kB
 "
 `;
 
-exports[`CLI test: sqlite3 can load database dump 1`] = `
-"column     type     nullable default
-id         integer  false
-field_1    integer  true
-field_2    text     true
-created_at datetime true
-updated_at datetime true
+exports[`CLI test: sqlite3 can load dump to database 1`] = `
+"column     type        nullable default
+id         integer     false
+field_1    integer     true
+field_2    varchar(50) true
+created_at datetime    true
+updated_at datetime    true
 
 index                 algorithm unique columns
 table_1_field_1_index unknown   false  field_1
 "
 `;
 
-exports[`CLI test: sqlite3 can load database dump 2`] = `
+exports[`CLI test: sqlite3 can load dump to database 2`] = `
 "column     type     nullable default
 id         integer  false
 field_1    float    false
-field_2    text     true     'default text'
+field_2    text     true     default text
 created_at datetime true
 updated_at datetime true
 
@@ -72,7 +72,7 @@ table_2_field_1_unique unknown   true   field_1
 "
 `;
 
-exports[`CLI test: sqlite3 can load database dump 3`] = `
+exports[`CLI test: sqlite3 can load dump to database 3`] = `
 "column     type     nullable default
 id_field   integer  false
 field_1    bigint   true
@@ -83,11 +83,36 @@ No indexes in table
 "
 `;
 
+exports[`CLI test: sqlite3 can see dumpfile contents 1`] = `
+"table                         rows bytes
+migrations_dump_sqlite_3      3    4.1 kB
+migrations_dump_sqlite_3_lock 1    4.1 kB
+table_1                       2    4.1 kB
+table_2                       2    4.1 kB
+table_3                       0    4.1 kB
+
+(20.5 kB in 5 tables)
+"
+`;
+
+exports[`CLI test: sqlite3 can see dumpfile contents 2`] = `
+"column     type        nullable default
+id         integer     false
+field_1    integer     true
+field_2    varchar(50) true
+created_at datetime    true
+updated_at datetime    true
+
+index                 algorithm unique columns
+table_1_field_1_index unknown   false  field_1
+"
+`;
+
 exports[`CLI test: sqlite3 can show table 1`] = `
 "column     type     nullable default
 id         integer  false
 field_1    float    false
-field_2    text     true     'default text'
+field_2    text     true     default text
 created_at datetime true
 updated_at datetime true
 
@@ -101,7 +126,7 @@ exports[`CLI test: sqlite3 database dump contents are valid 1`] = `
   await knex.schema.createTable(\\"table_1\\", (t) => {
     t.increments(\\"id\\");
     t.integer(\\"field_1\\");
-    t.text(\\"field_2\\");
+    t.string(\\"field_2\\", 50);
     t.datetime(\\"created_at\\");
     t.datetime(\\"updated_at\\");
     t.index([\\"field_1\\"], \\"table_1_field_1_index\\");
