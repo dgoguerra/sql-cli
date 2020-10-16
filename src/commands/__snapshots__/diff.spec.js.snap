@@ -11,7 +11,8 @@ Tables: 1x deleted, 2x created
 `;
 
 exports[`diff can diff schemas with no changes 1`] = `
-"No tables with changes: 1x similar (hidden)
+"Tables: 1x similar (hidden)
+Re-run with --all to show hidden rows
 "
 `;
 
@@ -44,7 +45,8 @@ exports[`diff can diff tables data 1`] = `
 id field_1    created_at
 1  12 → 12.3  2020-07-24 18:34:00
 2  30 → 30.45 2020-07-24 18:34:00 → 2020-07-24 19:25:00
-Re-run with --all to show rows without changes
+
+Rows: 2x changed
 "
 `;
 
@@ -53,14 +55,16 @@ exports[`diff can diff tables data with all options 1`] = `
 
 id field_1
 2  30 → 30.45
+
+Rows: 1x changed
 "
 `;
 
 exports[`diff can diff tables data with no changes 1`] = `
 "Diff of tables content (rows 1 to 20):
 
-No table content changes
-Re-run with --all to show rows without changes
+Rows: 2x similar (hidden)
+Re-run with --all to show hidden rows
 "
 `;
 
@@ -70,6 +74,8 @@ exports[`diff can diff tables data with no changes, showing all 1`] = `
 id
 1
 2
+
+Rows: 2x similar
 "
 `;
 

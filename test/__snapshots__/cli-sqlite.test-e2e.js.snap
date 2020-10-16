@@ -31,7 +31,8 @@ exports[`CLI test: sqlite3 can diff tables data 1`] = `
 id field_1    updated_at
 1  12 → 12.3  [null] → 2020-07-24 18:34:00
 2  30 → 30.45 2020-07-24 18:34:00 → 2020-07-24 19:25:00
-Re-run with --all to show rows without changes
+
+Rows: 2x changed
 "
 `;
 

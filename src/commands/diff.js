@@ -1,8 +1,8 @@
+const _ = require("lodash");
+const chalk = require("chalk");
 const table = require("../table");
 const CliApp = require("../CliApp");
-const { streamsDiff } = require("../streamUtils");
-const { diffColumns, diffIndexes, diffSchemas } = require("../schemaDiff");
-const chalk = require("chalk");
+const { diffArrays, defaultFormatter } = require("../diffUtils");
 
 module.exports = {
   command: "diff <table1> <table2>",
@@ -45,10 +45,17 @@ module.exports = {
     const lib1 = await CliApp.initLib(argv.table1);
     const lib2 = await CliApp.initLib(argv.table2);
 
+    if (table1 && !(await lib1.schema.hasTable(table1))) {
+      CliApp.error(`Table '${table1}' not found in 'before' schema`);
+    }
+    if (table2 && !(await lib2.schema.hasTable(table2))) {
+      CliApp.error(`Table '${table2}' not found in 'after' schema`);
+    }
+
     if (table1 && table2 && argv.data) {
-      await runDiffTablesData(lib1, lib2, table1, table2, argv);
+      await runDiffData(lib1, lib2, table1, table2, argv);
     } else if (table1 && table2) {
-      await runDiffTablesSchema(lib1, lib2, table1, table2, argv);
+      await runDiffTables(lib1, lib2, table1, table2, argv);
     } else {
       await runDiffSchemas(lib1, lib2, argv);
     }
@@ -58,133 +65,169 @@ module.exports = {
   },
 };
 
-async function runDiffTablesSchema(lib1, lib2, table1, table2, argv) {
-  if (!(await lib1.schema.hasTable(table1))) {
-    CliApp.error(`Table '${table1}' not found in 'before' schema`);
-  }
-  if (!(await lib2.schema.hasTable(table2))) {
-    CliApp.error(`Table '${table2}' not found in 'after' schema`);
-  }
-
-  const { columns, summary: colSummary } = diffColumns(
-    await lib1(table1).columnInfo(),
-    await lib2(table2).columnInfo(),
-    { showSimilar: argv.all }
+async function runDiffTables(lib1, lib2, table1, table2, argv) {
+  const cols = diffArrays(
+    await listColumns(lib1, table1),
+    await listColumns(lib2, table2),
+    { keyBy: "column", allRows: !!argv.all }
   );
 
-  if (columns.length) {
-    const formatted = columns.map((col) => ({
-      column: col.displayColumn,
-      type: col.displayType,
-      nullable: col.displayNullable,
-      default: col.displayDefault,
-    }));
-    console.log(table(formatted));
+  const indexes1 = await listIndexes(lib1, table1);
+  const indexes2 = await listIndexes(lib2, table2);
+  const inds = diffArrays(indexes1, indexes2, {
+    keyBy: getIndexesKeyBy(indexes1, indexes2),
+    allRows: !!argv.all,
+  });
+
+  if (cols.items.length) {
+    console.log(table(cols.items));
   }
 
-  const {
-    indexes,
-    summary: indSummary,
-  } = diffIndexes(
-    await lib1.schema.listIndexes(table1),
-    await lib2.schema.listIndexes(table2),
-    { showSimilar: argv.all }
-  );
-
-  if (indexes.length) {
-    if (columns.length) {
+  if (inds.items.length) {
+    if (cols.items.length) {
       console.log("");
     }
-
-    const formatted = indexes.map((ind) => ({
-      index: ind.displayIndex,
-      algorithm: ind.displayAlgorithm,
-      unique: ind.displayUnique,
-      columns: ind.displayColumns,
-    }));
-    console.log(table(formatted));
+    console.log(table(inds.items));
   }
 
-  if (argv.all || columns.length || indexes.length) {
+  if (cols.items.length || inds.items.length) {
     console.log("");
   }
 
-  console.log(`Columns: ${colSummary}`);
-  console.log(`Indexes: ${indSummary}`);
+  console.log(`Columns: ${cols.summary}`);
+  console.log(`Indexes: ${inds.summary}`);
 
   if (
     !argv.all &&
-    (colSummary.includes("(hidden)") || indSummary.includes("(hidden)"))
+    (cols.summary.includes("(hidden)") || inds.summary.includes("(hidden)"))
   ) {
     console.log(chalk.grey("Re-run with --all to show hidden rows"));
   }
 }
 
-async function runDiffTablesData(lib1, lib2, table1, table2, argv) {
-  if (!(await lib1.schema.hasTable(table1))) {
-    CliApp.error(`Table '${table1}' not found in 'before' schema`);
-  }
-  if (!(await lib2.schema.hasTable(table2))) {
-    CliApp.error(`Table '${table2}' not found in 'after' schema`);
-  }
-
+async function runDiffData(lib1, lib2, table1, table2, argv) {
   const first = argv.offset + 1;
   const last = first + argv.limit - 1;
   console.log(`Diff of tables content (rows ${first} to ${last}):`);
   console.log("");
 
-  const streamRows = (knex, table) =>
-    knex(table)
-      .orderBy(argv.key)
-      .limit(argv.limit)
-      .offset(argv.offset)
-      .select(knex.raw(argv.columns))
-      .stream();
-
-  const rows = await streamsDiff(
-    streamRows(lib1, table1),
-    streamRows(lib2, table2),
-    { idKey: argv.key, allRows: argv.all, allColumns: false }
+  const { items, summary } = await diffArrays(
+    await listRows(lib1, table1, argv),
+    await listRows(lib2, table2, argv),
+    { keyBy: argv.key, allRows: !!argv.all, allColumns: false }
   );
 
-  if (rows.length) {
+  if (items.length) {
     // Make sure the primary key is shown as first column of the table
-    const headers = Object.keys(rows[0]).filter((key) => key !== argv.key);
-    console.log(table(rows, { headers: [argv.key, ...headers] }));
-  } else {
-    console.log("No table content changes");
+    const headers = Object.keys(items[0]).filter((key) => key !== argv.key);
+    console.log(table(items, { headers: [argv.key, ...headers] }));
+    console.log("");
   }
 
-  if (!argv.all && Number(argv.limit) !== rows.length) {
-    console.log(chalk.grey("Re-run with --all to show rows without changes"));
+  console.log(`Rows: ${summary}`);
+
+  if (!argv.all && summary.includes("(hidden)")) {
+    console.log(chalk.grey("Re-run with --all to show hidden rows"));
   }
 }
 
 async function runDiffSchemas(lib1, lib2, argv) {
-  const { tables, summary } = diffSchemas(
-    await lib1.schema.tablesInfo(),
-    await lib2.schema.tablesInfo(),
-    { showSimilar: argv.all }
+  const { items, summary } = diffArrays(
+    await listTables(lib1),
+    await listTables(lib2),
+    {
+      keyBy: "table",
+      allRows: !!argv.all,
+      formatter: (status, field, val1, val2) => {
+        if (field === "columns") {
+          return diffArrays(val1, val2, { keyBy: "column" }).summary;
+        }
+        if (field === "indexes") {
+          const keyBy = getIndexesKeyBy(val1, val2);
+          return diffArrays(val1, val2, { keyBy }).summary;
+        }
+        // Format normally the rest of the fields
+        return defaultFormatter(status, field, val1, val2);
+      },
+    }
   );
 
-  const formatted = tables.map((table) => ({
-    table: table.displayTable,
-    rows: table.displayRows,
-    bytes: table.displayBytes,
-    columns: table.colSummary,
-    indexes: table.indSummary,
-  }));
-
-  if (!formatted.length) {
-    console.log(`No tables with changes: ${summary}`);
-    return;
+  if (items.length) {
+    console.log(table(items));
+    console.log("");
   }
 
-  console.log(table(formatted));
-  console.log("");
   console.log(`Tables: ${summary}`);
 
   if (!argv.all && summary.includes("(hidden)")) {
     console.log(chalk.grey("Re-run with --all to show hidden rows"));
   }
 }
+
+function getIndexesKeyBy(indexes1, indexes2) {
+  const keyByName = "index";
+  const keyByHash = (i) => `${i.algorithm}:${i.unique}:${i.columns}`;
+
+  const countMerged = (items1, items2, keyBy) => {
+    const keys = Object.keys({
+      ..._.keyBy(items1, keyBy),
+      ..._.keyBy(items2, keyBy),
+    });
+    return keys.length;
+  };
+
+  // Indexes autogenerated by some tools may be created with different
+  // randomised names each time, which would appear as totally different
+  // indexes if we group them by their name (the "index" field).
+  //
+  // We want to detect those cases and show the index as "changed". To
+  // achieve this, we try to key all indexes both by name, and by hash,
+  // and continue with whichever results in less different indexes
+  // (which means more matches found between the indexes of both tables).
+  const countByHash = countMerged(indexes1, indexes2, keyByHash);
+  const countByName = countMerged(indexes1, indexes2, keyByName);
+
+  return countByHash <= countByName ? keyByHash : keyByName;
+}
+
+async function listColumns(knex, table) {
+  return formatInputColumns(await knex(table).columnInfo());
+}
+
+async function listIndexes(knex, table) {
+  return formatInputIndexes(await knex.schema.listIndexes(table));
+}
+
+const listRows = (knex, table, argv) =>
+  knex(table)
+    .orderBy(argv.key)
+    .limit(argv.limit)
+    .offset(argv.offset)
+    .select(knex.raw(argv.columns));
+
+async function listTables(knex) {
+  const tables = await knex.schema.tablesInfo();
+  return _.map(tables, (table, key) => ({
+    table: key,
+    rows: table.rows,
+    bytes: table.prettyBytes,
+    columns: formatInputColumns(table.columns),
+    indexes: formatInputIndexes(table.indexes),
+  }));
+}
+
+const formatInputColumns = (table) =>
+  _.map(table, (col, key) => ({
+    column: key,
+    type: col.fullType,
+    nullable: col.nullable,
+    default: col.defaultValue,
+  }));
+
+const formatInputIndexes = (indexes) =>
+  _.map(indexes, (ind) => ({
+    index: ind.name,
+    algorithm: ind.algorithm,
+    unique: ind.unique,
+    columns: ind.columns,
+  }));
