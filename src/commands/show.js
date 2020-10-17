@@ -36,7 +36,7 @@ module.exports = {
       }));
       console.log(table(formatted));
     } else {
-      console.log("No indexes in table");
+      console.log("There are no indexes in the table");
     }
 
     await lib.destroy();

@@ -17,13 +17,17 @@ module.exports = {
       (row) => row.table,
     ]).map((row) => ({ ...row, bytes: row.prettyBytes }));
 
-    console.log(table(formatted, { headers: ["table", "rows", "bytes"] }));
+    if (tables.length) {
+      console.log(table(formatted, { headers: ["table", "rows", "bytes"] }));
 
-    const totalBytes = tables.reduce((acc, row) => acc + (row.bytes || 0), 0);
-    console.log("");
-    console.log(
-      chalk.grey(`(${prettyBytes(totalBytes)} in ${tables.length} tables)`)
-    );
+      const totalBytes = tables.reduce((acc, row) => acc + (row.bytes || 0), 0);
+      console.log("");
+      console.log(
+        chalk.grey(`(${prettyBytes(totalBytes)} in ${tables.length} tables)`)
+      );
+    } else {
+      console.log("There are no tables in the connection");
+    }
 
     await lib.destroy();
   },

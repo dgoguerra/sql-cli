@@ -79,7 +79,7 @@ field_1    bigint   true
 created_at datetime true
 updated_at datetime true
 
-No indexes in table
+There are no indexes in the table
 "
 `;
 

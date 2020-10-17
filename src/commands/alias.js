@@ -32,7 +32,11 @@ function listAliases() {
     const source = CliApp.aliasSources[alias];
     return { alias: source ? `${alias} (${source})` : alias, conn };
   });
-  console.log(table(formatted));
+  if (formatted.length) {
+    console.log(table(formatted));
+  } else {
+    console.log("There are no saved aliases");
+  }
 }
 
 function addAlias(argv) {
