@@ -6,7 +6,6 @@ const _ = require("lodash");
 const split = require("split2");
 const rimraf = require("rimraf");
 const through = require("through2");
-const prettier = require("prettier");
 const { EventEmitter } = require("events");
 const { stringDate } = require("./stringDate");
 const { runPipeline } = require("./streamUtils");
@@ -155,16 +154,19 @@ class SqlDumper extends EventEmitter {
 
     const migration = `
       module.exports.up = async (knex) => {
-        await knex.schema.createTable("${table}", t => {
-          ${statements.join(";\n")}
+        await knex.schema.createTable("${table}", (t) => {
+          ${statements.join(";\n    ") + ";"}
         });
       };
       module.exports.down = async (knex) => {
         await knex.schema.dropTableIfExists("${table}");
-      };
-    `;
+      };`;
 
-    fs.writeFileSync(filePath, prettier.format(migration, { parser: "babel" }));
+    fs.writeFileSync(
+      filePath,
+      // Clean up indentation of the template string
+      migration.trim().replace(/\n      /g, "\n") + "\n"
+    );
 
     return true;
   }
