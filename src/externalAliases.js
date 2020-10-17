@@ -14,7 +14,7 @@ const findTablePlusAliases = () => {
     connections = readPlistFile(TABLEPLUS_CONNECTIONS_PATH);
   } catch (err) {
     // File not found, assume TablePlus is not installed or has no config
-    return;
+    return [];
   }
 
   return connections.map((c) => {
@@ -52,7 +52,7 @@ const findSequelProAliases = () => {
     connections = favorites["Favorites Root"].Children;
   } catch (err) {
     // File not found, assume SequelPro is not installed or has no config
-    return;
+    return [];
   }
 
   return connections.map((c) => {
