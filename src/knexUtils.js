@@ -294,7 +294,7 @@ const listIndexes = async (knex, table) => {
 
   const extractColsFromSql = (sql) => {
     const matches = sql.match(/\(([^\(]+)\)$/);
-    if (!matches.length) {
+    if (!matches || !matches.length) {
       return [];
     }
     return matches[1].split(/, ?/).map((col) => _.trim(col, '`"'));
@@ -323,8 +323,11 @@ const listIndexes = async (knex, table) => {
   }
 
   if (client === "Client_SQLite3") {
+    // Avoid rows without sql, to ignore any autoindexes created
+    // by sqlite on the table.
     return knex("sqlite_master")
-      .where({ type: "index", tbl_name: table })
+      .whereNotNull("sql")
+      .andWhere({ type: "index", tbl_name: table })
       .then((rows) =>
         rows.map((row) => ({
           name: row.name,
@@ -412,47 +415,56 @@ const toKnexType = (type, maxLength = null) => {
 const getPrimaryKey = async (knex, table) => {
   const client = knex.client.constructor.name;
   const database = knex.client.database();
-  let rows;
+
+  const formatRows = (rows) => rows.map((row) => row.column);
 
   if (client === "Client_SQLite3") {
-    rows = await knex(knex.raw(`pragma_table_info('${table}')`))
-      .where({ pk: 1 })
-      .select({ column: "name" });
-  } else if (client === "Client_PG") {
-    const result = await knex.raw(`
-      SELECT pg_attribute.attname as column
-      FROM pg_index, pg_class, pg_attribute, pg_namespace
-      WHERE pg_class.oid = '${table}'::regclass
-        AND indrelid = pg_class.oid
-        AND nspname = current_schema()
-        AND pg_class.relnamespace = pg_namespace.oid
-        AND pg_attribute.attrelid = pg_class.oid
-        AND pg_attribute.attnum = any(pg_index.indkey)
-        AND indisprimary
-    `);
-    rows = result.rows;
-  } else if (client === "Client_MySQL" || client === "Client_MySQL2") {
-    rows = await knex("information_schema.statistics")
+    return knex(knex.raw(`pragma_table_info('${table}')`))
+      .where("pk", "!=", 0)
+      .select({ column: "name" })
+      .orderBy("pk")
+      .then((rows) => formatRows(rows));
+  }
+
+  if (client === "Client_PG") {
+    return knex
+      .raw(
+        `SELECT pg_attribute.attname as column
+        FROM pg_index, pg_class, pg_attribute, pg_namespace
+        WHERE pg_class.oid = '${table}'::regclass
+          AND indrelid = pg_class.oid
+          AND nspname = current_schema()
+          AND pg_class.relnamespace = pg_namespace.oid
+          AND pg_attribute.attrelid = pg_class.oid
+          AND pg_attribute.attnum = any(pg_index.indkey)
+          AND indisprimary`
+      )
+      .then(({ rows }) => formatRows(rows));
+  }
+
+  if (client === "Client_MySQL" || client === "Client_MySQL2") {
+    return knex("information_schema.statistics")
       .where({
         table_schema: database,
         table_name: table,
         index_name: "PRIMARY",
       })
-      .select({ column: "column_name" });
-  } else if (client === "Client_MSSQL") {
-    rows = await knex("information_schema.key_column_usage")
+      .select({ column: "column_name" })
+      .then((rows) => formatRows(rows));
+  }
+
+  if (client === "Client_MSSQL") {
+    return knex("information_schema.key_column_usage")
       .whereRaw(
         `OBJECTPROPERTY(OBJECT_ID(CONSTRAINT_SCHEMA + '.' + CONSTRAINT_NAME), 'IsPrimaryKey') = 1`
       )
       .andWhereRaw("TABLE_SCHEMA = SCHEMA_NAME()")
       .andWhere({ table_name: table })
-      .select({ column: "column_name" });
+      .select({ column: "column_name" })
+      .then((rows) => formatRows(rows));
   }
 
-  // Only return the column name its a single column was found.
-  // If a table has a primary key composed of several fields,
-  // this method will behave as if no primary key was found.
-  return rows && rows.length === 1 ? rows[0].column : null;
+  return [];
 };
 
 const streamInsert = async (knex, table, stream) => {
@@ -532,7 +544,7 @@ const bulkMssqlInsert = async (
     }
 
     msTable.columns.add(colKey, msType, {
-      primary: colKey === primaryKey,
+      primary: primaryKey.includes(colKey),
       length: Infinity,
       nullable,
     });

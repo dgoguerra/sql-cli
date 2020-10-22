@@ -19,8 +19,8 @@ const TEST_TABLE1_CONTENT = [
 ];
 
 const TEST_TABLE2_CONTENT = [
-  { field_1: 12.3, field_2: "foo", created_at: TEST_DATETIME_1 },
-  { field_1: 30.45, field_2: "bar", created_at: TEST_DATETIME_2 },
+  { id: "id1", field_1: 12.3, field_2: "foo", created_at: TEST_DATETIME_1 },
+  { id: "id2", field_1: 30.45, field_2: "bar", created_at: TEST_DATETIME_2 },
 ];
 
 describe("dump", () => {
@@ -45,16 +45,17 @@ describe("dump", () => {
       t.index(["field_1"]);
     });
     await knex.schema.createTable("table_2", (t) => {
-      t.increments("id");
+      t.string("id").primary();
       t.decimal("field_1").notNullable();
       t.text("field_2").defaultTo("default text");
       t.timestamps();
       t.unique(["field_1"]);
     });
     await knex.schema.createTable("table_3", (t) => {
-      t.bigIncrements("id_field");
       t.bigInteger("field_1");
+      t.string("field_2");
       t.timestamps();
+      t.primary(["field_1", "field_2"]);
     });
 
     await knex("table_1").insert(TEST_TABLE1_CONTENT);

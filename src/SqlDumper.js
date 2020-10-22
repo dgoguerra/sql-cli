@@ -6,6 +6,7 @@ const _ = require("lodash");
 const split = require("split2");
 const rimraf = require("rimraf");
 const through = require("through2");
+const deepEqual = require("deep-equal");
 const { EventEmitter } = require("events");
 const { stringDate } = require("./stringDate");
 const { runPipeline } = require("./streamUtils");
@@ -143,20 +144,19 @@ class SqlDumper extends EventEmitter {
     const statements = [];
 
     Object.keys(columns).forEach((key) => {
+      const isPrimaryKey = primaryKey.length === 1 && primaryKey[0] === key;
       statements.push(
-        this.buildColumnStatement(key, columns[key], {
-          primaryKey: key === primaryKey,
-        })
+        this.buildColumnStatement(key, columns[key], { isPrimaryKey })
       );
     });
 
+    if (primaryKey.length > 1) {
+      statements.push(this.buildPrimaryStatement(primaryKey));
+    }
+
     indexes.forEach((index) => {
       // Ignore primary key index, its created while creating the column
-      if (
-        index.unique &&
-        index.columns.length === 1 &&
-        index.columns[0] === primaryKey
-      ) {
+      if (index.unique && deepEqual(primaryKey, index.columns)) {
         return;
       }
       statements.push(this.buildIndexStatement(index));
@@ -198,16 +198,18 @@ class SqlDumper extends EventEmitter {
     return true;
   }
 
-  buildColumnStatement(key, col, { primaryKey = false } = {}) {
+  buildColumnStatement(key, col, { isPrimaryKey = false } = {}) {
     const primaryKeyTypes = {
       integer: "increments",
       bigInteger: "bigIncrements",
     };
 
-    let type = toKnexType(col.type, col.maxLength);
+    let type = toKnexType(col.type, col.maxLength) || col.type;
+    let isIncrement = false;
 
-    if (primaryKey) {
-      type = primaryKeyTypes[type] || type;
+    if (isPrimaryKey && primaryKeyTypes[type]) {
+      type = primaryKeyTypes[type];
+      isIncrement = true;
     }
 
     const statement = [
@@ -216,8 +218,13 @@ class SqlDumper extends EventEmitter {
         : `t.${type}(${wrapValue(key)})`,
     ];
 
-    // Dont apply nullable or default value modifiers on primary keys
-    if (!primaryKey) {
+    // Dont apply "primary()", nullable or default values on primary columns
+    // of type "increments".
+    if (!isIncrement) {
+      // Mark column explicitly as primary key
+      if (isPrimaryKey) {
+        statement.push("primary()");
+      }
       // Set nullable timestamps explicitly (even though Knex makes columns
       // nullable by default). Prevents older versions of MySQL (ex. 5.5)
       // from creating the timestamp column as not null, with default
@@ -225,7 +232,8 @@ class SqlDumper extends EventEmitter {
       if (col.nullable && type === "timestamp") {
         statement.push("nullable()");
       }
-      if (!col.nullable) {
+      // primary() implies notNullable(), do not add it
+      if (!col.nullable && !isPrimaryKey) {
         statement.push("notNullable()");
       }
       if (col.defaultValue !== null) {
@@ -236,10 +244,13 @@ class SqlDumper extends EventEmitter {
     return statement.join(".");
   }
 
+  buildPrimaryStatement(columns) {
+    return `t.primary(${JSON.stringify(columns)})`;
+  }
+
   buildIndexStatement(index) {
     const client = this.knex.client.constructor.name;
     const type = index.unique ? "unique" : "index";
-    const columns = index.columns.map((c) => wrapValue(c));
 
     // In MySQL primary key indexes are always called "PRIMARY". If the primary
     // key is composed of several fields, it will be dumped as an index statement,
@@ -249,9 +260,10 @@ class SqlDumper extends EventEmitter {
       (client === "Client_MySQL" || client === "Client_MySQL2") &&
       index.name === "PRIMARY";
 
+    const columns = JSON.stringify(index.columns);
     return ignoreName
-      ? `t.${type}([${columns}])`
-      : `t.${type}([${columns}], ${wrapValue(index.name)})`;
+      ? `t.${type}(${columns})`
+      : `t.${type}(${columns}, ${wrapValue(index.name)})`;
   }
 
   cleanRow(row) {

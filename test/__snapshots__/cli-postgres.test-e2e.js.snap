@@ -35,10 +35,10 @@ table_3 0
 `;
 
 exports[`CLI test: pg can diff tables 1`] = `
-"column  type                         nullable     default
-id      integer                      false        nextval('table_1_id_seq'::regclass) → nextval('table_2_id_seq'::regclass)
-field_1 integer → numeric            true → false
-field_2 character varying(50) → text true         [null] → default text
+"column  type                             nullable     default
+id      integer → character varying(255) false        nextval('table_1_id_seq'::regclass) → [null]
+field_1 integer → numeric                true → false
+field_2 character varying(50) → text     true         [null] → default text
 
 index                       algorithm unique columns
 table_1_pkey → table_2_pkey btree     true   id
@@ -88,7 +88,7 @@ table_1_field_1_index btree     false  field_1
 
 exports[`CLI test: pg can load dump to database 2`] = `
 "column     type                     nullable default
-id         integer                  false    nextval('table_2_id_seq'::regclass)
+id         character varying(255)   false
 field_1    numeric                  false
 field_2    text                     true     default text
 created_at timestamp with time zone true
@@ -102,13 +102,13 @@ table_2_field_1_unique btree     true   field_1
 
 exports[`CLI test: pg can load dump to database 3`] = `
 "column     type                     nullable default
-id_field   bigint                   false    nextval('table_3_id_field_seq'::regclass)
-field_1    bigint                   true
+field_1    bigint                   false
+field_2    character varying(255)   false
 created_at timestamp with time zone true
 updated_at timestamp with time zone true
 
 index        algorithm unique columns
-table_3_pkey btree     true   id_field
+table_3_pkey btree     true   field_1,field_2
 "
 `;
 
@@ -139,7 +139,7 @@ table_1_field_1_index unknown   false  field_1
 
 exports[`CLI test: pg can show table 1`] = `
 "column     type                     nullable default
-id         integer                  false    nextval('table_2_id_seq'::regclass)
+id         character varying(255)   false
 field_1    numeric                  false
 field_2    text                     true     default text
 created_at timestamp with time zone true
@@ -171,7 +171,7 @@ module.exports.down = async (knex) => {
 exports[`CLI test: pg database dump contents are valid 2`] = `
 "module.exports.up = async (knex) => {
   await knex.schema.createTable(\\"table_2\\", (t) => {
-    t.increments(\\"id\\");
+    t.string(\\"id\\", 255).primary();
     t.decimal(\\"field_1\\").notNullable();
     t.text(\\"field_2\\").defaultTo(\\"default text\\");
     t.timestamp(\\"created_at\\").nullable();
@@ -188,10 +188,11 @@ module.exports.down = async (knex) => {
 exports[`CLI test: pg database dump contents are valid 3`] = `
 "module.exports.up = async (knex) => {
   await knex.schema.createTable(\\"table_3\\", (t) => {
-    t.bigIncrements(\\"id_field\\");
-    t.bigInteger(\\"field_1\\");
+    t.bigInteger(\\"field_1\\").notNullable();
+    t.string(\\"field_2\\", 255).notNullable();
     t.timestamp(\\"created_at\\").nullable();
     t.timestamp(\\"updated_at\\").nullable();
+    t.primary([\\"field_1\\",\\"field_2\\"]);
   });
 };
 module.exports.down = async (knex) => {
@@ -207,7 +208,7 @@ exports[`CLI test: pg database dump contents are valid 4`] = `
 `;
 
 exports[`CLI test: pg database dump contents are valid 5`] = `
-"{\\"id\\":1,\\"field_1\\":\\"12.30\\",\\"field_2\\":\\"foo\\",\\"created_at\\":\\"2020-07-24T18:34:00.000Z\\",\\"updated_at\\":\\"2020-07-24T18:34:00.000Z\\"}
-{\\"id\\":2,\\"field_1\\":\\"30.45\\",\\"field_2\\":\\"bar\\",\\"created_at\\":\\"2020-07-24T18:34:00.000Z\\",\\"updated_at\\":\\"2020-07-24T19:25:00.000Z\\"}
+"{\\"id\\":\\"1\\",\\"field_1\\":\\"12.30\\",\\"field_2\\":\\"foo\\",\\"created_at\\":\\"2020-07-24T18:34:00.000Z\\",\\"updated_at\\":\\"2020-07-24T18:34:00.000Z\\"}
+{\\"id\\":\\"2\\",\\"field_1\\":\\"30.45\\",\\"field_2\\":\\"bar\\",\\"created_at\\":\\"2020-07-24T18:34:00.000Z\\",\\"updated_at\\":\\"2020-07-24T19:25:00.000Z\\"}
 "
 `;

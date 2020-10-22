@@ -161,16 +161,17 @@ const migrateTestTables = async (knex) => {
     t.index(["field_1"]);
   });
   await knex.schema.createTable("table_2", (t) => {
-    t.increments("id");
+    t.string("id").primary();
     t.decimal("field_1").notNullable();
     t.text("field_2").defaultTo("default text");
     t.timestamps();
     t.unique(["field_1"]);
   });
   await knex.schema.createTable("table_3", (t) => {
-    t.bigIncrements("id_field");
     t.bigInteger("field_1");
+    t.string("field_2");
     t.timestamps();
+    t.primary(["field_1", "field_2"]);
   });
 
   const date1 = "2020-07-24 18:34:00";
@@ -181,8 +182,20 @@ const migrateTestTables = async (knex) => {
     { field_1: 30, field_2: "bar", created_at: date1, updated_at: date1 },
   ]);
   await knex("table_2").insert([
-    { field_1: 12.3, field_2: "foo", created_at: date1, updated_at: date1 },
-    { field_1: 30.45, field_2: "bar", created_at: date1, updated_at: date2 },
+    {
+      id: "1",
+      field_1: 12.3,
+      field_2: "foo",
+      created_at: date1,
+      updated_at: date1,
+    },
+    {
+      id: "2",
+      field_1: 30.45,
+      field_2: "bar",
+      created_at: date1,
+      updated_at: date2,
+    },
   ]);
 };
 
