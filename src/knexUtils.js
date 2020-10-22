@@ -4,6 +4,17 @@ const writer = require("flush-write-stream");
 const { stringifyConn } = require("./connUtils");
 const { chunk, runPipeline } = require("./streamUtils");
 
+const KNEX_TYPES_MAP = {
+  text: ["nvarchar(-1)", "longtext"],
+  string: ["char", "character", "varchar", "nvarchar", "character varying"],
+  boolean: ["tinyint"],
+  integer: ["int"],
+  bigInteger: ["bigint"],
+  datetime: ["datetime2"],
+  decimal: ["money", "numeric"],
+  timestamp: ["timestamp with time zone"],
+};
+
 const hydrateKnex = (knex) => {
   // Methods to overwrite or create over Knex
   const KNEX_METHODS = {
@@ -395,21 +406,10 @@ const listIndexes = async (knex, table) => {
 const toKnexType = (type, maxLength = null) => {
   const fullType = `${type}(${maxLength})`;
 
-  const TYPES_MAP = {
-    "nvarchar(-1)": "text", // mssql
-    nvarchar: "string", // mssql
-    varchar: "string",
-    longtext: "text",
-    tinyint: "boolean",
-    int: "integer",
-    bigint: "bigInteger",
-    datetime2: "datetime", // mssql
-    money: "decimal", // mssql
-    "character varying": "string", // postgres
-    "timestamp with time zone": "timestamp", // postgres
-    numeric: "decimal", // postgres
-  };
-  return TYPES_MAP[fullType] || TYPES_MAP[type] || type;
+  const findType = (type) =>
+    _.findKey(KNEX_TYPES_MAP, (val, key) => key === type || val.includes(type));
+
+  return findType(fullType) || findType(type) || null;
 };
 
 const getPrimaryKey = async (knex, table) => {

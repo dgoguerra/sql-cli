@@ -8,6 +8,7 @@ const rimraf = require("rimraf");
 const through = require("through2");
 const deepEqual = require("deep-equal");
 const { EventEmitter } = require("events");
+const TableBuilder = require("knex/lib/schema/tablebuilder");
 const { stringDate } = require("./stringDate");
 const { runPipeline } = require("./streamUtils");
 const { toKnexType, streamInsert } = require("./knexUtils");
@@ -210,6 +211,12 @@ class SqlDumper extends EventEmitter {
     if (isPrimaryKey && primaryKeyTypes[type]) {
       type = primaryKeyTypes[type];
       isIncrement = true;
+    }
+
+    if (!TableBuilder.prototype[type]) {
+      throw new Error(
+        `Unknown column type '${type}'. Cannot convert it to a known Knex type`
+      );
     }
 
     const statement = [
