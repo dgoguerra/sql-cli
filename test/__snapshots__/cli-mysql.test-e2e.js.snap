@@ -103,8 +103,8 @@ exports[`CLI test: mysql2 can load dump to database 3`] = `
 "column     type         nullable default
 field_1    bigint       false
 field_2    varchar(255) false
-created_at datetime     true
-updated_at datetime     true
+created_at timestamp    false    CURRENT_TIMESTAMP
+updated_at timestamp    false    CURRENT_TIMESTAMP
 
 index   algorithm unique columns
 PRIMARY BTREE     true   field_1,field_2
@@ -189,8 +189,8 @@ exports[`CLI test: mysql2 database dump contents are valid 3`] = `
   await knex.schema.createTable(\\"table_3\\", (t) => {
     t.bigInteger(\\"field_1\\").notNullable();
     t.string(\\"field_2\\", 255).notNullable();
-    t.datetime(\\"created_at\\");
-    t.datetime(\\"updated_at\\");
+    t.timestamp(\\"created_at\\").notNullable().defaultTo(knex.raw(\\"CURRENT_TIMESTAMP\\"));
+    t.timestamp(\\"updated_at\\").notNullable().defaultTo(knex.raw(\\"CURRENT_TIMESTAMP\\"));
     t.primary([\\"field_1\\",\\"field_2\\"]);
   });
 };

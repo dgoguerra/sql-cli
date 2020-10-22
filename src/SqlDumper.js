@@ -17,9 +17,6 @@ const isNumeric = (v) =>
   (typeof v === "number" || typeof v === "string") &&
   Number.isFinite(Number(v));
 
-const wrapValue = (v) =>
-  typeof v === "string" && !isNumeric(v) ? `"${v}"` : v;
-
 class SqlDumper extends EventEmitter {
   constructor(knex, { dumpsDir = process.env.PWD } = {}) {
     super();
@@ -221,34 +218,53 @@ class SqlDumper extends EventEmitter {
 
     const statement = [
       col.maxLength
-        ? `t.${type}(${wrapValue(key)}, ${col.maxLength})`
-        : `t.${type}(${wrapValue(key)})`,
+        ? `t.${type}("${key}", ${col.maxLength})`
+        : `t.${type}("${key}")`,
     ];
 
-    // Dont apply "primary()", nullable or default values on primary columns
-    // of type "increments".
-    if (!isIncrement) {
-      // Mark column explicitly as primary key
-      if (isPrimaryKey) {
-        statement.push("primary()");
-      }
-      // Set nullable timestamps explicitly (even though Knex makes columns
-      // nullable by default). Prevents older versions of MySQL (ex. 5.5)
-      // from creating the timestamp column as not null, with default
-      // value CURRENT_TIMESTAMP.
-      if (col.nullable && type === "timestamp") {
-        statement.push("nullable()");
-      }
-      // primary() implies notNullable(), do not add it
-      if (!col.nullable && !isPrimaryKey) {
-        statement.push("notNullable()");
-      }
-      if (col.defaultValue !== null) {
-        statement.push(`defaultTo(${wrapValue(col.defaultValue)})`);
-      }
+    // In primary key columns of type "increments" dont apply primary,
+    // nullable or default properties.
+    if (isIncrement) {
+      return statement.join(".");
+    }
+
+    // Mark column explicitly as primary key
+    if (isPrimaryKey) {
+      statement.push("primary()");
+    }
+    // Set nullable timestamps explicitly (even though Knex makes columns
+    // nullable by default). Prevents older versions of MySQL (ex. 5.5)
+    // from adding by default "not null default to CURRENT_TIMESTAMP".
+    // to timestamp columns.
+    if (col.nullable && type === "timestamp") {
+      statement.push("nullable()");
+    }
+    // primary() implies notNullable(), so do not add it
+    if (!col.nullable && !isPrimaryKey) {
+      statement.push("notNullable()");
+    }
+    if (col.defaultValue !== null) {
+      statement.push(this.buildDefaultTo(type, col.defaultValue));
     }
 
     return statement.join(".");
+  }
+
+  buildDefaultTo(type, value) {
+    // CURRENT_TIMESTAMP is understood by all databases, but
+    // MSSQL replaces it for getdate().
+    const nowConstraints = ["CURRENT_TIMESTAMP", "GETDATE()"];
+
+    if (
+      (type === "timestamp" || type === "datetime") &&
+      nowConstraints.includes(value.toUpperCase())
+    ) {
+      value = `knex.raw("CURRENT_TIMESTAMP")`;
+    } else if (typeof value === "string" && !isNumeric(value)) {
+      value = `"${value}"`;
+    }
+
+    return `defaultTo(${value})`;
   }
 
   buildPrimaryStatement(columns) {
@@ -270,7 +286,7 @@ class SqlDumper extends EventEmitter {
     const columns = JSON.stringify(index.columns);
     return ignoreName
       ? `t.${type}(${columns})`
-      : `t.${type}(${columns}, ${wrapValue(index.name)})`;
+      : `t.${type}(${columns}, "${index.name}")`;
   }
 
   cleanRow(row) {

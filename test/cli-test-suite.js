@@ -170,7 +170,7 @@ const migrateTestTables = async (knex) => {
   await knex.schema.createTable("table_3", (t) => {
     t.bigInteger("field_1");
     t.string("field_2");
-    t.timestamps();
+    t.timestamps(true, true); // default to CURRENT_TIMESTAMP
     t.primary(["field_1", "field_2"]);
   });
 

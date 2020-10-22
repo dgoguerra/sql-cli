@@ -104,8 +104,8 @@ exports[`CLI test: mssql can load dump to database 3`] = `
 "column     type          nullable default
 field_1    bigint        false
 field_2    nvarchar(255) false
-created_at datetime2     true
-updated_at datetime2     true
+created_at datetime2     false    getdate()
+updated_at datetime2     false    getdate()
 
 index        algorithm unique columns
 table_3_pkey CLUSTERED true   field_1,field_2
@@ -190,8 +190,8 @@ exports[`CLI test: mssql database dump contents are valid 3`] = `
   await knex.schema.createTable(\\"table_3\\", (t) => {
     t.bigInteger(\\"field_1\\").notNullable();
     t.string(\\"field_2\\", 255).notNullable();
-    t.datetime(\\"created_at\\");
-    t.datetime(\\"updated_at\\");
+    t.datetime(\\"created_at\\").notNullable().defaultTo(knex.raw(\\"CURRENT_TIMESTAMP\\"));
+    t.datetime(\\"updated_at\\").notNullable().defaultTo(knex.raw(\\"CURRENT_TIMESTAMP\\"));
     t.primary([\\"field_1\\",\\"field_2\\"]);
   });
 };
