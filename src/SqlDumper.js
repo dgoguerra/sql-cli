@@ -94,12 +94,22 @@ class SqlDumper extends EventEmitter {
     // different database drivers:
     // - 2012-01-01 00:00:00
     // - 2012-01-01T00:00:00.000Z (ISO)
-    const regexDate = /^\d{4}-\d\d-\d\d( |T)\d\d:\d\d:\d\d/;
+    const dateRegex = /^\d{4}-\d\d-\d\d( |T)\d\d:\d\d:\d\d/;
 
     const formatRow = (row) => {
       for (const key in row) {
-        if (typeof row[key] === "string" && regexDate.test(row[key])) {
+        // Convert date strings to Date
+        if (typeof row[key] === "string" && dateRegex.test(row[key])) {
           row[key] = new Date(row[key]);
+        }
+        // Stringify JSON objects (some drivers return fields of type 'json'
+        // directly as an object when creating the dump data file).
+        if (
+          row[key] &&
+          typeof row[key] === "object" &&
+          !(row[key] instanceof Date)
+        ) {
+          row[key] = JSON.stringify(row[key]);
         }
       }
       return row;
