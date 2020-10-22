@@ -525,6 +525,7 @@ const bulkMssqlInsert = async (
 
   const customTypes = {
     DECIMAL: () => mssql.DECIMAL(32, 16),
+    TEXT: () => mssql.NVARCHAR(mssql.MAX),
   };
 
   const msTable = new mssql.Table(table);
