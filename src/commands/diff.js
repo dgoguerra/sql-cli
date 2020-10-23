@@ -17,8 +17,14 @@ module.exports = {
         description: "Diff the tables' data",
         type: "boolean",
       })
+      .option("query", {
+        description: "Diff the tables' output of a query",
+        type: "string",
+        default: null,
+      })
       .option("key", {
-        description: "Key field to diff rows by. Only has effect with --data",
+        description:
+          "Key field to diff rows by. Only has effect with --data and --query",
         type: "string",
         default: "id",
       })
@@ -52,7 +58,7 @@ module.exports = {
       CliApp.error(`Table '${table2}' not found in 'after' schema`);
     }
 
-    if (table1 && table2 && argv.data) {
+    if (argv.data || argv.query) {
       await runDiffData(lib1, lib2, table1, table2, argv);
     } else if (table1 && table2) {
       await runDiffTables(lib1, lib2, table1, table2, argv);
@@ -198,12 +204,23 @@ async function listIndexes(knex, table) {
   return formatInputIndexes(await knex.schema.listIndexes(table));
 }
 
-const listRows = (knex, table, argv) =>
-  knex(table)
+function listRows(knex, table, argv) {
+  if (argv.query) {
+    const client = knex.client.constructor.name;
+    return (
+      knex
+        .raw(argv.query)
+        // In postgres knex.raw() returns results inside 'rows'
+        .then((results) => (client === "Client_PG" ? results.rows : results))
+    );
+  }
+
+  return knex(table)
     .orderBy(argv.key)
     .limit(argv.limit)
     .offset(argv.offset)
     .select(knex.raw(argv.columns));
+}
 
 async function listTables(knex) {
   const tables = await knex.schema.tablesInfo();
