@@ -34,13 +34,20 @@ class SqlRepl {
       writer: (...args) => this.formatResult(...args),
     });
 
+    ["dbs", "databases"].forEach((cmd) =>
+      this.server.defineCommand(cmd, {
+        help: "List available databases",
+        action: () => this.runAction(() => this.listDatabases()),
+      })
+    );
+
     this.server.defineCommand("tables", {
       help: "List available tables",
       action: () => this.runAction(() => this.listSchemaTables()),
     });
 
     this.server.defineCommand("table", {
-      help: "List available tables",
+      help: "List table columns",
       action: (table) => this.runAction(() => this.listTableColumns(table)),
     });
 
@@ -60,6 +67,10 @@ class SqlRepl {
       console.log(this.formatError(err));
     }
     this.server.displayPrompt();
+  }
+
+  async listDatabases() {
+    return await this.lib.schema.listDatabases();
   }
 
   async listSchemaTables() {

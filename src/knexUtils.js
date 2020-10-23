@@ -40,6 +40,9 @@ const hydrateKnex = (knex) => {
 
   // Methods to overwrite or create over Knex's SchemaBuilder
   const SCHEMA_METHODS = {
+    listDatabases() {
+      return listDatabases(knex);
+    },
     listTables() {
       return listTables(knex);
     },
@@ -195,6 +198,43 @@ const getColumns = async (knex, table) => {
   }
 
   return results;
+};
+
+const listDatabases = async (knex) => {
+  const client = knex.client.constructor.name;
+  const database = knex.client.database();
+
+  const formatRows = (rows) =>
+    rows.map((row) => ({
+      database: row.database,
+      current: database === row.database || null,
+    }));
+
+  if (client === "Client_MySQL" || client === "Client_MySQL2") {
+    return knex("information_schema.schemata")
+      .select({ database: "schema_name" })
+      .then((rows) => formatRows(rows));
+  }
+
+  if (client === "Client_MSSQL") {
+    return knex("master.sys.databases")
+      .select({ database: "name" })
+      .then((rows) => formatRows(rows));
+  }
+
+  if (client === "Client_PG") {
+    return knex("pg_database")
+      .select({ database: "datname" })
+      .then((rows) => formatRows(rows));
+  }
+
+  if (client === "Client_SQLite3") {
+    return knex(knex.raw(`pragma_database_list`))
+      .select({ database: "name" })
+      .then((rows) => formatRows(rows));
+  }
+
+  return [];
 };
 
 // Snippet based on: https://github.com/knex/knex/issues/360#issuecomment-406483016

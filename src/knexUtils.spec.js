@@ -117,4 +117,10 @@ describe("hydrateKnex()", () => {
       },
     });
   });
+
+  it("can list databases", async () => {
+    expect(await knex.schema.listDatabases()).toMatchObject([
+      { database: "main" },
+    ]);
+  });
 });
