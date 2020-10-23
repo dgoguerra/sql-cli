@@ -232,7 +232,8 @@ const listTables = async (knex) => {
     return knex
       .raw(
         `SELECT c.relname AS table,
-          c.reltuples AS rows
+          c.reltuples AS rows,
+          pg_total_relation_size(c.oid) AS bytes
         FROM pg_class c
           JOIN pg_namespace n ON n.oid = c.relnamespace
         WHERE c.relkind = 'r'

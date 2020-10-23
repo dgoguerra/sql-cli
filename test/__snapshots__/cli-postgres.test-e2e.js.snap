@@ -2,11 +2,11 @@
 
 exports[`CLI test: pg can connect through ssh 1`] = `
 "table   rows bytes
-table_1 0
-table_2 0
-table_3 0
+table_2 0    49.2 kB
+table_1 0    41 kB
+table_3 0    8.19 kB
 
-(0 B in 3 tables)
+(98.3 kB in 3 tables)
 "
 `;
 
@@ -26,11 +26,11 @@ table_1_field_1_index btree     false  field_1
 
 exports[`CLI test: pg can connect with an alias 1`] = `
 "table   rows bytes
-table_1 0
-table_2 0
-table_3 0
+table_2 0    49.2 kB
+table_1 0    41 kB
+table_3 0    8.19 kB
 
-(0 B in 3 tables)
+(98.3 kB in 3 tables)
 "
 `;
 
@@ -64,11 +64,11 @@ Rows: 2x changed
 
 exports[`CLI test: pg can list tables 1`] = `
 "table   rows bytes
-table_1 0
-table_2 0
-table_3 0
+table_2 0    49.2 kB
+table_1 0    41 kB
+table_3 0    8.19 kB
 
-(0 B in 3 tables)
+(98.3 kB in 3 tables)
 "
 `;
 
