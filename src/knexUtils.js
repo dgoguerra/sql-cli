@@ -349,7 +349,13 @@ const listIndexes = async (knex, table) => {
     if (!matches || !matches.length) {
       return [];
     }
-    return matches[1].split(/, ?/).map((col) => _.trim(col, '`"'));
+    return matches[1].split(/, ?/).map((col) => {
+      // If column name has any trailing text, ignore it. For example, in
+      // postgres index columns may have modifieres like "varchar_pattern_ops":
+      // CREATE INDEX index ON table USING btree (my_field varchar_pattern_ops)
+      const [colName] = col.split(" ");
+      return _.trim(colName, '`"');
+    });
   };
 
   if (client === "Client_MySQL" || client === "Client_MySQL2") {
