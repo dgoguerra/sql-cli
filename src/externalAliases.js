@@ -19,7 +19,7 @@ const findTablePlusAliases = () => {
 
   return connections.map((c) => {
     const alias = _.snakeCase(c.ConnectionName).replace(/_/g, "-");
-    const conn = stringifyConn({
+    let conn = stringifyConn({
       protocol: c.Driver.toLowerCase(),
       path: c.DatabasePath, // only for SQLite
       host: c.DatabaseHost,
@@ -30,6 +30,25 @@ const findTablePlusAliases = () => {
       sshPort: c.isOverSSH && c.ServerPort,
       sshUser: c.isOverSSH && c.ServerUser,
     });
+
+    if (c.tLSMode) {
+      const [ca, key, cert] = c.TlsKeyPaths;
+      const params = [];
+
+      if (ca) {
+        params.push(`ca=${ca}`);
+      }
+      if (key) {
+        params.push(`key=${key}`);
+      }
+      if (cert) {
+        params.push(`cert=${cert}`);
+      }
+
+      if (params.length) {
+        conn += `?${params.join("&")}`;
+      }
+    }
 
     return {
       source: "tableplus",

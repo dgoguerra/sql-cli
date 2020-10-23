@@ -130,6 +130,23 @@ class SqlLib extends Function {
       conn = { host, port, user, password, database, charset, timezone };
     }
 
+    if (client === "pg") {
+      const sslParamKeys = ["ca", "key", "cert"];
+      const sslParams = { rejectUnauthorized: false };
+
+      Object.keys(conn.params).forEach((key) => {
+        if (sslParamKeys.includes(key)) {
+          sslParams[key] = conn.params[key];
+        }
+      });
+
+      // If any ssl config is set in the connection uri as params,
+      // pass it to the pg connection config.
+      if (Object.keys(sslParams).length > 1) {
+        conn.ssl = sslParams;
+      }
+    }
+
     return Knex({ client, connection: conn, ...rest });
   }
 }
