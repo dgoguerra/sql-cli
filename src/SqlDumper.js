@@ -32,6 +32,11 @@ class SqlDumper extends EventEmitter {
     const dumpDir = path.isAbsolute(dumpName)
       ? dumpName
       : path.resolve(this.dumpsDir, dumpName);
+    const tarballPath = `${dumpDir}.tgz`;
+
+    if (fs.existsSync(tarballPath)) {
+      throw new Error(`Dump file '${tarballPath}' already exists`);
+    }
 
     rimraf.sync(dumpDir);
     fs.mkdirSync(`${dumpDir}/data`, { recursive: true });
@@ -50,7 +55,6 @@ class SqlDumper extends EventEmitter {
       }
     }
 
-    const tarballPath = `${dumpDir}.tgz`;
     await tar.create(
       { gzip: true, file: tarballPath, cwd: path.dirname(dumpDir) },
       [path.basename(dumpDir)]
