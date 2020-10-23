@@ -53,9 +53,10 @@ class SqlLib extends Function {
 
   buildConnSlug(prefix = "") {
     const { connection: conn } = this.knex.client.config;
-    return _.snakeCase(
-      `${prefix}-${conn.server || conn.host}-${conn.database}-${stringDate()}`
-    ).replace(/_/g, "-");
+    const slug = _.snakeCase(
+      `${prefix}-${conn.server || conn.host}-${conn.database}`
+    );
+    return `${slug.slice(0, 30)}-${stringDate()}`.replace(/_/g, "-");
   }
 
   async _setupPortForwarding() {
