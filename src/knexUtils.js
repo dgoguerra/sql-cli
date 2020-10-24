@@ -45,6 +45,9 @@ const hydrateKnex = (knex) => {
     listIndexes(table) {
       return listIndexes(knex, table);
     },
+    listForeignKeys(table) {
+      return listForeignKeys(knex, table);
+    },
     listDatabases() {
       return listDatabases(knex);
     },
@@ -102,6 +105,7 @@ const getUri = (knex) => {
 const listColumns = async (knex, table) => {
   const client = knex.client.constructor.name;
   const database = knex.client.database();
+  const foreignKeys = _.keyBy(await listForeignKeys(knex, table), "from");
 
   const defaultListColumns = (where = {}) => {
     return knex("information_schema.columns")
@@ -123,6 +127,7 @@ const listColumns = async (knex, table) => {
       nullable: row.nullable === "YES" || row.nullable == 1,
       fullType: row.maxLength ? `${row.type}(${row.maxLength})` : row.type,
       default: cleanDefault(row.default),
+      foreign: foreign ? `${foreign.table}.${foreign.to}` : null,
     }));
   };
 
@@ -335,6 +340,80 @@ const listTables = async (knex) => {
   }
 
   throw new Error(`Unexpected client '${client}', not implemented`);
+};
+
+const listForeignKeys = async (knex, table) => {
+  const client = knex.client.constructor.name;
+  const database = knex.client.database();
+
+  const formatRows = (rows) =>
+    rows.map((row) => ({
+      name: row.name || null,
+      from: row.from,
+      to: row.to,
+      table: row.table,
+    }));
+
+  if (client === "Client_MySQL" || client === "Client_MySQL2") {
+    return knex("information_schema.key_column_usage")
+      .where({ referenced_table_schema: database, table_name: table })
+      .select({
+        name: "constraint_name",
+        from: "column_name",
+        to: "referenced_column_name",
+        table: "referenced_table_name",
+      })
+      .then((rows) => formatRows(rows));
+  }
+
+  if (client === "Client_PG") {
+    return knex
+      .raw(
+        `SELECT
+          tc.constraint_name AS name,
+          kcu.column_name AS from,
+          ccu.column_name AS to,
+          ccu.table_name AS table
+        FROM information_schema.table_constraints AS tc
+          JOIN information_schema.key_column_usage AS kcu
+            USING (constraint_schema, constraint_name, table_schema)
+          JOIN information_schema.constraint_column_usage AS ccu
+            USING (constraint_schema, constraint_name, table_schema)
+        WHERE tc.constraint_type = 'FOREIGN KEY'
+          AND tc.table_name='${table}'`
+      )
+      .then(({ rows }) => formatRows(rows));
+  }
+
+  if (client === "Client_MSSQL") {
+    return knex
+      .raw(
+        `SELECT
+          fk.name AS [name],
+          object_name (fk.referenced_object_id) AS [table],
+          fromcol.name AS [from],
+          tocol.name AS [to]
+        FROM sys.foreign_keys AS fk
+          JOIN sys.foreign_key_columns AS fkc
+            ON fk.object_id = fkc.constraint_object_id
+          JOIN sys.columns AS fromcol
+            ON fkc.parent_object_id = fromcol.object_id
+            AND fkc.parent_column_id = fromcol.column_id
+          JOIN sys.columns AS tocol
+            ON fkc.referenced_object_id = tocol.object_id
+            AND fkc.referenced_column_id = tocol.column_id
+        WHERE fk.parent_object_id = OBJECT_ID(SCHEMA_NAME() + '.${table}')`
+      )
+      .then((rows) => formatRows(rows));
+  }
+
+  if (client === "Client_SQLite3") {
+    return knex(knex.raw(`pragma_foreign_key_list('${table}')`)).then((rows) =>
+      formatRows(rows)
+    );
+  }
+
+  return [];
 };
 
 const listIndexes = async (knex, table) => {

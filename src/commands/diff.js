@@ -239,6 +239,7 @@ const formatInputColumns = (columns) =>
     type: col.fullType,
     nullable: col.nullable,
     default: col.default,
+    "foreign key": col.foreign,
   }));
 
 const formatInputIndexes = (indexes) =>

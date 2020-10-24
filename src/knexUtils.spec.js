@@ -7,6 +7,16 @@ const EXPECTED_COLUMNS_1_INFO = [
   { name: "field_2", fullType: "varchar(255)", nullable: true },
 ];
 
+const EXPECTED_COLUMNS_2_INFO = [
+  { name: "field_1", fullType: "bigint", nullable: true },
+  {
+    name: "field_2",
+    fullType: "varchar(255)",
+    nullable: true,
+    foreign: "table_1.field_1",
+  },
+];
+
 const EXPECTED_INDEXES_1_INFO = [
   {
     name: "table_1_field_1_index",
@@ -36,7 +46,7 @@ describe("hydrateKnex()", () => {
 
     await knex.schema.createTable("table_2", (t) => {
       t.bigInteger("field_1");
-      t.string("field_2");
+      t.string("field_2").references("table_1.field_1");
       t.primary(["field_1", "field_2"]);
     });
 
@@ -81,6 +91,12 @@ describe("hydrateKnex()", () => {
     );
   });
 
+  it("can get table columns with foreign keys", async () => {
+    expect(await knex.schema.listColumns("table_2")).toMatchObject(
+      EXPECTED_COLUMNS_2_INFO
+    );
+  });
+
   it("can list table indexes", async () => {
     expect(await knex.schema.listIndexes("table_1")).toMatchObject(
       EXPECTED_INDEXES_1_INFO
@@ -109,10 +125,7 @@ describe("hydrateKnex()", () => {
         rows: 0,
         table: "table_2",
         prettyBytes: "4.1 kB",
-        columns: [
-          { name: "field_1", fullType: "bigint", nullable: true },
-          { name: "field_2", fullType: "varchar(255)", nullable: true },
-        ],
+        columns: EXPECTED_COLUMNS_2_INFO,
         indexes: [],
       },
     });

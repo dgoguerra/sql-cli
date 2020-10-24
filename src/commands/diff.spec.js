@@ -38,7 +38,7 @@ describe("diff", () => {
     await knex2.schema.createTable("table_2", (t) => {
       t.increments("id");
       t.decimal("field_1").notNullable();
-      t.text("field_2").defaultTo("default text");
+      t.text("field_2").defaultTo("default text").references("table_1.field_1");
       t.timestamps();
       t.unique(["field_1"]);
     });

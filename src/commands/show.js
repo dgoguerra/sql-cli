@@ -22,6 +22,7 @@ module.exports = {
       type: col.fullType,
       nullable: col.nullable,
       default: col.default,
+      "foreign key": col.foreign,
     }));
 
     console.log(table(formatted));

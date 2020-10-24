@@ -53,7 +53,7 @@ describe("dump", () => {
     });
     await knex.schema.createTable("table_3", (t) => {
       t.bigInteger("field_1");
-      t.string("field_2");
+      t.string("field_2").references("table_2.field_2");
       t.timestamps(true, true); // default to CURRENT_TIMESTAMP
       t.primary(["field_1", "field_2"]);
     });

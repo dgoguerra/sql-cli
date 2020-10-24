@@ -39,6 +39,8 @@ module.exports = {
           Column: col.name,
           Type: col.fullType,
           Nullable: col.nullable,
+          Default: col.default,
+          "Foreign Key": col.foreign,
         }));
         builder.addSheet(table.table, rows);
       }

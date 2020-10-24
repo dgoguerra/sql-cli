@@ -249,6 +249,9 @@ class SqlDumper extends EventEmitter {
     if (col.default !== null) {
       statement.push(this.buildDefaultTo(type, col.default));
     }
+    if (col.foreign) {
+      statement.push(`references("${col.foreign}")`);
+    }
 
     return statement.join(".");
   }

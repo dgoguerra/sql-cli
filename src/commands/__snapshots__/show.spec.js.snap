@@ -1,0 +1,15 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`show can show table 1`] = `
+"column     type         nullable default      foreign key
+id         integer      false
+field_1    integer      true
+field_2    varchar(255) true     default text
+field_3    varchar(255) true                  table_1.field_2
+created_at datetime     true
+updated_at datetime     true
+
+index                         algorithm unique columns
+table_1_field_2_field_1_index unknown   false  field_2,field_1
+"
+`;
