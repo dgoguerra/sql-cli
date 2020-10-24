@@ -29,7 +29,7 @@ class SqlRepl {
       prompt: this.tty ? "→ " : "",
       input: this.input,
       output: process.stdout,
-      terminal: false, // do not print non-tty input to stdout
+      terminal: this.tty, // do not print non-tty input to stdout
       eval: (...args) => this.evalLine(...args),
       writer: (...args) => this.formatResult(...args),
     });
@@ -105,7 +105,7 @@ class SqlRepl {
     this.query += " " + line.trim();
 
     // There is no query in progress
-    if (!this.query) {
+    if (!this.query.trim()) {
       return next();
     }
 
