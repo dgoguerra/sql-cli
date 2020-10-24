@@ -131,7 +131,7 @@ class SqlDumper extends EventEmitter {
 
       this.emit("log", `Loading data to ${table} ...`);
 
-      await this.knex(table).truncate();
+      await this.knex(table).delete();
       await streamInsert(this.knex, table, stream);
     }
 
