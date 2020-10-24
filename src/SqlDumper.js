@@ -42,7 +42,18 @@ class SqlDumper extends EventEmitter {
     fs.mkdirSync(`${dumpDir}/data`, { recursive: true });
     fs.mkdirSync(`${dumpDir}/migrations`, { recursive: true });
 
-    for (const { table } of await this.knex.schema.listTables()) {
+    const tables = await Promise.all(
+      (await this.knex.schema.listTables()).map(async ({ table }) => {
+        const foreignKeys = await this.knex.schema.listForeignKeys(table);
+        return { table, numKeys: foreignKeys.length };
+      })
+    );
+
+    // Create migrations of tables with foreign keys last, to avoid mgirating
+    // them before the tables they point to exist.
+    const sortedTables = _.sortBy(tables, (items) => items.numKeys);
+
+    for (const { table } of sortedTables) {
       const migrPath = `migrations/${stringDate()}-${table}.js`;
       const dataPath = `data/${table}.jsonl`;
 
