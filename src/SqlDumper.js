@@ -205,7 +205,7 @@ class SqlDumper extends EventEmitter {
       bigInteger: "bigIncrements",
     };
 
-    let type = toKnexType(col.type, col.maxLength) || col.type;
+    let type = toKnexType(col.type, col) || col.type;
     let isIncrement = false;
 
     if (isPrimaryKey && primaryKeyTypes[type]) {
@@ -219,18 +219,27 @@ class SqlDumper extends EventEmitter {
       );
     }
 
-    const statement = [
-      col.maxLength
-        ? `t.${type}("${col.name}", ${col.maxLength})`
-        : `t.${type}("${col.name}")`,
-    ];
+    const statement = [];
+
+    if (col.precision && col.scale) {
+      statement.push(
+        `t.${type}("${col.name}", ${col.precision}, ${col.scale})`
+      );
+    } else if (col.maxLength) {
+      statement.push(`t.${type}("${col.name}", ${col.maxLength})`);
+    } else {
+      statement.push(`t.${type}("${col.name}")`);
+    }
 
     // In primary key columns of type "increments" dont apply primary,
-    // nullable or default properties.
+    // unsigned, nullable or default properties.
     if (isIncrement) {
       return statement.join(".");
     }
 
+    if (col.unsigned) {
+      statement.push("unsigned()");
+    }
     // Mark column explicitly as primary key
     if (isPrimaryKey) {
       statement.push("primary()");

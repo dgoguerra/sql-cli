@@ -117,19 +117,24 @@ const listColumns = async (knex, table) => {
         type: "data_type",
         default: "column_default",
         maxLength: "character_maximum_length",
+        unsigned: knex.raw(`instr(column_type, "unsigned")`),
+        precision: "numeric_precision",
+        scale: "numeric_scale",
       })
       .then((cols) => formatRows(cols));
   };
 
-  const formatRows = async (rows) => {
-    return rows.map((row) => ({
-      ...row,
-      nullable: row.nullable === "YES" || row.nullable == 1,
-      fullType: row.maxLength ? `${row.type}(${row.maxLength})` : row.type,
-      default: cleanDefault(row.default),
-      foreign: foreign ? `${foreign.table}.${foreign.to}` : null,
-    }));
-  };
+  const formatRows = async (rows) =>
+    rows.map((row) => {
+      const foreign = foreignKeys[row.name];
+      return {
+        ...row,
+        nullable: row.nullable === "YES" || row.nullable == 1,
+        fullType: toFullType(row.type, row),
+        default: cleanDefault(row.default),
+        foreign: foreign ? `${foreign.table}.${foreign.to}` : null,
+      };
+    });
 
   const isNumeric = (v) =>
     (typeof v === "number" || typeof v === "string") &&
@@ -162,19 +167,43 @@ const listColumns = async (knex, table) => {
   }
 
   if (client === "Client_PG") {
-    return defaultListColumns({
-      table_schema: knex.raw("current_schema()"),
-      table_catalog: database,
-      table_name: table,
-    });
+    return knex("information_schema.columns")
+      .where({
+        table_schema: knex.raw("current_schema()"),
+        table_catalog: database,
+        table_name: table,
+      })
+      .orderBy("ordinal_position")
+      .select({
+        name: "column_name",
+        nullable: "is_nullable",
+        type: "data_type",
+        default: "column_default",
+        maxLength: "character_maximum_length",
+        precision: "numeric_precision",
+        scale: "numeric_scale",
+      })
+      .then((cols) => formatRows(cols));
   }
 
   if (client === "Client_MSSQL") {
-    return defaultListColumns({
-      table_schema: knex.raw("schema_name()"),
-      table_catalog: database,
-      table_name: table,
-    });
+    return knex("information_schema.columns")
+      .where({
+        table_schema: knex.raw("schema_name()"),
+        table_catalog: database,
+        table_name: table,
+      })
+      .orderBy("ordinal_position")
+      .select({
+        name: "column_name",
+        nullable: "is_nullable",
+        type: "data_type",
+        default: "column_default",
+        maxLength: "character_maximum_length",
+        precision: "numeric_precision",
+        scale: "numeric_scale",
+      })
+      .then((cols) => formatRows(cols));
   }
 
   if (client === "Client_BigQuery") {
@@ -526,13 +555,30 @@ const listIndexes = async (knex, table) => {
   return [];
 };
 
-const toKnexType = (type, maxLength = null) => {
-  const fullType = `${type}(${maxLength})`;
+const toKnexType = (type, opts = {}) => {
+  const fullType = toFullType(type, opts);
 
   const findType = (type) =>
     _.findKey(KNEX_TYPES_MAP, (val, key) => key === type || val.includes(type));
 
   return findType(fullType) || findType(type) || null;
+};
+
+const toFullType = (
+  type,
+  { unsigned = null, precision = null, scale = null, maxLength = null } = {}
+) => {
+  let fullType = type;
+  if (unsigned) {
+    fullType += " unsigned";
+  }
+  if (precision && scale) {
+    fullType += `(${precision},${scale})`;
+  }
+  if (maxLength) {
+    fullType += `(${maxLength})`;
+  }
+  return fullType;
 };
 
 const getPrimaryKey = async (knex, table) => {
