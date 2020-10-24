@@ -3,20 +3,20 @@
 exports[`CLI test: mysql2 can connect through ssh 1`] = `
 "table   rows bytes
 table_1 2    32.8 kB
-table_2 2    32.8 kB
-table_3 0    16.4 kB
+table_3 0    32.8 kB
+table_2 2    16.4 kB
 
 (81.9 kB in 3 tables)
 "
 `;
 
 exports[`CLI test: mysql2 can connect through ssh 2`] = `
-"column     type        nullable default
-id         int         false
-field_1    int         true
-field_2    varchar(50) true
-created_at datetime    true
-updated_at datetime    true
+"column     type         nullable default foreign key
+id         int unsigned false
+field_1    int          true
+field_2    varchar(50)  true
+created_at datetime     true
+updated_at datetime     true
 
 index                 algorithm unique columns
 PRIMARY               BTREE     true   id
@@ -27,18 +27,18 @@ table_1_field_1_index BTREE     false  field_1
 exports[`CLI test: mysql2 can connect with an alias 1`] = `
 "table   rows bytes
 table_1 2    32.8 kB
-table_2 2    32.8 kB
-table_3 0    16.4 kB
+table_3 0    32.8 kB
+table_2 2    16.4 kB
 
 (81.9 kB in 3 tables)
 "
 `;
 
 exports[`CLI test: mysql2 can diff tables 1`] = `
-"column  type                      nullable     default
-id      int → varchar(255)        false
-field_1 int → decimal             true → false
-field_2 varchar(50) → text(65535) true
+"column  type                        nullable     default foreign key
+id      int unsigned → varchar(255) false
+field_1 int → decimal(8,2)          true → false
+field_2 varchar(50) → text(65535)   true
 
 index                  algorithm unique columns
 table_1_field_1_index  BTREE     false  field_1
@@ -64,20 +64,20 @@ Rows: 2x changed
 exports[`CLI test: mysql2 can list tables 1`] = `
 "table   rows bytes
 table_1 2    32.8 kB
-table_2 2    32.8 kB
-table_3 0    16.4 kB
+table_3 0    32.8 kB
+table_2 2    16.4 kB
 
 (81.9 kB in 3 tables)
 "
 `;
 
 exports[`CLI test: mysql2 can load dump to database 1`] = `
-"column     type        nullable default
-id         int         false
-field_1    int         true
-field_2    varchar(50) true
-created_at datetime    true
-updated_at datetime    true
+"column     type         nullable default foreign key
+id         int unsigned false
+field_1    int          true
+field_2    varchar(50)  true
+created_at datetime     true
+updated_at datetime     true
 
 index                 algorithm unique columns
 PRIMARY               BTREE     true   id
@@ -86,9 +86,9 @@ table_1_field_1_index BTREE     false  field_1
 `;
 
 exports[`CLI test: mysql2 can load dump to database 2`] = `
-"column     type         nullable default
+"column     type         nullable default foreign key
 id         varchar(255) false
-field_1    decimal      false
+field_1    decimal(8,2) false
 field_2    text(65535)  true
 created_at datetime     true
 updated_at datetime     true
@@ -100,14 +100,16 @@ table_2_field_1_unique BTREE     true   field_1
 `;
 
 exports[`CLI test: mysql2 can load dump to database 3`] = `
-"column     type         nullable default
+"column     type         nullable default           foreign key
 field_1    bigint       false
 field_2    varchar(255) false
+field_3    int unsigned true                       table_1.id
 created_at timestamp    false    CURRENT_TIMESTAMP
 updated_at timestamp    false    CURRENT_TIMESTAMP
 
-index   algorithm unique columns
-PRIMARY BTREE     true   field_1,field_2
+index                   algorithm unique columns
+PRIMARY                 BTREE     true   field_1,field_2
+table_3_field_3_foreign BTREE     false  field_3
 "
 `;
 
@@ -124,7 +126,7 @@ table_3                      0    4.1 kB
 `;
 
 exports[`CLI test: mysql2 can see dumpfile contents 2`] = `
-"column     type        nullable default
+"column     type        nullable default foreign key
 id         integer     false
 field_1    integer     true
 field_2    varchar(50) true
@@ -137,9 +139,9 @@ table_1_field_1_index unknown   false  field_1
 `;
 
 exports[`CLI test: mysql2 can show table 1`] = `
-"column     type         nullable default
+"column     type         nullable default foreign key
 id         varchar(255) false
-field_1    decimal      false
+field_1    decimal(8,2) false
 field_2    text(65535)  true
 created_at datetime     true
 updated_at datetime     true
@@ -171,7 +173,7 @@ exports[`CLI test: mysql2 database dump contents are valid 2`] = `
 "module.exports.up = async (knex) => {
   await knex.schema.createTable(\\"table_2\\", (t) => {
     t.string(\\"id\\", 255).primary();
-    t.decimal(\\"field_1\\").notNullable();
+    t.decimal(\\"field_1\\", 8, 2).notNullable();
     t.text(\\"field_2\\", 65535);
     t.datetime(\\"created_at\\");
     t.datetime(\\"updated_at\\");
@@ -189,9 +191,11 @@ exports[`CLI test: mysql2 database dump contents are valid 3`] = `
   await knex.schema.createTable(\\"table_3\\", (t) => {
     t.bigInteger(\\"field_1\\").notNullable();
     t.string(\\"field_2\\", 255).notNullable();
+    t.integer(\\"field_3\\").unsigned().references(\\"table_1.id\\");
     t.timestamp(\\"created_at\\").notNullable().defaultTo(knex.raw(\\"CURRENT_TIMESTAMP\\"));
     t.timestamp(\\"updated_at\\").notNullable().defaultTo(knex.raw(\\"CURRENT_TIMESTAMP\\"));
     t.primary([\\"field_1\\",\\"field_2\\"]);
+    t.index([\\"field_3\\"], \\"table_3_field_3_foreign\\");
   });
 };
 module.exports.down = async (knex) => {

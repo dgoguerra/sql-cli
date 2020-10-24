@@ -11,7 +11,7 @@ table_3 0    0 B
 `;
 
 exports[`CLI test: mssql can connect through ssh 2`] = `
-"column     type         nullable default
+"column     type         nullable default foreign key
 id         int          false
 field_1    int          true
 field_2    nvarchar(50) true
@@ -35,9 +35,9 @@ table_3 0    0 B
 `;
 
 exports[`CLI test: mssql can diff tables 1`] = `
-"column  type                        nullable     default
+"column  type                        nullable     default               foreign key
 id      int → nvarchar(255)         false
-field_1 int → decimal               true → false
+field_1 int → decimal(8,2)          true → false
 field_2 nvarchar(50) → nvarchar(-1) true         [null] → default text
 
 index                                        algorithm    unique columns
@@ -73,7 +73,7 @@ table_3 0    0 B
 `;
 
 exports[`CLI test: mssql can load dump to database 1`] = `
-"column     type         nullable default
+"column     type         nullable default foreign key
 id         int          false
 field_1    int          true
 field_2    nvarchar(50) true
@@ -87,9 +87,9 @@ table_1_field_1_index         NONCLUSTERED false  field_1
 `;
 
 exports[`CLI test: mssql can load dump to database 2`] = `
-"column     type          nullable default
+"column     type          nullable default      foreign key
 id         nvarchar(255) false
-field_1    decimal       false
+field_1    decimal(8,2)  false
 field_2    nvarchar(-1)  true     default text
 created_at datetime2     true
 updated_at datetime2     true
@@ -101,9 +101,10 @@ table_2_pkey           CLUSTERED    true   id
 `;
 
 exports[`CLI test: mssql can load dump to database 3`] = `
-"column     type          nullable default
+"column     type          nullable default   foreign key
 field_1    bigint        false
 field_2    nvarchar(255) false
+field_3    int           true               table_1.id
 created_at datetime2     false    getdate()
 updated_at datetime2     false    getdate()
 
@@ -125,7 +126,7 @@ table_3                    0    4.1 kB
 `;
 
 exports[`CLI test: mssql can see dumpfile contents 2`] = `
-"column     type        nullable default
+"column     type        nullable default foreign key
 id         integer     false
 field_1    integer     true
 field_2    varchar(50) true
@@ -138,9 +139,9 @@ table_1_field_1_index unknown   false  field_1
 `;
 
 exports[`CLI test: mssql can show table 1`] = `
-"column     type          nullable default
+"column     type          nullable default      foreign key
 id         nvarchar(255) false
-field_1    decimal       false
+field_1    decimal(8,2)  false
 field_2    nvarchar(-1)  true     default text
 created_at datetime2     true
 updated_at datetime2     true
@@ -172,7 +173,7 @@ exports[`CLI test: mssql database dump contents are valid 2`] = `
 "module.exports.up = async (knex) => {
   await knex.schema.createTable(\\"table_2\\", (t) => {
     t.string(\\"id\\", 255).primary();
-    t.decimal(\\"field_1\\").notNullable();
+    t.decimal(\\"field_1\\", 8, 2).notNullable();
     t.text(\\"field_2\\", -1).defaultTo(\\"default text\\");
     t.datetime(\\"created_at\\");
     t.datetime(\\"updated_at\\");
@@ -190,6 +191,7 @@ exports[`CLI test: mssql database dump contents are valid 3`] = `
   await knex.schema.createTable(\\"table_3\\", (t) => {
     t.bigInteger(\\"field_1\\").notNullable();
     t.string(\\"field_2\\", 255).notNullable();
+    t.integer(\\"field_3\\").references(\\"table_1.id\\");
     t.datetime(\\"created_at\\").notNullable().defaultTo(knex.raw(\\"CURRENT_TIMESTAMP\\"));
     t.datetime(\\"updated_at\\").notNullable().defaultTo(knex.raw(\\"CURRENT_TIMESTAMP\\"));
     t.primary([\\"field_1\\",\\"field_2\\"]);

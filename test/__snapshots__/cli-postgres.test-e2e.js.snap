@@ -11,7 +11,7 @@ table_3 0    8.19 kB
 `;
 
 exports[`CLI test: pg can connect through ssh 2`] = `
-"column     type                     nullable default
+"column     type                     nullable default                             foreign key
 id         integer                  false    nextval('table_1_id_seq'::regclass)
 field_1    integer                  true
 field_2    character varying(50)    true
@@ -35,9 +35,9 @@ table_3 0    8.19 kB
 `;
 
 exports[`CLI test: pg can diff tables 1`] = `
-"column  type                             nullable     default
+"column  type                             nullable     default                                      foreign key
 id      integer → character varying(255) false        nextval('table_1_id_seq'::regclass) → [null]
-field_1 integer → numeric                true → false
+field_1 integer → numeric(8,2)           true → false
 field_2 character varying(50) → text     true         [null] → default text
 
 index                       algorithm unique columns
@@ -73,7 +73,7 @@ table_3 0    8.19 kB
 `;
 
 exports[`CLI test: pg can load dump to database 1`] = `
-"column     type                     nullable default
+"column     type                     nullable default                             foreign key
 id         integer                  false    nextval('table_1_id_seq'::regclass)
 field_1    integer                  true
 field_2    character varying(50)    true
@@ -87,9 +87,9 @@ table_1_field_1_index btree     false  field_1
 `;
 
 exports[`CLI test: pg can load dump to database 2`] = `
-"column     type                     nullable default
+"column     type                     nullable default      foreign key
 id         character varying(255)   false
-field_1    numeric                  false
+field_1    numeric(8,2)             false
 field_2    text                     true     default text
 created_at timestamp with time zone true
 updated_at timestamp with time zone true
@@ -101,9 +101,10 @@ table_2_field_1_unique btree     true   field_1
 `;
 
 exports[`CLI test: pg can load dump to database 3`] = `
-"column     type                     nullable default
+"column     type                     nullable default           foreign key
 field_1    bigint                   false
 field_2    character varying(255)   false
+field_3    integer                  true                       table_1.id
 created_at timestamp with time zone false    CURRENT_TIMESTAMP
 updated_at timestamp with time zone false    CURRENT_TIMESTAMP
 
@@ -125,7 +126,7 @@ table_3                 0    4.1 kB
 `;
 
 exports[`CLI test: pg can see dumpfile contents 2`] = `
-"column     type        nullable default
+"column     type        nullable default foreign key
 id         integer     false
 field_1    integer     true
 field_2    varchar(50) true
@@ -138,9 +139,9 @@ table_1_field_1_index unknown   false  field_1
 `;
 
 exports[`CLI test: pg can show table 1`] = `
-"column     type                     nullable default
+"column     type                     nullable default      foreign key
 id         character varying(255)   false
-field_1    numeric                  false
+field_1    numeric(8,2)             false
 field_2    text                     true     default text
 created_at timestamp with time zone true
 updated_at timestamp with time zone true
@@ -172,7 +173,7 @@ exports[`CLI test: pg database dump contents are valid 2`] = `
 "module.exports.up = async (knex) => {
   await knex.schema.createTable(\\"table_2\\", (t) => {
     t.string(\\"id\\", 255).primary();
-    t.decimal(\\"field_1\\").notNullable();
+    t.decimal(\\"field_1\\", 8, 2).notNullable();
     t.text(\\"field_2\\").defaultTo(\\"default text\\");
     t.timestamp(\\"created_at\\").nullable();
     t.timestamp(\\"updated_at\\").nullable();
@@ -190,6 +191,7 @@ exports[`CLI test: pg database dump contents are valid 3`] = `
   await knex.schema.createTable(\\"table_3\\", (t) => {
     t.bigInteger(\\"field_1\\").notNullable();
     t.string(\\"field_2\\", 255).notNullable();
+    t.integer(\\"field_3\\").references(\\"table_1.id\\");
     t.timestamp(\\"created_at\\").notNullable().defaultTo(knex.raw(\\"CURRENT_TIMESTAMP\\"));
     t.timestamp(\\"updated_at\\").notNullable().defaultTo(knex.raw(\\"CURRENT_TIMESTAMP\\"));
     t.primary([\\"field_1\\",\\"field_2\\"]);
