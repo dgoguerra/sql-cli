@@ -1,11 +1,11 @@
 const { getTestKnex } = require("../test/utils");
 const { hydrateKnex } = require("./knexUtils");
 
-const EXPECTED_COLUMNS_1_INFO = {
-  id: { fullType: "integer", nullable: false },
-  field_1: { fullType: "varchar(255)", nullable: true },
-  field_2: { fullType: "varchar(255)", nullable: true },
-};
+const EXPECTED_COLUMNS_1_INFO = [
+  { name: "id", fullType: "integer", nullable: false },
+  { name: "field_1", fullType: "varchar(255)", nullable: true },
+  { name: "field_2", fullType: "varchar(255)", nullable: true },
+];
 
 const EXPECTED_INDEXES_1_INFO = [
   {
@@ -76,7 +76,7 @@ describe("hydrateKnex()", () => {
   });
 
   it("can get table columns", async () => {
-    expect(await knex("table_1").columnInfo()).toMatchObject(
+    expect(await knex.schema.listColumns("table_1")).toMatchObject(
       EXPECTED_COLUMNS_1_INFO
     );
   });
@@ -95,7 +95,7 @@ describe("hydrateKnex()", () => {
   });
 
   it("can get tables structure", async () => {
-    expect(await knex.schema.tablesInfo()).toMatchObject({
+    expect(await knex.schema.getSchema()).toMatchObject({
       table_1: {
         bytes: 4096,
         rows: 2,
@@ -109,10 +109,10 @@ describe("hydrateKnex()", () => {
         rows: 0,
         table: "table_2",
         prettyBytes: "4.1 kB",
-        columns: {
-          field_1: { fullType: "bigint", nullable: true },
-          field_2: { fullType: "varchar(255)", nullable: true },
-        },
+        columns: [
+          { name: "field_1", fullType: "bigint", nullable: true },
+          { name: "field_2", fullType: "varchar(255)", nullable: true },
+        ],
         indexes: [],
       },
     });

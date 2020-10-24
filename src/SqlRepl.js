@@ -87,15 +87,16 @@ class SqlRepl {
       throw new Error(`Missing 'table' argument`);
     }
 
-    const columns = await this.lib(tableName).columnInfo();
-    if (!Object.keys(columns).length) {
+    const columns = await this.lib.schema.listColumns(tableName);
+    if (!columns.length) {
       throw new Error(`Table '${tableName}' not found`);
     }
 
-    return Object.keys(columns).map((key) => ({
-      column: key,
-      type: columns[key].fullType,
-      nullable: columns[key].nullable,
+    return columns.map((col) => ({
+      column: col.name,
+      type: col.fullType,
+      nullable: col.nullable,
+      default: col.default,
     }));
   }
 

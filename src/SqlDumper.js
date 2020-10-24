@@ -140,16 +140,15 @@ class SqlDumper extends EventEmitter {
 
   async createTableMigration(table, filePath) {
     const primaryKey = await this.knex(table).getPrimaryKey();
-    const columns = await this.knex(table).columnInfo();
+    const columns = await this.knex.schema.listColumns(table);
     const indexes = await this.knex.schema.listIndexes(table);
 
     const statements = [];
 
-    Object.keys(columns).forEach((key) => {
-      const isPrimaryKey = primaryKey.length === 1 && primaryKey[0] === key;
-      statements.push(
-        this.buildColumnStatement(key, columns[key], { isPrimaryKey })
-      );
+    columns.forEach((col) => {
+      const isPrimaryKey =
+        primaryKey.length === 1 && primaryKey[0] === col.name;
+      statements.push(this.buildColumnStatement(col, { isPrimaryKey }));
     });
 
     if (primaryKey.length > 1) {
@@ -200,7 +199,7 @@ class SqlDumper extends EventEmitter {
     return true;
   }
 
-  buildColumnStatement(key, col, { isPrimaryKey = false } = {}) {
+  buildColumnStatement(col, { isPrimaryKey = false } = {}) {
     const primaryKeyTypes = {
       integer: "increments",
       bigInteger: "bigIncrements",
@@ -222,8 +221,8 @@ class SqlDumper extends EventEmitter {
 
     const statement = [
       col.maxLength
-        ? `t.${type}("${key}", ${col.maxLength})`
-        : `t.${type}("${key}")`,
+        ? `t.${type}("${col.name}", ${col.maxLength})`
+        : `t.${type}("${col.name}")`,
     ];
 
     // In primary key columns of type "increments" dont apply primary,
@@ -247,8 +246,8 @@ class SqlDumper extends EventEmitter {
     if (!col.nullable && !isPrimaryKey) {
       statement.push("notNullable()");
     }
-    if (col.defaultValue !== null) {
-      statement.push(this.buildDefaultTo(type, col.defaultValue));
+    if (col.default !== null) {
+      statement.push(this.buildDefaultTo(type, col.default));
     }
 
     return statement.join(".");

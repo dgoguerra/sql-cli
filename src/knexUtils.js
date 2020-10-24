@@ -16,19 +16,15 @@ const KNEX_TYPES_MAP = {
 };
 
 const hydrateKnex = (knex) => {
-  // Methods to overwrite or create over Knex
+  // Methods to extend on Knex
   const KNEX_METHODS = {
     getUri() {
       return getUri(knex);
     },
   };
 
-  // Methods to overwrite or create over Knex's QueryBuilder
+  // Methods to extend on Knex's QueryBuilder
   const QUERY_METHODS = {
-    async columnInfo(column = null) {
-      const columns = await getColumns(knex, this._single.table);
-      return column ? columns[column] : columns;
-    },
     async countRows() {
       const [row] = await this.count({ count: "*" });
       return Number(row.count);
@@ -38,26 +34,28 @@ const hydrateKnex = (knex) => {
     },
   };
 
-  // Methods to overwrite or create over Knex's SchemaBuilder
+  // Methods to extend on Knex's SchemaBuilder
   const SCHEMA_METHODS = {
-    listDatabases() {
-      return listDatabases(knex);
-    },
     listTables() {
       return listTables(knex);
+    },
+    listColumns(table) {
+      return listColumns(knex, table);
     },
     listIndexes(table) {
       return listIndexes(knex, table);
     },
-    async tablesInfo() {
+    listDatabases() {
+      return listDatabases(knex);
+    },
+    async getSchema() {
       const tables = await Promise.all(
         (await this.listTables()).map(async (table) => {
-          const columns = await getColumns(knex, table.table);
+          const columns = await listColumns(knex, table.table);
           const indexes = await listIndexes(knex, table.table);
           return { ...table, columns, indexes };
         })
       );
-
       return tables.reduce((obj, table) => {
         obj[table.table] = table;
         return obj;
@@ -101,35 +99,31 @@ const getUri = (knex) => {
   });
 };
 
-const getColumns = async (knex, table) => {
+const listColumns = async (knex, table) => {
   const client = knex.client.constructor.name;
   const database = knex.client.database();
 
-  const _defaultGetColumns = (where = {}) => {
+  const defaultListColumns = (where = {}) => {
     return knex("information_schema.columns")
       .where(where)
       .orderBy("ordinal_position")
       .select({
-        column: "column_name",
+        name: "column_name",
         nullable: "is_nullable",
         type: "data_type",
-        defaultValue: "column_default",
+        default: "column_default",
         maxLength: "character_maximum_length",
       })
-      .then((rows) => _defaultFormatResults(rows));
+      .then((cols) => formatRows(cols));
   };
 
-  const _defaultFormatResults = (rows) => {
-    const columns = {};
-    rows.forEach((row) => {
-      columns[row.column] = {
-        nullable: row.nullable === "YES",
-        type: row.type,
-        defaultValue: row.defaultValue,
-        maxLength: row.maxLength,
-      };
-    });
-    return columns;
+  const formatRows = async (rows) => {
+    return rows.map((row) => ({
+      ...row,
+      nullable: row.nullable === "YES" || row.nullable == 1,
+      fullType: row.maxLength ? `${row.type}(${row.maxLength})` : row.type,
+      default: cleanDefault(row.default),
+    }));
   };
 
   const isNumeric = (v) =>
@@ -151,32 +145,36 @@ const getColumns = async (knex, table) => {
     return val;
   };
 
-  let results = {};
-
   // If possible, query manually instead of using knex(table).columnInfo().
   // The reason for this is to ensure ordering of the resulting columns
   // (the keys creation order should be kept in the returned object).
   // This expected ordering will facilitate testing.
   if (client === "Client_MySQL" || client === "Client_MySQL2") {
-    results = await _defaultGetColumns({
+    return defaultListColumns({
       table_schema: database,
       table_name: table,
     });
-  } else if (client === "Client_PG") {
-    results = await _defaultGetColumns({
+  }
+
+  if (client === "Client_PG") {
+    return defaultListColumns({
       table_schema: knex.raw("current_schema()"),
       table_catalog: database,
       table_name: table,
     });
-  } else if (client === "Client_MSSQL") {
-    results = await _defaultGetColumns({
+  }
+
+  if (client === "Client_MSSQL") {
+    return defaultListColumns({
       table_schema: knex.raw("schema_name()"),
       table_catalog: database,
       table_name: table,
     });
-  } else if (client === "Client_BigQuery") {
-    // BigQuery table names are case sensitive
-    results = await knex("INFORMATION_SCHEMA.COLUMNS")
+  }
+
+  if (client === "Client_BigQuery") {
+    // Note: BigQuery table names are case sensitive
+    return knex("INFORMATION_SCHEMA.COLUMNS")
       .where({ table_schema: database, table_name: table })
       .orderBy("ordinal_position")
       .select({
@@ -184,20 +182,19 @@ const getColumns = async (knex, table) => {
         nullable: "is_nullable",
         type: "data_type",
       })
-      .then((rows) => _defaultFormatResults(rows));
-  } else {
-    // Fallback to knex's columnInfo()
-    results = await knex(table).columnInfo();
+      .then((cols) => formatRows(cols));
   }
 
-  // Calculate extra fullType property of each column as helper
-  for (const key in results) {
-    const { type, maxLength } = results[key];
-    results[key].fullType = maxLength ? `${type}(${maxLength})` : type;
-    results[key].defaultValue = cleanDefault(results[key].defaultValue);
-  }
-
-  return results;
+  // Fallback to knex's columnInfo()
+  return knex(table)
+    .columnInfo()
+    .then((cols) =>
+      Object.keys(cols).map((name) => {
+        const { defaultValue, ...rest } = cols[name];
+        return { name, default: defaultValue, ...rest };
+      })
+    )
+    .then((rows) => formatRows(rows));
 };
 
 const listDatabases = async (knex) => {
@@ -546,8 +543,8 @@ const streamInsertGeneric = async (knex, table, stream) => {
 };
 
 const streamInsertMssql = async (knex, table, stream) => {
-  const columns = await knex(table).columnInfo();
   const primaryKey = await getPrimaryKey(knex, table);
+  const columns = await knex(table).columnInfo();
 
   await runPipeline(
     stream,

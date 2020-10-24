@@ -197,7 +197,7 @@ function getIndexesKeyBy(indexes1, indexes2) {
 }
 
 async function listColumns(knex, table) {
-  return formatInputColumns(await knex(table).columnInfo());
+  return formatInputColumns(await knex.schema.listColumns(table));
 }
 
 async function listIndexes(knex, table) {
@@ -223,7 +223,7 @@ function listRows(knex, table, argv) {
 }
 
 async function listTables(knex) {
-  const tables = await knex.schema.tablesInfo();
+  const tables = await knex.schema.getSchema();
   return _.map(tables, (table, key) => ({
     table: key,
     rows: table.rows,
@@ -233,12 +233,12 @@ async function listTables(knex) {
   }));
 }
 
-const formatInputColumns = (table) =>
-  _.map(table, (col, key) => ({
-    column: key,
+const formatInputColumns = (columns) =>
+  _.map(columns, (col) => ({
+    column: col.name,
     type: col.fullType,
     nullable: col.nullable,
-    default: col.defaultValue,
+    default: col.default,
   }));
 
 const formatInputIndexes = (indexes) =>

@@ -34,15 +34,12 @@ module.exports = {
 
     if (argv.schema) {
       for (const table of await lib.schema.listTables()) {
-        const schema = await lib(table.table).columnInfo();
-        const rows = Object.keys(schema).map((key) => {
-          const { fullType, nullable } = schema[key];
-          return {
-            Column: key,
-            Type: fullType,
-            Nullable: nullable,
-          };
-        });
+        const columns = await lib.schema.listColumns(table.table);
+        const rows = columns.map((col) => ({
+          Column: col.name,
+          Type: col.fullType,
+          Nullable: col.nullable,
+        }));
         builder.addSheet(table.table, rows);
       }
     }
