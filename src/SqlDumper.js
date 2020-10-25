@@ -248,13 +248,21 @@ class SqlDumper extends EventEmitter {
       return statement.join(".");
     }
 
-    if (col.unsigned) {
+    // Save integers with foreign keys as unsigned. This avoids the dump
+    // from failing if loaded to mysql, due to columns being incompatible
+    // (increment fields in mysql are unsigned).
+    if (
+      col.unsigned ||
+      (col.foreign && ["integer", "bigInteger"].includes(type))
+    ) {
       statement.push("unsigned()");
     }
+
     // Mark column explicitly as primary key
     if (isPrimaryKey) {
       statement.push("primary()");
     }
+
     // Set nullable timestamps explicitly (even though Knex makes columns
     // nullable by default). Prevents older versions of MySQL (ex. 5.5)
     // from adding by default "not null default to CURRENT_TIMESTAMP".
@@ -262,13 +270,16 @@ class SqlDumper extends EventEmitter {
     if (col.nullable && type === "timestamp") {
       statement.push("nullable()");
     }
+
     // primary() implies notNullable(), so do not add it
     if (!col.nullable && !isPrimaryKey) {
       statement.push("notNullable()");
     }
+
     if (col.default !== null) {
       statement.push(this.buildDefaultTo(type, col.default));
     }
+
     if (col.foreign) {
       statement.push(`references("${col.foreign}")`);
     }
