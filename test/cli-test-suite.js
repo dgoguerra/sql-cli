@@ -17,7 +17,7 @@ const TEST_SSH_CONN = {
 const cliTestSuite = (
   name,
   knexFactory,
-  { sshHost = null, sshPort = null } = {}
+  { sshHost = null, sshPort = null, onDataLoaded = async () => {} } = {}
 ) => {
   jest.setTimeout(15000);
 
@@ -34,6 +34,7 @@ const cliTestSuite = (
       connUri = knex.getUri();
 
       await migrateTestTables(knex);
+      await onDataLoaded(knex);
 
       rimraf.sync(TEST_DUMP_PATH);
       rimraf.sync(TEST_EXTRACTED_PATH);
@@ -138,6 +139,7 @@ const cliTestSuite = (
       await knex.schema.dropTable("table_1");
 
       await runCli(`dump load ${connUri} ${TEST_DUMP_PATH}`);
+      await onDataLoaded(knex);
 
       expect(
         cleanIndexNames(await runCli(`show ${connUri}/table_1`))
