@@ -97,6 +97,7 @@ class SqlRepl {
       type: col.fullType,
       nullable: col.nullable,
       default: col.default,
+      "foreign key": col.foreign,
     }));
   }
 
