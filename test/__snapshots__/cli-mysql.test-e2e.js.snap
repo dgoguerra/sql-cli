@@ -3,10 +3,10 @@
 exports[`CLI test: mysql2 can connect through ssh 1`] = `
 "table   rows bytes
 table_1 2    32.8 kB
+table_2 2    32.8 kB
 table_3 0    32.8 kB
-table_2 2    16.4 kB
 
-(81.9 kB in 3 tables)
+(98.3 kB in 3 tables)
 "
 `;
 
@@ -27,10 +27,10 @@ table_1_field_1_index BTREE     false  field_1
 exports[`CLI test: mysql2 can connect with an alias 1`] = `
 "table   rows bytes
 table_1 2    32.8 kB
+table_2 2    32.8 kB
 table_3 0    32.8 kB
-table_2 2    16.4 kB
 
-(81.9 kB in 3 tables)
+(98.3 kB in 3 tables)
 "
 `;
 
@@ -64,10 +64,10 @@ Rows: 2x changed
 exports[`CLI test: mysql2 can list tables 1`] = `
 "table   rows bytes
 table_1 2    32.8 kB
+table_2 2    32.8 kB
 table_3 0    32.8 kB
-table_2 2    16.4 kB
 
-(81.9 kB in 3 tables)
+(98.3 kB in 3 tables)
 "
 `;
 
