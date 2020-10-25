@@ -42,18 +42,7 @@ class SqlDumper extends EventEmitter {
     fs.mkdirSync(`${dumpDir}/data`, { recursive: true });
     fs.mkdirSync(`${dumpDir}/migrations`, { recursive: true });
 
-    const tables = await Promise.all(
-      (await this.knex.schema.listTables()).map(async ({ table }) => {
-        const foreignKeys = await this.knex.schema.listForeignKeys(table);
-        return { table, numKeys: foreignKeys.length };
-      })
-    );
-
-    // Create migrations of tables with foreign keys last, to avoid mgirating
-    // them before the tables they point to exist.
-    const sortedTables = _.sortBy(tables, (items) => items.numKeys);
-
-    for (const { table } of sortedTables) {
+    for (const { table } of await this.listOrderedTables()) {
       const migrPath = `migrations/${stringDate()}-${table}.js`;
       const dataPath = `data/${table}.jsonl`;
 
@@ -74,6 +63,54 @@ class SqlDumper extends EventEmitter {
     rimraf.sync(dumpDir);
 
     return tarballPath;
+  }
+
+  async listOrderedTables() {
+    const tablesOrder = {};
+    const pendingTables = [];
+
+    // List all tables, save all without foreign key dependencies
+    // as the first ones to migrate.
+    await Promise.all(
+      (await this.knex.schema.listTables()).map(async ({ table }) => {
+        const foreignKeys = await this.knex.schema.listForeignKeys(table);
+        const dependencies = foreignKeys.map((f) => f.table);
+        if (!dependencies.length) {
+          tablesOrder[table] = 1;
+        } else {
+          pendingTables.push({ table, dependencies });
+        }
+      })
+    );
+
+    // Calculate the order of tables with foreign keys, to make sure they are
+    // not migrated before their dependencies are.
+    while (pendingTables.length) {
+      const next = pendingTables.shift();
+      let order = 0;
+
+      for (const dependency of next.dependencies) {
+        // Table has a dependency without a known order, dont set its order yet
+        if (!tablesOrder[dependency]) {
+          order = 0;
+          break;
+        }
+        // Table's order is after all its dependencies
+        order = Math.max(order, tablesOrder[dependency] + 1);
+      }
+
+      // If the table order is still unknown, push it to the end of pendings
+      if (order) {
+        tablesOrder[next.table] = order;
+      } else {
+        pendingTables.push(next);
+      }
+    }
+
+    return _(tablesOrder)
+      .map((order, table) => ({ order, table }))
+      .sortBy(({ order }) => order)
+      .value();
   }
 
   async loadDump(dump) {
@@ -129,10 +166,12 @@ class SqlDumper extends EventEmitter {
       return row;
     };
 
-    for (const filename of fs.readdirSync(`${extractedPath}/data`)) {
-      const table = filename.replace(".jsonl", "");
+    // Load data in the same order their tables were migrated, to ensure
+    // there are no errors due to missing foreign keys.
+    const dataFiles = await this.listOrderedDataFiles(`${extractedPath}/data`);
+    for (const { table, file } of dataFiles) {
       const stream = fs
-        .createReadStream(`${extractedPath}/data/${filename}`)
+        .createReadStream(file)
         .pipe(split())
         .pipe(
           through.obj((row, enc, next) =>
@@ -147,6 +186,22 @@ class SqlDumper extends EventEmitter {
     }
 
     rimraf.sync(extractedPath);
+  }
+
+  async listOrderedDataFiles(filesDir) {
+    const tablesOrder = _.keyBy(await this.listOrderedTables(), "table");
+
+    return _(fs.readdirSync(filesDir))
+      .map((filename) => {
+        const table = filename.replace(".jsonl", "");
+        return {
+          table,
+          file: `${filesDir}/${filename}`,
+          order: tablesOrder[table].order,
+        };
+      })
+      .sortBy(({ order }) => order)
+      .value();
   }
 
   async createTableMigration(table, filePath) {
