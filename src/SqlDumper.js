@@ -71,17 +71,16 @@ class SqlDumper extends EventEmitter {
 
     // List all tables, save all without foreign key dependencies
     // as the first ones to migrate.
-    await Promise.all(
-      (await this.knex.schema.listTables()).map(async ({ table }) => {
-        const foreignKeys = await this.knex.schema.listForeignKeys(table);
-        const dependencies = foreignKeys.map((f) => f.table);
-        if (!dependencies.length) {
-          tablesOrder[table] = 1;
-        } else {
-          pendingTables.push({ table, dependencies });
-        }
-      })
-    );
+    for (const { table } of await this.knex.schema.listTables()) {
+      const foreignKeys = await this.knex.schema.listForeignKeys(table);
+      const dependencies = foreignKeys.map((f) => f.table);
+
+      if (!dependencies.length) {
+        tablesOrder[table] = 1;
+      } else {
+        pendingTables.push({ table, dependencies });
+      }
+    }
 
     // Calculate the order of tables with foreign keys, to make sure they are
     // not migrated before their dependencies are.

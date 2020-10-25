@@ -107,23 +107,6 @@ const listColumns = async (knex, table) => {
   const database = knex.client.database();
   const foreignKeys = _.keyBy(await listForeignKeys(knex, table), "from");
 
-  const defaultListColumns = (where = {}) => {
-    return knex("information_schema.columns")
-      .where(where)
-      .orderBy("ordinal_position")
-      .select({
-        name: "column_name",
-        nullable: "is_nullable",
-        type: "data_type",
-        default: "column_default",
-        maxLength: "character_maximum_length",
-        unsigned: knex.raw(`instr(column_type, "unsigned")`),
-        precision: "numeric_precision",
-        scale: "numeric_scale",
-      })
-      .then((cols) => formatRows(cols));
-  };
-
   const formatRows = async (rows) =>
     rows.map((row) => {
       const foreign = foreignKeys[row.name];
@@ -155,15 +138,21 @@ const listColumns = async (knex, table) => {
     return val;
   };
 
-  // If possible, query manually instead of using knex(table).columnInfo().
-  // The reason for this is to ensure ordering of the resulting columns
-  // (the keys creation order should be kept in the returned object).
-  // This expected ordering will facilitate testing.
   if (client === "Client_MySQL" || client === "Client_MySQL2") {
-    return defaultListColumns({
-      table_schema: database,
-      table_name: table,
-    });
+    return knex("information_schema.columns")
+      .where({ table_schema: database, table_name: table })
+      .orderBy("ordinal_position")
+      .select({
+        name: "column_name",
+        nullable: "is_nullable",
+        type: "data_type",
+        default: "column_default",
+        maxLength: "character_maximum_length",
+        unsigned: knex.raw(`instr(column_type, "unsigned")`),
+        precision: "numeric_precision",
+        scale: "numeric_scale",
+      })
+      .then((rows) => formatRows(rows));
   }
 
   if (client === "Client_PG") {
@@ -183,7 +172,7 @@ const listColumns = async (knex, table) => {
         precision: "numeric_precision",
         scale: "numeric_scale",
       })
-      .then((cols) => formatRows(cols));
+      .then((rows) => formatRows(rows));
   }
 
   if (client === "Client_MSSQL") {
@@ -203,7 +192,7 @@ const listColumns = async (knex, table) => {
         precision: "numeric_precision",
         scale: "numeric_scale",
       })
-      .then((cols) => formatRows(cols));
+      .then((rows) => formatRows(rows));
   }
 
   if (client === "Client_BigQuery") {
@@ -216,7 +205,7 @@ const listColumns = async (knex, table) => {
         nullable: "is_nullable",
         type: "data_type",
       })
-      .then((cols) => formatRows(cols));
+      .then((rows) => formatRows(rows));
   }
 
   // Fallback to knex's columnInfo()
