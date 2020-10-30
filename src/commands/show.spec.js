@@ -1,5 +1,5 @@
 const { getTestKnex, runCli } = require("../../test/utils");
-const { hydrateKnex } = require("../knexUtils");
+const { hydrateKnex } = require("../knex/knex");
 
 describe("show", () => {
   let knex;

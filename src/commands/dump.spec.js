@@ -3,7 +3,7 @@ const path = require("path");
 const tar = require("tar");
 const rimraf = require("rimraf");
 const { getTestKnex, runCli } = require("../../test/utils");
-const { hydrateKnex } = require("../knexUtils");
+const { hydrateKnex } = require("../knex/knex");
 
 const TEST_DUMP_NAME = "my_dump";
 const TEST_DUMP_PATH = `${process.env.PWD}/.tmp/${TEST_DUMP_NAME}.tgz`;

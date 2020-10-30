@@ -1,5 +1,5 @@
 const { getTestKnex, runCli } = require("../../test/utils");
-const { hydrateKnex } = require("../knexUtils");
+const { hydrateKnex } = require("../knex/knex");
 
 const TEST_DATETIME_1 = "2020-07-24 18:34:00";
 const TEST_DATETIME_2 = "2020-07-24 19:25:00";

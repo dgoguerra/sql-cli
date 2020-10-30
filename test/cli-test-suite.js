@@ -4,7 +4,7 @@ const tar = require("tar");
 const _ = require("lodash");
 const rimraf = require("rimraf");
 const { runCli } = require("./utils");
-const { hydrateKnex } = require("../src/knexUtils");
+const { hydrateKnex } = require("../src/knex/knex");
 const { stringifyConn } = require("../src/connUtils");
 
 const TEST_SSH_CONN = {

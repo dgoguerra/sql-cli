@@ -204,15 +204,11 @@ async function listIndexes(knex, table) {
   return formatInputIndexes(await knex.schema.listIndexes(table));
 }
 
-function listRows(knex, table, argv) {
+async function listRows(knex, table, argv) {
   if (argv.query) {
-    const client = knex.client.constructor.name;
-    return (
-      knex
-        .raw(argv.query)
-        // In postgres knex.raw() returns results inside 'rows'
-        .then((results) => (client === "Client_PG" ? results.rows : results))
-    );
+    const results = await knex.raw(argv.query);
+    // In postgres knex.raw() returns results inside 'rows'
+    return knex.getDriver() === "pg" ? results.rows : results;
   }
 
   return knex(table)

@@ -11,7 +11,7 @@ const { EventEmitter } = require("events");
 const TableBuilder = require("knex/lib/schema/tablebuilder");
 const { stringDate } = require("./stringDate");
 const { runPipeline } = require("./streamUtils");
-const { toKnexType, streamInsert } = require("./knexUtils");
+const { toKnexType } = require("./knex/utils");
 
 const isNumeric = (v) =>
   (typeof v === "number" || typeof v === "string") &&
@@ -181,7 +181,7 @@ class SqlDumper extends EventEmitter {
       this.emit("log", `Loading data to ${table} ...`);
 
       await this.knex(table).delete();
-      await streamInsert(this.knex, table, stream);
+      await this.knex(table).streamInsert(stream);
     }
 
     rimraf.sync(extractedPath);
@@ -204,7 +204,7 @@ class SqlDumper extends EventEmitter {
   }
 
   async createTableMigration(table, filePath) {
-    const primaryKey = await this.knex(table).getPrimaryKey();
+    const primaryKey = await this.knex.schema.getPrimaryKey(table);
     const columns = await this.knex.schema.listColumns(table);
     const indexes = await this.knex.schema.listIndexes(table);
 
@@ -361,7 +361,6 @@ class SqlDumper extends EventEmitter {
   }
 
   buildIndexStatement(index) {
-    const client = this.knex.client.constructor.name;
     const type = index.unique ? "unique" : "index";
 
     // In MySQL primary key indexes are always called "PRIMARY". If the primary
@@ -369,8 +368,7 @@ class SqlDumper extends EventEmitter {
     // but it cannot be saved with the "PRIMARY" name, since other databases don't
     // allow creating several indexes with the same name.
     const ignoreName =
-      (client === "Client_MySQL" || client === "Client_MySQL2") &&
-      index.name === "PRIMARY";
+      this.knex.getDriver() === "mysql" && index.name === "PRIMARY";
 
     const columns = JSON.stringify(index.columns);
     return ignoreName

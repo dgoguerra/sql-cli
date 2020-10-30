@@ -1,5 +1,5 @@
-const { getTestKnex } = require("../test/utils");
-const { hydrateKnex } = require("./knexUtils");
+const { getTestKnex } = require("../../test/utils");
+const { hydrateKnex } = require("./knex");
 
 const EXPECTED_COLUMNS_1_INFO = [
   { name: "id", fullType: "integer", nullable: false },
@@ -91,11 +91,11 @@ describe("hydrateKnex()", () => {
   });
 
   it("can detect table primary key", async () => {
-    expect(await knex("table_1").getPrimaryKey()).toEqual(["id"]);
+    expect(await knex.schema.getPrimaryKey("table_1")).toEqual(["id"]);
   });
 
   it("can detect table primary key (composite)", async () => {
-    expect(await knex("table_2").getPrimaryKey()).toEqual([
+    expect(await knex.schema.getPrimaryKey("table_2")).toEqual([
       "field_1",
       "field_2",
     ]);
