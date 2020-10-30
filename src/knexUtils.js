@@ -25,6 +25,10 @@ const hydrateKnex = (knex) => {
 
   // Methods to extend on Knex's QueryBuilder
   const QUERY_METHODS = {
+    async hasRows() {
+      const rows = await this.select(knex.raw(1)).limit(1);
+      return !!rows.length;
+    },
     async countRows() {
       const [row] = await this.count({ count: "*" });
       return Number(row.count);

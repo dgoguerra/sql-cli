@@ -248,9 +248,7 @@ class SqlDumper extends EventEmitter {
   }
 
   async createTableContent(table, filePath) {
-    const numRows = await this.knex(table).countRows();
-
-    if (!numRows) {
+    if (!(await this.knex(table).hasRows())) {
       return false;
     }
 

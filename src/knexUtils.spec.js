@@ -66,6 +66,22 @@ describe("hydrateKnex()", () => {
     );
   });
 
+  it("can check if table has rows", async () => {
+    expect(await knex("table_1").hasRows()).toBeTruthy();
+  });
+
+  it("can check if table has rows (with filter)", async () => {
+    expect(
+      await knex("table_1").where({ field_1: "foo" }).hasRows()
+    ).toBeTruthy();
+  });
+
+  it("can check if table has rows (when empty)", async () => {
+    expect(
+      await knex("table_1").where({ field_1: "unknown" }).hasRows()
+    ).toBeFalsy();
+  });
+
   it("can count table rows", async () => {
     expect(await knex("table_1").countRows()).toBe(2);
   });
