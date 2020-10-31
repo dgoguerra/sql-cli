@@ -197,22 +197,18 @@ function getIndexesKeyBy(indexes1, indexes2) {
 }
 
 async function listColumns(knex, table) {
-  return formatInputColumns(await knex(table).columnInfo());
+  return formatInputColumns(await knex.schema.listColumns(table));
 }
 
 async function listIndexes(knex, table) {
   return formatInputIndexes(await knex.schema.listIndexes(table));
 }
 
-function listRows(knex, table, argv) {
+async function listRows(knex, table, argv) {
   if (argv.query) {
-    const client = knex.client.constructor.name;
-    return (
-      knex
-        .raw(argv.query)
-        // In postgres knex.raw() returns results inside 'rows'
-        .then((results) => (client === "Client_PG" ? results.rows : results))
-    );
+    const results = await knex.raw(argv.query);
+    // In postgres knex.raw() returns results inside 'rows'
+    return knex.getDriver() === "pg" ? results.rows : results;
   }
 
   return knex(table)
@@ -223,7 +219,7 @@ function listRows(knex, table, argv) {
 }
 
 async function listTables(knex) {
-  const tables = await knex.schema.tablesInfo();
+  const tables = await knex.schema.getSchema();
   return _.map(tables, (table, key) => ({
     table: key,
     rows: table.rows,
@@ -233,12 +229,13 @@ async function listTables(knex) {
   }));
 }
 
-const formatInputColumns = (table) =>
-  _.map(table, (col, key) => ({
-    column: key,
+const formatInputColumns = (columns) =>
+  _.map(columns, (col) => ({
+    column: col.name,
     type: col.fullType,
     nullable: col.nullable,
-    default: col.defaultValue,
+    default: col.default,
+    "foreign key": col.foreign,
   }));
 
 const formatInputIndexes = (indexes) =>

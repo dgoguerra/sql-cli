@@ -3,7 +3,7 @@ const path = require("path");
 const tar = require("tar");
 const rimraf = require("rimraf");
 const { getTestKnex, runCli } = require("../../test/utils");
-const { hydrateKnex } = require("../knexUtils");
+const { hydrateKnex } = require("../knex/knex");
 
 const TEST_DUMP_NAME = "my_dump";
 const TEST_DUMP_PATH = `${process.env.PWD}/.tmp/${TEST_DUMP_NAME}.tgz`;
@@ -53,7 +53,7 @@ describe("dump", () => {
     });
     await knex.schema.createTable("table_3", (t) => {
       t.bigInteger("field_1");
-      t.string("field_2");
+      t.string("field_2").references("table_2.field_2");
       t.timestamps(true, true); // default to CURRENT_TIMESTAMP
       t.primary(["field_1", "field_2"]);
     });

@@ -11,7 +11,7 @@ const { EventEmitter } = require("events");
 const TableBuilder = require("knex/lib/schema/tablebuilder");
 const { stringDate } = require("./stringDate");
 const { runPipeline } = require("./streamUtils");
-const { toKnexType, streamInsert } = require("./knexUtils");
+const { toKnexType } = require("./knex/utils");
 
 const isNumeric = (v) =>
   (typeof v === "number" || typeof v === "string") &&
@@ -42,7 +42,7 @@ class SqlDumper extends EventEmitter {
     fs.mkdirSync(`${dumpDir}/data`, { recursive: true });
     fs.mkdirSync(`${dumpDir}/migrations`, { recursive: true });
 
-    for (const { table } of await this.knex.schema.listTables()) {
+    for (const { table } of await this.listOrderedTables()) {
       const migrPath = `migrations/${stringDate()}-${table}.js`;
       const dataPath = `data/${table}.jsonl`;
 
@@ -63,6 +63,53 @@ class SqlDumper extends EventEmitter {
     rimraf.sync(dumpDir);
 
     return tarballPath;
+  }
+
+  async listOrderedTables() {
+    const tablesOrder = {};
+    const pendingTables = [];
+
+    // List all tables, save all without foreign key dependencies
+    // as the first ones to migrate.
+    for (const { table } of await this.knex.schema.listTables()) {
+      const foreignKeys = await this.knex.schema.listForeignKeys(table);
+      const dependencies = foreignKeys.map((f) => f.table);
+
+      if (!dependencies.length) {
+        tablesOrder[table] = 1;
+      } else {
+        pendingTables.push({ table, dependencies });
+      }
+    }
+
+    // Calculate the order of tables with foreign keys, to make sure they are
+    // not migrated before their dependencies are.
+    while (pendingTables.length) {
+      const next = pendingTables.shift();
+      let order = 0;
+
+      for (const dependency of next.dependencies) {
+        // Table has a dependency without a known order, dont set its order yet
+        if (!tablesOrder[dependency]) {
+          order = 0;
+          break;
+        }
+        // Table's order is after all its dependencies
+        order = Math.max(order, tablesOrder[dependency] + 1);
+      }
+
+      // If the table order is still unknown, push it to the end of pendings
+      if (order) {
+        tablesOrder[next.table] = order;
+      } else {
+        pendingTables.push(next);
+      }
+    }
+
+    return _(tablesOrder)
+      .map((order, table) => ({ order, table }))
+      .sortBy(({ order }) => order)
+      .value();
   }
 
   async loadDump(dump) {
@@ -118,10 +165,12 @@ class SqlDumper extends EventEmitter {
       return row;
     };
 
-    for (const filename of fs.readdirSync(`${extractedPath}/data`)) {
-      const table = filename.replace(".jsonl", "");
+    // Load data in the same order their tables were migrated, to ensure
+    // there are no errors due to missing foreign keys.
+    const dataFiles = await this.listOrderedDataFiles(`${extractedPath}/data`);
+    for (const { table, file } of dataFiles) {
       const stream = fs
-        .createReadStream(`${extractedPath}/data/${filename}`)
+        .createReadStream(file)
         .pipe(split())
         .pipe(
           through.obj((row, enc, next) =>
@@ -131,25 +180,40 @@ class SqlDumper extends EventEmitter {
 
       this.emit("log", `Loading data to ${table} ...`);
 
-      await this.knex(table).truncate();
-      await streamInsert(this.knex, table, stream);
+      await this.knex(table).delete();
+      await this.knex(table).streamInsert(stream);
     }
 
     rimraf.sync(extractedPath);
   }
 
+  async listOrderedDataFiles(filesDir) {
+    const tablesOrder = _.keyBy(await this.listOrderedTables(), "table");
+
+    return _(fs.readdirSync(filesDir))
+      .map((filename) => {
+        const table = filename.replace(".jsonl", "");
+        return {
+          table,
+          file: `${filesDir}/${filename}`,
+          order: tablesOrder[table].order,
+        };
+      })
+      .sortBy(({ order }) => order)
+      .value();
+  }
+
   async createTableMigration(table, filePath) {
-    const primaryKey = await this.knex(table).getPrimaryKey();
-    const columns = await this.knex(table).columnInfo();
+    const primaryKey = await this.knex.schema.getPrimaryKey(table);
+    const columns = await this.knex.schema.listColumns(table);
     const indexes = await this.knex.schema.listIndexes(table);
 
     const statements = [];
 
-    Object.keys(columns).forEach((key) => {
-      const isPrimaryKey = primaryKey.length === 1 && primaryKey[0] === key;
-      statements.push(
-        this.buildColumnStatement(key, columns[key], { isPrimaryKey })
-      );
+    columns.forEach((col) => {
+      const isPrimaryKey =
+        primaryKey.length === 1 && primaryKey[0] === col.name;
+      statements.push(this.buildColumnStatement(col, { isPrimaryKey }));
     });
 
     if (primaryKey.length > 1) {
@@ -184,9 +248,7 @@ class SqlDumper extends EventEmitter {
   }
 
   async createTableContent(table, filePath) {
-    const numRows = await this.knex(table).countRows();
-
-    if (!numRows) {
+    if (!(await this.knex(table).hasRows())) {
       return false;
     }
 
@@ -200,13 +262,13 @@ class SqlDumper extends EventEmitter {
     return true;
   }
 
-  buildColumnStatement(key, col, { isPrimaryKey = false } = {}) {
+  buildColumnStatement(col, { isPrimaryKey = false } = {}) {
     const primaryKeyTypes = {
       integer: "increments",
       bigInteger: "bigIncrements",
     };
 
-    let type = toKnexType(col.type, col.maxLength) || col.type;
+    let type = toKnexType(col.type, col) || col.type;
     let isIncrement = false;
 
     if (isPrimaryKey && primaryKeyTypes[type]) {
@@ -220,22 +282,39 @@ class SqlDumper extends EventEmitter {
       );
     }
 
-    const statement = [
-      col.maxLength
-        ? `t.${type}("${key}", ${col.maxLength})`
-        : `t.${type}("${key}")`,
-    ];
+    const statement = [];
+
+    if (col.precision && col.scale) {
+      statement.push(
+        `t.${type}("${col.name}", ${col.precision}, ${col.scale})`
+      );
+    } else if (col.maxLength) {
+      statement.push(`t.${type}("${col.name}", ${col.maxLength})`);
+    } else {
+      statement.push(`t.${type}("${col.name}")`);
+    }
 
     // In primary key columns of type "increments" dont apply primary,
-    // nullable or default properties.
+    // unsigned, nullable or default properties.
     if (isIncrement) {
       return statement.join(".");
+    }
+
+    // Save integers with foreign keys as unsigned. This avoids the dump
+    // from failing if loaded to mysql, due to columns being incompatible
+    // (increment fields in mysql are unsigned).
+    if (
+      col.unsigned ||
+      (col.foreign && ["integer", "bigInteger"].includes(type))
+    ) {
+      statement.push("unsigned()");
     }
 
     // Mark column explicitly as primary key
     if (isPrimaryKey) {
       statement.push("primary()");
     }
+
     // Set nullable timestamps explicitly (even though Knex makes columns
     // nullable by default). Prevents older versions of MySQL (ex. 5.5)
     // from adding by default "not null default to CURRENT_TIMESTAMP".
@@ -243,12 +322,18 @@ class SqlDumper extends EventEmitter {
     if (col.nullable && type === "timestamp") {
       statement.push("nullable()");
     }
+
     // primary() implies notNullable(), so do not add it
     if (!col.nullable && !isPrimaryKey) {
       statement.push("notNullable()");
     }
-    if (col.defaultValue !== null) {
-      statement.push(this.buildDefaultTo(type, col.defaultValue));
+
+    if (col.default !== null) {
+      statement.push(this.buildDefaultTo(type, col.default));
+    }
+
+    if (col.foreign) {
+      statement.push(`references("${col.foreign}")`);
     }
 
     return statement.join(".");
@@ -276,7 +361,6 @@ class SqlDumper extends EventEmitter {
   }
 
   buildIndexStatement(index) {
-    const client = this.knex.client.constructor.name;
     const type = index.unique ? "unique" : "index";
 
     // In MySQL primary key indexes are always called "PRIMARY". If the primary
@@ -284,8 +368,7 @@ class SqlDumper extends EventEmitter {
     // but it cannot be saved with the "PRIMARY" name, since other databases don't
     // allow creating several indexes with the same name.
     const ignoreName =
-      (client === "Client_MySQL" || client === "Client_MySQL2") &&
-      index.name === "PRIMARY";
+      this.knex.getDriver() === "mysql" && index.name === "PRIMARY";
 
     const columns = JSON.stringify(index.columns);
     return ignoreName

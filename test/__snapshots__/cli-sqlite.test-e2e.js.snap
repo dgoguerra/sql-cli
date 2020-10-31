@@ -11,7 +11,7 @@ table_3 0    4.1 kB
 `;
 
 exports[`CLI test: sqlite3 can diff tables 1`] = `
-"column  type                   nullable     default
+"column  type                   nullable     default               foreign key
 id      integer → varchar(255) false → true
 field_1 integer → float        true → false
 field_2 varchar(50) → text     true         [null] → default text
@@ -48,7 +48,7 @@ table_3 0    4.1 kB
 `;
 
 exports[`CLI test: sqlite3 can load dump to database 1`] = `
-"column     type        nullable default
+"column     type        nullable default foreign key
 id         integer     false
 field_1    integer     true
 field_2    varchar(50) true
@@ -61,7 +61,7 @@ table_1_field_1_index unknown   false  field_1
 `;
 
 exports[`CLI test: sqlite3 can load dump to database 2`] = `
-"column     type         nullable default
+"column     type         nullable default      foreign key
 id         varchar(255) true
 field_1    float        false
 field_2    text         true     default text
@@ -74,9 +74,10 @@ table_2_field_1_unique unknown   true   field_1
 `;
 
 exports[`CLI test: sqlite3 can load dump to database 3`] = `
-"column     type         nullable default
+"column     type         nullable default           foreign key
 field_1    bigint       true
 field_2    varchar(255) true
+field_3    integer      true                       table_1.id
 created_at datetime     false    CURRENT_TIMESTAMP
 updated_at datetime     false    CURRENT_TIMESTAMP
 
@@ -97,7 +98,7 @@ table_3                       0    4.1 kB
 `;
 
 exports[`CLI test: sqlite3 can see dumpfile contents 2`] = `
-"column     type        nullable default
+"column     type        nullable default foreign key
 id         integer     false
 field_1    integer     true
 field_2    varchar(50) true
@@ -110,7 +111,7 @@ table_1_field_1_index unknown   false  field_1
 `;
 
 exports[`CLI test: sqlite3 can show table 1`] = `
-"column     type         nullable default
+"column     type         nullable default      foreign key
 id         varchar(255) true
 field_1    float        false
 field_2    text         true     default text
@@ -161,6 +162,7 @@ exports[`CLI test: sqlite3 database dump contents are valid 3`] = `
   await knex.schema.createTable(\\"table_3\\", (t) => {
     t.bigInteger(\\"field_1\\");
     t.string(\\"field_2\\", 255);
+    t.integer(\\"field_3\\").unsigned().references(\\"table_1.id\\");
     t.datetime(\\"created_at\\").notNullable().defaultTo(knex.raw(\\"CURRENT_TIMESTAMP\\"));
     t.datetime(\\"updated_at\\").notNullable().defaultTo(knex.raw(\\"CURRENT_TIMESTAMP\\"));
     t.primary([\\"field_1\\",\\"field_2\\"]);

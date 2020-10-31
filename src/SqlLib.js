@@ -1,10 +1,9 @@
 const _ = require("lodash");
-const Knex = require("knex");
 const getPort = require("get-port");
 const { stringDate } = require("./stringDate");
-const { hydrateKnex } = require("./knexUtils");
 const { sshClient, forwardPort } = require("./sshUtils");
-const { resolveProtocol, getProtocolPort } = require("./connUtils");
+const { getProtocolPort } = require("./connUtils");
+const { createKnex } = require("./knex/knex");
 
 class SqlLib extends Function {
   constructor(conn) {
@@ -29,9 +28,7 @@ class SqlLib extends Function {
       await this._setupPortForwarding();
     }
 
-    const knex = this.createKnex();
-
-    this.knex = hydrateKnex(knex);
+    this.knex = createKnex(this.conn);
 
     await this.checkConnection();
 
@@ -77,78 +74,6 @@ class SqlLib extends Function {
 
     this.conn.host = "127.0.0.1";
     this.conn.port = freePort;
-  }
-
-  createKnex() {
-    const rest = {
-      log: {
-        // Fix: avoid overly verbose warning during Knex migrations.
-        // See https://github.com/knex/knex/issues/3921
-        warn(msg) {
-          msg.startsWith("FS-related option") || console.log(msg);
-        },
-      },
-    };
-
-    let conn = this.conn;
-    let client = resolveProtocol(conn.protocol) || conn.protocol;
-
-    // Custom SQLite settings
-    if (client === "sqlite3") {
-      conn =
-        conn.filename === ":memory:" ? ":memory:" : { filename: conn.filename };
-      rest.useNullAsDefault = true;
-    }
-
-    // Custom BigQuery settings
-    if (client === "bigquery") {
-      client = require("./clients/BigQuery");
-      conn.keyFilename = conn.params.keyFilename;
-      conn.location = conn.params.location;
-      conn.projectId = conn.host;
-    }
-
-    // Custom MySQL settings
-    if (client === "mysql2") {
-      conn.charset = conn.params.charset || "utf8mb4";
-      conn.timezone = conn.params.timezone || "+00:00";
-      if (!conn.port) {
-        conn.port = getProtocolPort(client); // port is required in mysql2
-      }
-    }
-
-    // Custom MSSQL settings
-    if (client === "mssql") {
-      conn.options = { enableArithAbort: true };
-      conn.server = conn.host;
-      delete conn.host;
-    }
-
-    // Fix: cleanup unused props from connection config to avoid error:
-    // "Ignoring invalid configuration option passed to Connection".
-    if (client === "mysql2") {
-      const { host, port, user, password, database, charset, timezone } = conn;
-      conn = { host, port, user, password, database, charset, timezone };
-    }
-
-    if (client === "pg") {
-      const sslParamKeys = ["ca", "key", "cert"];
-      const sslParams = { rejectUnauthorized: false };
-
-      Object.keys(conn.params).forEach((key) => {
-        if (sslParamKeys.includes(key)) {
-          sslParams[key] = conn.params[key];
-        }
-      });
-
-      // If any ssl config is set in the connection uri as params,
-      // pass it to the pg connection config.
-      if (Object.keys(sslParams).length > 1) {
-        conn.ssl = sslParams;
-      }
-    }
-
-    return Knex({ client, connection: conn, ...rest });
   }
 }
 

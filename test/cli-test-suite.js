@@ -4,7 +4,7 @@ const tar = require("tar");
 const _ = require("lodash");
 const rimraf = require("rimraf");
 const { runCli } = require("./utils");
-const { hydrateKnex } = require("../src/knexUtils");
+const { hydrateKnex } = require("../src/knex/knex");
 const { stringifyConn } = require("../src/connUtils");
 
 const TEST_SSH_CONN = {
@@ -17,7 +17,7 @@ const TEST_SSH_CONN = {
 const cliTestSuite = (
   name,
   knexFactory,
-  { sshHost = null, sshPort = null } = {}
+  { sshHost = null, sshPort = null, onDataLoaded = async () => {} } = {}
 ) => {
   jest.setTimeout(15000);
 
@@ -34,6 +34,7 @@ const cliTestSuite = (
       connUri = knex.getUri();
 
       await migrateTestTables(knex);
+      await onDataLoaded(knex);
 
       rimraf.sync(TEST_DUMP_PATH);
       rimraf.sync(TEST_EXTRACTED_PATH);
@@ -133,11 +134,12 @@ const cliTestSuite = (
     });
 
     it("can load dump to database", async () => {
-      await knex.schema.dropTable("table_1");
-      await knex.schema.dropTable("table_2");
       await knex.schema.dropTable("table_3");
+      await knex.schema.dropTable("table_2");
+      await knex.schema.dropTable("table_1");
 
       await runCli(`dump load ${connUri} ${TEST_DUMP_PATH}`);
+      await onDataLoaded(knex);
 
       expect(
         cleanIndexNames(await runCli(`show ${connUri}/table_1`))
@@ -170,6 +172,7 @@ const migrateTestTables = async (knex) => {
   await knex.schema.createTable("table_3", (t) => {
     t.bigInteger("field_1");
     t.string("field_2");
+    t.integer("field_3").unsigned().references("table_1.id");
     t.timestamps(true, true); // default to CURRENT_TIMESTAMP
     t.primary(["field_1", "field_2"]);
   });

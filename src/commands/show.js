@@ -14,14 +14,15 @@ module.exports = {
 
     const lib = await CliApp.initLib(argv.table);
 
-    const columns = await lib(conn._table).columnInfo();
+    const columns = await lib.schema.listColumns(conn._table);
     const indexes = await lib.schema.listIndexes(conn._table);
 
-    const formatted = _.map(columns, (val, key) => ({
-      column: key,
-      type: val.fullType,
-      nullable: val.nullable,
-      default: val.defaultValue,
+    const formatted = _.map(columns, (col) => ({
+      column: col.name,
+      type: col.fullType,
+      nullable: col.nullable,
+      default: col.default,
+      "foreign key": col.foreign,
     }));
 
     console.log(table(formatted));

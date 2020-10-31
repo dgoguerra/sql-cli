@@ -14,5 +14,15 @@ const TEST_MYSQL_CONN = {
 cliTestSuite(
   "mysql2",
   () => Knex({ client: "mysql2", connection: TEST_MYSQL_CONN }),
-  { sshHost: "mysql", sshPort: 3306 }
+  {
+    sshHost: "mysql",
+    sshPort: 3306,
+    onDataLoaded: async (knex) => {
+      // Update index statistics of the loaded tables, to show consistent
+      // table sizes in snapshots.
+      await knex.raw("optimize table table_1");
+      await knex.raw("optimize table table_2");
+      await knex.raw("optimize table table_3");
+    },
+  }
 );

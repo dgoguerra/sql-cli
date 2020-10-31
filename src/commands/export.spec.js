@@ -30,11 +30,11 @@ describe("export", () => {
     await knex.schema.createTable("table_1", (t) => {
       t.increments("id");
       t.decimal("field_1");
-      t.string("field_2");
+      t.string("field_2").defaultTo("default text");
     });
     await knex.schema.createTable("table_2", (t) => {
       t.increments("id");
-      t.integer("field_3");
+      t.integer("field_3").references("table_1.id");
       t.text("field_4");
     });
 
@@ -74,17 +74,17 @@ describe("export", () => {
 
     const content1 = getXlsxSheetContent(TEST_EXPORT_SCHEMA, "table_1");
     expect(content1).toMatchObject([
-      ["Column", "Type", "Nullable"],
+      ["Column", "Type", "Nullable", "Default", "Foreign Key"],
       ["id", "integer", false],
       ["field_1", "float", true],
-      ["field_2", "varchar(255)", true],
+      ["field_2", "varchar(255)", true, "default text"],
     ]);
 
     const content2 = getXlsxSheetContent(TEST_EXPORT_SCHEMA, "table_2");
     expect(content2).toMatchObject([
-      ["Column", "Type", "Nullable"],
+      ["Column", "Type", "Nullable", "Default", "Foreign Key"],
       ["id", "integer", false],
-      ["field_3", "integer", true],
+      ["field_3", "integer", true, undefined, "table_1.id"],
       ["field_4", "text", true],
     ]);
 
