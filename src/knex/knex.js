@@ -62,7 +62,7 @@ const buildKnex = (conn) => {
 
   // Custom BigQuery settings
   if (client === "bigquery") {
-    client = require("./knex/clients/BigQuery");
+    client = require("./clients/BigQuery");
     conn.keyFilename = conn.params.keyFilename;
     conn.location = conn.params.location;
     conn.projectId = conn.host;
